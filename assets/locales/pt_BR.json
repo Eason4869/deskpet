@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "Continue a leitura na posição {0}.",
   "fileCompatibility.preview": "Prévia",
   "fileCompatibility.quota": "O armazenamento de anexos está cheio.",
+  "fileCompatibility.sqliteStandalone": "Exporte uma cópia independente do SQLite no aplicativo original e adicione o arquivo exportado.",
   "fileCompatibility.start": "Início (milissegundos para vídeo)",
   "fileCompatibility.timeout": "A operação de arquivo excedeu o tempo limite.",
   "fileCompatibility.toolError": "Erro: {0}",

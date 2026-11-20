@@ -50,7 +50,7 @@ namespace Dafeiyu
                 throw new InvalidDataException("SQLite 文件头无效，文件可能损坏或已加密。");
             if (bytes[18] == 2 || bytes[19] == 2 || HasSidecar(path + "-wal") ||
                 HasSidecar(path + "-shm") || HasSidecar(path + "-journal"))
-                throw new AttachmentFileProblem("SQLite 数据库需要日志文件才能确认一致性。请在原工具中导出独立 SQLite 文件后重选。");
+                throw new AttachmentFileProblem(TextResources.Get("fileCompatibility.sqliteStandalone"));
             if (bytes[18] != 1 || bytes[19] != 1)
                 throw new InvalidDataException("SQLite 文件格式版本不受支持。");
         }

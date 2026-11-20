@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "Continue reading at position {0}.",
   "fileCompatibility.preview": "Preview",
   "fileCompatibility.quota": "Attachment storage is full.",
+  "fileCompatibility.sqliteStandalone": "Export a standalone SQLite copy from the original app, then add the exported file.",
   "fileCompatibility.start": "Start (milliseconds for video)",
   "fileCompatibility.timeout": "The file operation timed out.",
   "fileCompatibility.toolError": "Error: {0}",

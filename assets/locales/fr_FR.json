@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "Reprendre la lecture à la position {0}.",
   "fileCompatibility.preview": "Aperçu",
   "fileCompatibility.quota": "Le stockage des pièces jointes est saturé.",
+  "fileCompatibility.sqliteStandalone": "Exportez une copie SQLite autonome depuis l’application d’origine, puis ajoutez le fichier exporté.",
   "fileCompatibility.start": "Début (millisecondes pour les vidéos)",
   "fileCompatibility.timeout": "Le délai de l’opération de fichier est dépassé.",
   "fileCompatibility.toolError": "Erreur : {0}",

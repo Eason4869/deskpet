@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "위치 {0}부터 계속 읽을 수 있습니다.",
   "fileCompatibility.preview": "미리 보기",
   "fileCompatibility.quota": "첨부 파일 저장 공간이 가득 찼습니다.",
+  "fileCompatibility.sqliteStandalone": "원래 앱에서 독립 실행형 SQLite 사본을 내보낸 뒤, 내보낸 파일을 추가하세요.",
   "fileCompatibility.start": "시작 위치(동영상은 밀리초)",
   "fileCompatibility.timeout": "파일 작업 시간이 초과되었습니다.",
   "fileCompatibility.toolError": "오류: {0}",

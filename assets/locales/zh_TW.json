@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "可從位置 {0} 繼續讀取。",
   "fileCompatibility.preview": "預覽",
   "fileCompatibility.quota": "附件儲存空間已達上限。",
+  "fileCompatibility.sqliteStandalone": "請用原工具匯出獨立的 SQLite 副本，再加入匯出的檔案。",
   "fileCompatibility.start": "起始位置（影片為毫秒）",
   "fileCompatibility.timeout": "檔案讀取逾時。",
   "fileCompatibility.toolError": "錯誤：{0}",

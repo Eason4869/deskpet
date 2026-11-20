@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "स्थिति {0} से पढ़ना जारी रखें।",
   "fileCompatibility.preview": "पूर्वावलोकन",
   "fileCompatibility.quota": "अटैचमेंट का संग्रहण भर गया है।",
+  "fileCompatibility.sqliteStandalone": "मूल ऐप से एक स्वतंत्र SQLite कॉपी निर्यात करें, फिर निर्यात की गई फ़ाइल जोड़ें।",
   "fileCompatibility.start": "प्रारंभ (वीडियो के लिए मिलीसेकंड)",
   "fileCompatibility.timeout": "फ़ाइल कार्रवाई की समय-सीमा समाप्त हो गई।",
   "fileCompatibility.toolError": "त्रुटि: {0}",

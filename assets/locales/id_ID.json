@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "Lanjutkan membaca dari posisi {0}.",
   "fileCompatibility.preview": "Pratinjau",
   "fileCompatibility.quota": "Penyimpanan lampiran penuh.",
+  "fileCompatibility.sqliteStandalone": "Ekspor salinan SQLite mandiri dari aplikasi asal, lalu tambahkan berkas hasil ekspor.",
   "fileCompatibility.start": "Awal (milidetik untuk video)",
   "fileCompatibility.timeout": "Operasi berkas kehabisan waktu.",
   "fileCompatibility.toolError": "Kesalahan: {0}",

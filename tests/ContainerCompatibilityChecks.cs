@@ -262,7 +262,8 @@ namespace Dafeiyu.Tests
                 string shared = Digest(path + "-shm");
                 Expect<AttachmentFileProblem>(() => reader.Inspect(path, CancellationToken.None), "SQLite rejects active WAL before reading stale data");
                 var batch = FileContentService.ImportBatch(new[] { path }, Path.Combine(directory, "wal-import"), false, null, CancellationToken.None);
-                Require(batch.Files.Count == 0 && batch.Errors.Count == 1 && batch.Errors[0].Contains("导出独立 SQLite 文件"),
+                Require(batch.Files.Count == 0 && batch.Errors.Count == 1 &&
+                    batch.Errors[0].EndsWith(TextResources.Get("fileCompatibility.sqliteStandalone"), StringComparison.Ordinal),
                     "SQLite WAL attachment explains how to export a consistent standalone copy");
                 Require(main == Digest(path) && wal == Digest(path + "-wal") && shared == Digest(path + "-shm"),
                     "SQLite rejection preserves active database and sidecar bytes");

@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "Ab Position {0} weiterlesen.",
   "fileCompatibility.preview": "Vorschau",
   "fileCompatibility.quota": "Der Speicher für Anhänge ist voll.",
+  "fileCompatibility.sqliteStandalone": "Exportieren Sie in der ursprünglichen App eine eigenständige SQLite-Kopie und fügen Sie die exportierte Datei hinzu.",
   "fileCompatibility.start": "Start (bei Video in Millisekunden)",
   "fileCompatibility.timeout": "Das Zeitlimit für den Dateivorgang wurde überschritten.",
   "fileCompatibility.toolError": "Fehler: {0}",

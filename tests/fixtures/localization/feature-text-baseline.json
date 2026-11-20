@@ -3476,6 +3476,12 @@
       "argument_count": 0
     },
     {
+      "key": "fileCompatibility.sqliteStandalone",
+      "expected": "请用原工具导出独立的 SQLite 副本，再添加导出的文件。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "fileCompatibility.start",
       "expected": "起始位置（视频为毫秒）",
       "format": false,

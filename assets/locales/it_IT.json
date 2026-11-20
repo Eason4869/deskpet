@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "Continua la lettura dalla posizione {0}.",
   "fileCompatibility.preview": "Anteprima",
   "fileCompatibility.quota": "Lo spazio per gli allegati è esaurito.",
+  "fileCompatibility.sqliteStandalone": "Esporta una copia SQLite autonoma dall’app originale, poi aggiungi il file esportato.",
   "fileCompatibility.start": "Inizio (millisecondi per i video)",
   "fileCompatibility.timeout": "L’operazione sul file è scaduta.",
   "fileCompatibility.toolError": "Errore: {0}",

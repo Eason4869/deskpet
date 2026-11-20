@@ -1387,6 +1387,7 @@
   "fileCompatibility.more": "位置 {0} から続けて読み取れます。",
   "fileCompatibility.preview": "プレビュー",
   "fileCompatibility.quota": "添付ファイルの保存容量が上限に達しました。",
+  "fileCompatibility.sqliteStandalone": "元のアプリで SQLite の単独で使えるコピーをエクスポートし、そのファイルを追加してください。",
   "fileCompatibility.start": "開始位置（動画はミリ秒）",
   "fileCompatibility.timeout": "ファイル操作がタイムアウトしました。",
   "fileCompatibility.toolError": "エラー：{0}",
