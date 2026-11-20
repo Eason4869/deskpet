@@ -307,6 +307,7 @@ namespace Dafeiyu
             var read=new System.Threading.CancellationTokenSource();
             attachmentRead=read;
             FileContentService.Batch result=null;
+            Exception failure=null;
             try
             {
                 using(session.EnterRequestActivity())
@@ -315,18 +316,36 @@ namespace Dafeiyu
                     string full=System.IO.Path.GetFullPath(path);string name=System.IO.Path.GetFileName(full.TrimEnd('\\','/'));if(String.IsNullOrEmpty(name))name=TextResources.Get("conversationComposer.addPathsAsync.name");
                     return ChatAttachment.FromText(TextResources.Format("conversationComposer.addPathsAsync.chatAttachmentFromText",name),TextResources.Format("conversationComposer.addPathsAsync.chatAttachmentFromText.alternativeA",full));
                 },read.Token,attachmentOwner));
-                if(closed||read.IsCancellationRequested||AttachmentKey!=draftKey)return;
-                AddAttachments(result.Files);
-                if(result.Errors.Count!=0)status.Text=String.Join("\n",result.Errors);
-                result=null;
             }
             catch(OperationCanceledException){ }
-            catch(Exception error){if(!closed)Error(error);}
+            catch(Exception error){failure=error;}
+            try
+            {
+                await Dispatcher.InvokeAsync(new Action(delegate
+                {
+                    try
+                    {
+                        if(closed)return;
+                        if(failure!=null){Error(failure);return;}
+                        if(result==null||read.IsCancellationRequested||AttachmentKey!=draftKey)return;
+                        AddAttachments(result.Files);
+                        if(result.Errors.Count!=0)status.Text=String.Join("\n",result.Errors);
+                        result=null;
+                    }
+                    catch(Exception error){if(!closed)Error(error);}
+                    finally
+                    {
+                        attachmentRead=null;
+                        loadingAttachments=false;
+                        if(!closed)RefreshAction();
+                    }
+                }));
+            }
+            catch(OperationCanceledException){if(!Dispatcher.HasShutdownStarted)throw;}
             finally
             {
-                if(result!=null)FileContentService.Discard(dataRoot,result.Files);
-                attachmentRead=null;read.Dispose();loadingAttachments=false;
-                if(!closed)RefreshAction();
+                try{if(result!=null)FileContentService.Discard(dataRoot,result.Files);}
+                finally{read.Dispose();}
             }
         }
         async System.Threading.Tasks.Task AddBitmapAsync(System.Windows.Media.Imaging.BitmapSource source,string prefix)

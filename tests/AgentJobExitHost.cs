@@ -80,11 +80,15 @@ namespace Dafeiyu.Tests
             typeof(PetWindow).GetField("AgentJobExitNotice",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,(Action<string>)(message=>File.WriteAllText(Path.Combine(root,"exit.held"),message)));
             if(!await services.InitializeAsync())throw new Exception("Host lease initialization failed");
             string pids=Path.Combine(root,"owned.pids");
-            string command="$child=Start-Process -FilePath "+Quote(AgentCommandExecutor.PowerShellPath())+" -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 120' -WindowStyle Hidden -PassThru; [IO.File]::WriteAllText("+Quote(pids)+",([string]$PID+[Environment]::NewLine+[string]$child.Id)); Start-Sleep -Seconds 120";
+            string pendingPids=pids+".tmp";
+            string command="$child=Start-Process -FilePath "+Quote(AgentCommandExecutor.PowerShellPath())+" -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 120' -WindowStyle Hidden -PassThru; "+
+                "[IO.File]::WriteAllText("+Quote(pendingPids)+",([string]$PID+[Environment]::NewLine+[string]$child.Id)); "+
+                "[IO.File]::Move("+Quote(pendingPids)+","+Quote(pids)+"); Start-Sleep -Seconds 120";
+            var spec=new AgentJobSpec(command,"Independent job exit fixture",root,1800);
             var owner=new AgentJobOwner("host-project","host-conversation","primary");
-            var invocation=new AgentToolInvocation("start_job",new Dictionary<string,object>{{"command",command},{"title",command},{"working_directory",root},{"timeout_seconds",1800}},new AgentToolExecutionContext{ProjectId=owner.ProjectId,AgentId="primary",TaskId="host-task",CallId="host-start"});
+            var invocation=new AgentToolInvocation("start_job",new Dictionary<string,object>{{"command",spec.Command},{"title",spec.Title},{"working_directory",spec.WorkingDirectory},{"timeout_seconds",spec.TimeoutSeconds}},new AgentToolExecutionContext{ProjectId=owner.ProjectId,AgentId="primary",TaskId="host-task",CallId="host-start"});
             var context=new AgentJobStartContext(owner,invocation,new Approval(),()=>new AgentJobPolicySnapshot(root,"fixture-directory",1,1800,true,false,false,AgentApprovalMode.Full,null),()=>new Lease(),()=>{});
-            var job=await services.Manager.StartAsync(context,new AgentJobSpec(command,null,root,1800),CancellationToken.None);
+            var job=await services.Manager.StartAsync(context,spec,CancellationToken.None);
             await WaitAsync(()=>File.Exists(pids)&&File.ReadAllLines(pids).Length==2,5000,"Native host tree readiness");
             File.WriteAllText(Path.Combine(root,"job.id"),job.Id);
             File.WriteAllText(Path.Combine(root,"ready.tmp"),File.ReadAllText(pids));File.Move(Path.Combine(root,"ready.tmp"),Path.Combine(root,"host.ready"));

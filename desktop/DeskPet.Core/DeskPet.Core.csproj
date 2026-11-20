@@ -66,10 +66,8 @@
     <Reference Include="../../vendor/file-compat/excel/net8.0/*.dll;../../vendor/file-compat/pdf/net9.0/*.dll;../../vendor/file-compat/archive/net10.0/*.dll;../../vendor/file-compat/doc/net10.0/*.dll">
       <Private>true</Private>
     </Reference>
-    <Content Include="../../vendor/file-compat/sqlite/runtimes/**/*" Condition="'$(RuntimeIdentifier)' == ''"
-             Link="runtimes/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="../../vendor/file-compat/sqlite/runtimes/$(RuntimeIdentifier)/**/*" Condition="'$(RuntimeIdentifier)' != ''"
-             Link="runtimes/$(RuntimeIdentifier)/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../vendor/file-compat/sqlite/runtimes/**/*"
+             Link="runtimes/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <EmbeddedResource Include="../../vendor/file-compat/**/*.txt" LogicalName="Dafeiyu.FileCompatibility.Notices.%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../src/ApplicationSnapshots.cs;../../src/AttachmentPicker.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ShortcutDefinitions.cs" Link="Shared/ShortcutDefinitions.cs" />

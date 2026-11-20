@@ -88,6 +88,7 @@ namespace Dafeiyu.Tests
                 Find<Expander>(settings,"TextConnectionDetails").IsExpanded=true;Pump();
                 Find<TextBox>(settings,"TextServiceProxyAddress").Text="socks5://127.0.0.1:7890";Until(()=>!Find<Button>(guide,"GuideNext").IsEnabled);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid proxy settings cannot mark the text guide ready before save");
                 Find<TextBox>(settings,"TextServiceProxyAddress").Text=ProxyConfiguration.DefaultAddress;Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
+                Until(()=>!(bool)Field(guide,"advancing"));
                 Check(pet.Settings.Text.Model=="manual-guide-model" && pet.Settings.TextProviders.Single(p=>p.Id==pet.Settings.ActiveTextProviderId).Models.Count==1,"manually added model survives guide save after a discovery error");
             }
             Click(guide,"GuideBack");settings.HostWindow.Width=700;settings.HostWindow.Height=430;Pump();Capture(settings,Path.Combine(folder,"guide-models-minimum.png"));Capture(guide,Path.Combine(folder,"guide-models-minimum-card.png"));Click(guide,"GuideSkip");

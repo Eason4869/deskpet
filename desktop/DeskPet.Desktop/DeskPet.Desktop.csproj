@@ -19,6 +19,10 @@
     <Exec WorkingDirectory="$(MSBuildThisFileDirectory)../.." Command="$(BundlePython) -X utf8 tools/prepare_bundled_ebao.py --verify" />
   </Target>
   <ItemGroup>
+    <Content Include="../../vendor/file-compat/sqlite/runtimes/$(RuntimeIdentifier)/**/*" Condition="'$(RuntimeIdentifier)' != ''"
+             Link="runtimes/$(RuntimeIdentifier)/%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../vendor/file-compat/sqlite/runtimes/**/*" Condition="'$(RuntimeIdentifier)' == ''"
+             Link="runtimes/%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../docs/im-channels.md" Link="docs/im-channels.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../docs/third-party-notices.md" Link="docs/third-party-notices.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../docs/conversation-agent.md" Link="docs/conversation-agent.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

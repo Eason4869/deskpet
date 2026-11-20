@@ -45,6 +45,9 @@ class MacPackagingTests(unittest.TestCase):
         return create_bundle(self.publish, self.app, 'arm64', '0.5.5', 'preview', self.icon, **kw)
 
     def test_bundle_has_real_metadata_and_current_version(self):
+        sqlite = Path('runtimes/osx-arm64/native/libe_sqlite3.dylib')
+        (self.publish / sqlite).parent.mkdir(parents=True)
+        self.binary(self.publish / sqlite)
         self.make()
         info = plistlib.loads((self.app / 'Contents/Info.plist').read_bytes())
         self.assertEqual('0.5.5', info['CFBundleShortVersionString'])
@@ -56,7 +59,9 @@ class MacPackagingTests(unittest.TestCase):
         if os.name != 'nt':
             self.assertTrue((self.app / 'Contents/MacOS/DeskPet').stat().st_mode & 0o111)
         result = validate_bundle(self.app, 'arm64', '0.5.5', 'preview')
-        self.assertEqual(4, len(result['native_binaries']))
+        self.assertEqual(5, len(result['native_binaries']))
+        self.assertIn(sqlite.as_posix(), result['native_binaries'])
+        self.assertEqual((self.publish / sqlite).read_bytes(), (self.app / 'Contents/MacOS' / sqlite).read_bytes())
         self.assertEqual((self.app/'Contents/Resources/im-logos.LICENSE.txt').read_bytes(),(Path(__file__).resolve().parents[1]/'assets/im-logos.LICENSE.txt').read_bytes())
 
     def test_dev_display_identity_keeps_numeric_platform_version(self):

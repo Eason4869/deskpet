@@ -51,6 +51,9 @@ namespace Dafeiyu.Tests {
    Console.WriteLine("Usage statistics tests: "+checks+" passed");return 0;
   }catch(Exception error){Console.WriteLine("FAIL "+error);return 1;}finally{if(app!=null)app.Shutdown();}}
   static void Ui(IList records){
+   var latest=records.Cast<object>().Max(row=>((DateTime)Get(row,"TimestampUtc")).ToLocalTime().Date);
+   var shift=DateTime.Today.AddDays(-1)-latest;
+   foreach(var row in records)Set(row,"TimestampUtc",((DateTime)Get(row,"TimestampUtc")).ToLocalTime().Add(shift).ToUniversalTime());
    string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"usage-ui-"+Guid.NewGuid().ToString("N"));var store=Activator.CreateInstance(Find("UsageStore"),new object[]{folder});foreach(var row in records)Find("UsageStore").GetMethod("AddOrUpdate").Invoke(store,new[]{row});
    var page=(UserControl)Activator.CreateInstance(Find("UsageStatisticsPage"),new[]{store});var window=new Window{Title="用量统计 · 自有样本验收",Width=1040,Height=900,Content=page,WindowStartupLocation=WindowStartupLocation.CenterScreen,UseLayoutRounding=true,SnapsToDevicePixels=true};
    Find("Ui").GetMethod("Window").Invoke(null,new object[]{window,window.Title,1040d,900d});window.MinWidth=320;
