@@ -22,7 +22,8 @@ if (!$Compiler) {
     $Compiler = $compilerCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 }
 if (!$Compiler -or !(Test-Path -LiteralPath $Compiler)) { throw 'Install Inno Setup 6.7+ and pass -Compiler <ISCC.exe>.' }
-$stagingRoot = Join-Path $projectRoot ('work\installer-runtime-'+[guid]::NewGuid().ToString('N'))
+$workRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'work'))
+$stagingRoot = Join-Path $workRoot ('installer-runtime-'+[guid]::NewGuid().ToString('N'))
 $runtimeInclude = $stagingRoot + '.iss'
 & python -X utf8 (Join-Path $projectRoot 'tools/runtime_package.py') --project $projectRoot --app $runtimeRoot --stage $stagingRoot --inno $runtimeInclude
 if ($LASTEXITCODE -ne 0) { throw 'Runtime staging failed.' }
@@ -42,4 +43,8 @@ try { $installerDigest = [System.BitConverter]::ToString($installerHasher.Comput
 finally { $installerStream.Dispose(); $installerHasher.Dispose() }
 $manifestLines += $installerDigest+'  '+$installerName
 [System.IO.File]::WriteAllLines($manifestPath,$manifestLines,[System.Text.UTF8Encoding]::new($false))
+$staged = Get-Item -LiteralPath $stagingRoot
+if ($staged.Parent.FullName -ne $workRoot -or $staged.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)) { throw 'Unexpected installer staging directory.' }
+Remove-Item -LiteralPath $staged.FullName -Recurse -Force
+Remove-Item -LiteralPath $runtimeInclude -Force
 Get-Item -LiteralPath $installerPath | Select-Object FullName,Length
