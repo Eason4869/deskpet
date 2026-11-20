@@ -14,30 +14,6 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Verify native installer path, completion, silent update and ownership
-        shell: powershell
-        run: |
-          python -m pip install Pillow
-          if ($LASTEXITCODE) { throw 'Installer screenshot dependency installation failed' }
-          $candidates = @($env:INNO_SETUP_COMPILER, (Join-Path $PWD 'work/tools/inno/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7/ISCC.exe'))
-          $compiler = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
-          if (!$compiler) { throw 'Inno compiler required for native installer acceptance' }
-          python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler
-          if ($LASTEXITCODE) { throw 'Installer UI checks failed' }
-          python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler --progress-animation-only
-          if ($LASTEXITCODE) { throw 'Native installer acceptance failed' }
-      - name: Preserve native installer UI evidence
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: installer-ui-${{ github.sha }}
-          if-no-files-found: ignore
-          path: |
-            work/installer-ui-*/*.png
-            work/installer-ui-*/*.log
-            work/installer-ui-*/result.json
-            work/installer-ui-*/animation-result.json
-            work/installer-ui-*/shortcut-evidence.zip
       - name: Check proactive core and UI test registration
         shell: powershell
         run: |
@@ -193,23 +169,6 @@ jobs:
       - name: Compile application
         shell: powershell
         run: .\Build.ps1 -Target App -OutputDirectory work/dev3-ci-package/DafeiyuDeskPet
-      - name: Pre-tag Windows installer preflight
-        shell: powershell
-        run: |
-          .\BuildInstaller.ps1 -OutputDirectory work/dev3-ci-package
-          if ($LASTEXITCODE) { throw 'Installer preflight failed' }
-      - name: Verify complete installer opens within two seconds
-        shell: powershell
-        run: |
-          $version = [regex]::Match((Get-Content src/ReleaseInfo.cs -Raw), 'DisplayVersion="([^"]+)"').Groups[1].Value
-          python -X utf8 tests/InstallerStartupSmoke.py --after "work/dev3-ci-package/DeskPet-Windows-Setup-$version.exe" --output work/installer-startup --rounds 3 --max-ready-seconds 2 --ready-timeout-seconds 10
-          if ($LASTEXITCODE) { throw 'Installer startup acceptance failed' }
-      - uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: installer-startup-evidence
-          path: work/installer-startup/*
-          if-no-files-found: ignore
       - name: Verify standalone application and helper locale
         shell: powershell
         run: |
@@ -392,53 +351,6 @@ jobs:
           if ($LASTEXITCODE) { throw 'Installation status acceptance failed' }
           dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-thin-ui-only
           if ($LASTEXITCODE) { throw 'Thin desktop acceptance failed' }
-      - name: Verify abortable uninstall UI and close ownership
-        shell: powershell
-        run: |
-          .\Build.ps1 -Target UninstallUiTests -TestArguments '--compile-only'
-          if ($LASTEXITCODE) { throw 'Uninstall UI compilation failed' }
-          foreach ($mode in @('', '--owner', '--closed', '--late', '--job-warning', '--relationship-settings')) {
-            & .\work\UninstallUiTests.exe $mode
-            if ($LASTEXITCODE) { throw "Uninstall UI failed: $mode" }
-          }
-      - name: Verify trusted uninstall handoff in a unique owned Inno installation
-        shell: powershell
-        run: |
-          $candidates = @((Join-Path $PWD 'work/tools/inno/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7/ISCC.exe'))
-          $env:DESKPET_TEST_INNO = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-          if (!$env:DESKPET_TEST_INNO) { throw 'Inno compiler required for owned uninstall acceptance' }
-          python tests/UninstallHandoffSmoke.py
-          if ($LASTEXITCODE) { throw 'Owned uninstall handoff failed' }
-          python tests/UninstallInstalledUiSmoke.py
-          if ($LASTEXITCODE) { throw 'Actual installed WPF uninstall failed' }
-          python tests/UpdateLifecycleSmoke.py --receipts-only
-          if ($LASTEXITCODE) { throw 'Update worker receipt regression failed' }
-      - name: Preserve owned uninstall handoff diagnostics
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: uninstall-handoff-${{ github.sha }}
-          if-no-files-found: ignore
-          path: |
-            work/uc-*/install.log
-            work/uc-*/i/data/fixture-error
-            work/uc-*/i/data/pre-uninstall.json
-            work/uc-*/i/data/uninstall/*/*.log
-            work/uc-*/i/data/uninstall/*/result.json
-            work/uninstall-handoff-*/install.log
-            work/uninstall-handoff-*/owned */data/uninstall/*/*.log
-            work/uninstall-handoff-*/owned */data/uninstall/*/result.json
-      - name: Verify locale in the actually installed application
-        shell: powershell
-        run: |
-          $setup = @(Get-ChildItem work/dev3-ci-package/DeskPet-Windows-Setup-*.exe)
-          if ($setup.Count -ne 1) { throw 'Expected one verified installer' }
-          $destination = Join-Path $PWD 'work/localization-installed'
-          $process = Start-Process -FilePath $setup[0].FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS',('/DIR="'+$destination+'"')) -WindowStyle Hidden -Wait -PassThru
-          if ($process.ExitCode) { throw 'Isolated installer acceptance failed' }
-          $log = Join-Path $PWD 'work/localization-installed.log'
-          ./tools/check_localization_artifacts.ps1 -AppRoot $destination | Tee-Object -FilePath $log
-          if ($LASTEXITCODE) { throw 'Installed locale acceptance failed' }
       - name: Preserve localization acceptance evidence
         if: always()
         uses: actions/upload-artifact@v6
@@ -448,7 +360,6 @@ jobs:
           path: |
             work/localization-audit.json
             work/localization-core-report.json
-            work/localization-installed.log
             work/language-pack-audit.json
             work/language-ui/
             work/language-picker/
@@ -493,3 +404,111 @@ jobs:
             work/image-ui-evidence/generation-layout-failure.txt
             work/image-ui-evidence/gallery-toolbar-failure.png
             work/image-ui-evidence/gallery-toolbar-failure.txt
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Verify native installer path, completion, silent update and ownership
+        shell: powershell
+        run: |
+          python -m pip install Pillow
+          if ($LASTEXITCODE) { throw 'Installer screenshot dependency installation failed' }
+          $candidates = @($env:INNO_SETUP_COMPILER, (Join-Path $PWD 'work/tools/inno/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7/ISCC.exe'))
+          $compiler = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+          if (!$compiler) { throw 'Inno compiler required for native installer acceptance' }
+          python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler
+          if ($LASTEXITCODE) { throw 'Installer UI checks failed' }
+          python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler --progress-animation-only
+          if ($LASTEXITCODE) { throw 'Native installer acceptance failed' }
+      - name: Preserve native installer UI evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: installer-ui-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/installer-ui-*/*.png
+            work/installer-ui-*/*.log
+            work/installer-ui-*/result.json
+            work/installer-ui-*/animation-result.json
+            work/installer-ui-*/shortcut-evidence.zip
+      - name: Compile application for installer acceptance
+        shell: powershell
+        run: .\Build.ps1 -Target App -OutputDirectory work/dev3-ci-package/DafeiyuDeskPet
+      - name: Pre-tag Windows installer preflight
+        shell: powershell
+        run: |
+          .\BuildInstaller.ps1 -OutputDirectory work/dev3-ci-package
+          if ($LASTEXITCODE) { throw 'Installer preflight failed' }
+      - name: Verify complete installer opens within two seconds
+        shell: powershell
+        run: |
+          $version = [regex]::Match((Get-Content src/ReleaseInfo.cs -Raw), 'DisplayVersion="([^"]+)"').Groups[1].Value
+          python -X utf8 tests/InstallerStartupSmoke.py --after "work/dev3-ci-package/DeskPet-Windows-Setup-$version.exe" --output work/installer-startup --rounds 3 --max-ready-seconds 2 --ready-timeout-seconds 10
+          if ($LASTEXITCODE) { throw 'Installer startup acceptance failed' }
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: installer-startup-evidence
+          path: work/installer-startup/*
+          if-no-files-found: ignore
+      - name: Verify abortable uninstall UI and close ownership
+        shell: powershell
+        run: |
+          .\Build.ps1 -Target UninstallUiTests -TestArguments '--compile-only'
+          if ($LASTEXITCODE) { throw 'Uninstall UI compilation failed' }
+          foreach ($mode in @('', '--owner', '--closed', '--late', '--job-warning', '--relationship-settings')) {
+            & .\work\UninstallUiTests.exe $mode
+            if ($LASTEXITCODE) { throw "Uninstall UI failed: $mode" }
+          }
+      - name: Verify trusted uninstall handoff in a unique owned Inno installation
+        shell: powershell
+        run: |
+          $candidates = @((Join-Path $PWD 'work/tools/inno/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7/ISCC.exe'))
+          $env:DESKPET_TEST_INNO = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (!$env:DESKPET_TEST_INNO) { throw 'Inno compiler required for owned uninstall acceptance' }
+          python tests/UninstallHandoffSmoke.py
+          if ($LASTEXITCODE) { throw 'Owned uninstall handoff failed' }
+          python tests/UninstallInstalledUiSmoke.py
+          if ($LASTEXITCODE) { throw 'Actual installed WPF uninstall failed' }
+          python tests/UpdateLifecycleSmoke.py --receipts-only
+          if ($LASTEXITCODE) { throw 'Update worker receipt regression failed' }
+      - name: Preserve owned uninstall handoff diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: uninstall-handoff-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/uc-*/install.log
+            work/uc-*/i/data/fixture-error
+            work/uc-*/i/data/pre-uninstall.json
+            work/uc-*/i/data/uninstall/*/*.log
+            work/uc-*/i/data/uninstall/*/result.json
+            work/uninstall-handoff-*/install.log
+            work/uninstall-handoff-*/owned */data/uninstall/*/*.log
+            work/uninstall-handoff-*/owned */data/uninstall/*/result.json
+      - name: Verify locale in the actually installed application
+        shell: powershell
+        run: |
+          $setup = @(Get-ChildItem work/dev3-ci-package/DeskPet-Windows-Setup-*.exe)
+          if ($setup.Count -ne 1) { throw 'Expected one verified installer' }
+          $destination = Join-Path $PWD 'work/localization-installed'
+          $installLog = Join-Path $PWD 'work/localization-install-setup.log'
+          $process = Start-Process -FilePath $setup[0].FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS',('/DIR="'+$destination+'"'),('/LOG="'+$installLog+'"')) -WindowStyle Hidden -Wait -PassThru
+          if ($process.ExitCode) { throw 'Isolated installer acceptance failed' }
+          $log = Join-Path $PWD 'work/localization-installed.log'
+          ./tools/check_localization_artifacts.ps1 -AppRoot $destination | Tee-Object -FilePath $log
+          if ($LASTEXITCODE) { throw 'Installed locale acceptance failed' }
+      - name: Preserve actual installed locale evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: installed-application-locale-windows-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/localization-install-setup.log
+            work/localization-installed.log
