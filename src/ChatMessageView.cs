@@ -100,6 +100,14 @@ namespace Dafeiyu
                 card.MouseLeftButtonUp+=delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);};
                 card.KeyDown+=delegate(object sender,System.Windows.Input.KeyEventArgs e){if(e.Key==System.Windows.Input.Key.Enter||e.Key==System.Windows.Input.Key.Space){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);}};
             }
+            else if(file.ImportedFile!=null)
+            {
+                Action show=()=>new AttachmentPreviewWindow(host,file,pet.Store.DirectoryPath).ShowDialog();
+                card.Focusable=true;card.Cursor=System.Windows.Input.Cursors.Hand;
+                card.MouseLeftButtonUp+=delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){e.Handled=true;show();};
+                card.KeyDown+=delegate(object sender,System.Windows.Input.KeyEventArgs e)
+                {if(e.Key==System.Windows.Input.Key.Enter||e.Key==System.Windows.Input.Key.Space){e.Handled=true;show();}};
+            }
             if(file.IsImage)try
             {
                 int width,height;bool limited;var bitmap=ChatImagePreview.DecodeImage(ChatImagePreview.DecodeBase64(file.Data,ChatAttachment.MaximumBytes),160,out width,out height,out limited);
@@ -112,6 +120,16 @@ namespace Dafeiyu
         }
         ContextMenu AttachmentMenu(ChatAttachment file)
         {
+            if(file.ImportedFile!=null)
+            {
+                var menu=new ContextMenu();
+                var preview=new MenuItem{Header=TextResources.Get("fileCompatibility.preview")};
+                preview.Click+=delegate{new AttachmentPreviewWindow(host,file,pet.Store.DirectoryPath).ShowDialog();};
+                var export=new MenuItem{Header=TextResources.Get("common.save")};
+                export.Click+=delegate{SaveAttachmentAs(file);};
+                menu.Items.Add(preview);menu.Items.Add(export);
+                return menu;
+            }
             return FileActionsMenu.Create(()=>OpenAttachment(file),()=>OpenAttachmentWith(file),()=>RevealAttachment(file),()=>CopyAttachmentPath(file),()=>CopyAttachmentContent(file),()=>SaveAttachmentAs(file),true,file.MediaType=="text/plain"||!String.IsNullOrEmpty(file.Text),()=>WindowsOpenWith.Applications(file.Name),application=>{try{application.Open(EnsureAttachmentPath(file));}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.openAttachmentWith.reportAttachmentError"),e);}});
         }
         void OpenAttachment(ChatAttachment file){try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(EnsureAttachmentPath(file)){UseShellExecute=true});}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.openAttachment.reportAttachmentError"),e);}}
@@ -124,7 +142,16 @@ namespace Dafeiyu
         }
         void SaveAttachmentAs(ChatAttachment file)
         {
-            var picker=new Microsoft.Win32.SaveFileDialog{FileName=file.Name,Filter=TextResources.Get("chatMessageView.saveAttachmentAs.filter")};if(picker.ShowDialog(host)!=true)return;try{byte[] bytes=AttachmentBytes(file);if(file.MediaType=="text/plain" && String.IsNullOrEmpty(file.Data))File.WriteAllText(picker.FileName,file.Text??"",new System.Text.UTF8Encoding(false));else File.WriteAllBytes(picker.FileName,bytes);session.ReportNotice(TextResources.Message("chatMessageView.saveAttachmentAs.sessionReportNotice"));}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.saveAttachmentAs.reportAttachmentError"),e);}
+            var picker=new Microsoft.Win32.SaveFileDialog{FileName=file.Name,Filter=TextResources.Get("chatMessageView.saveAttachmentAs.filter")};if(picker.ShowDialog(host)!=true)return;
+            try
+            {
+                if(file.ImportedFile!=null)
+                    FileContentService.Export(file.ImportedFile,pet.Store.DirectoryPath,picker.FileName);
+                else if(file.MediaType=="text/plain"&&String.IsNullOrEmpty(file.Data))File.WriteAllText(picker.FileName,file.Text??"",new System.Text.UTF8Encoding(false));
+                else File.WriteAllBytes(picker.FileName,AttachmentBytes(file));
+                session.ReportNotice(TextResources.Message("chatMessageView.saveAttachmentAs.sessionReportNotice"));
+            }
+            catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.saveAttachmentAs.reportAttachmentError"),e);}
         }
         string AttachmentPath(ChatAttachment file)
         {

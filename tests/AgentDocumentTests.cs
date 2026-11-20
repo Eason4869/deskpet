@@ -54,6 +54,11 @@ namespace Dafeiyu.Tests
                 Check(!wroteXlsx.StartsWith("错误：") && File.Exists(Path.Combine(root,"data.xlsx")),"write_file creates a real .xlsx package");
                 string xlsxRead=Call(w,"read_file",new{path="data.xlsx"});
                 Check(xlsxRead.Contains("[工作表 Sheet1]") && xlsxRead.Contains("名称\t数量") && xlsxRead.Contains("苹果\t3") && xlsxRead.Contains("梨\t12.5"),"read_file extracts .xlsx rows and real cell values");
+                var twoRows = DocumentFormats.WriteDocumentBytes("two.xlsx", "Name\tCount\nPear\t12.5", CancellationToken.None);
+                string twoRead = DocumentFormats.ReadDocumentText("two.xlsx", twoRows, CancellationToken.None);
+                var twoLines = twoRead.Replace("\r\n", "\n").TrimEnd('\n', '\r').Split('\n');
+                Check(twoLines.Count(l => l == "Name\tCount") == 1 && twoLines.Count(l => l == "Pear\t12.5") == 1,
+                    "XLSX header and final data row appear once");
                 Call(w,"write_file",new{path="csv.xlsx",content="a,b\n\"x, y\",2"});
                 string csvRead=Call(w,"read_file",new{path="csv.xlsx"});
                 Check(csvRead.Contains("a\tb") && csvRead.Contains("x, y\t2"),"quoted comma input becomes real quoted cells");
@@ -61,6 +66,10 @@ namespace Dafeiyu.Tests
                 string shared=Path.Combine(root,"shared.xlsx");WriteSharedFixture(shared);
                 string sharedRead=Call(w,"read_file",new{path="shared.xlsx"});
                 Check(sharedRead.Contains("[工作表 明细]") && sharedRead.Contains("甲\t\t丙") && sharedRead.Contains("乙"),"shared strings and column gaps map to tabs");
+                string sparseRead = DocumentFormats.ReadDocumentText(shared, File.ReadAllBytes(shared), CancellationToken.None);
+                var sparseLines = sparseRead.Replace("\r\n", "\n").TrimEnd('\n', '\r').Split('\n');
+                Check(sparseLines.Length == 4 && sparseLines[1] == "甲\t\t丙" && sparseLines[2] == "" && sparseLines[3] == "乙",
+                    "XLSX sparse A1, C1, A3 keep their row and column coordinates");
                 string table=Path.Combine(root,"table.docx");WriteTableFixture(table);
                 string tableRead=Call(w,"read_file",new{path="table.docx"});
                 Check(tableRead.Contains("前言") && tableRead.Contains("甲列 \t乙列") && tableRead.Contains("结尾"),"docx tables extract cell text with tabs");
@@ -127,7 +136,7 @@ namespace Dafeiyu.Tests
                 Add(zip,"xl/workbook.xml","<?xml version=\"1.0\" encoding=\"UTF-8\"?><workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"明细\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>");
                 Add(zip,"xl/_rels/workbook.xml.rels","<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/></Relationships>");
                 Add(zip,"xl/sharedStrings.xml","<?xml version=\"1.0\" encoding=\"UTF-8\"?><sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" count=\"3\" uniqueCount=\"3\"><si><t>甲</t></si><si><t>丙</t></si><si><t>乙</t></si></sst>");
-                Add(zip,"xl/worksheets/sheet1.xml","<?xml version=\"1.0\" encoding=\"UTF-8\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData><row r=\"1\"><c r=\"A1\" t=\"s\"><v>0</v></c><c r=\"C1\" t=\"s\"><v>1</v></c></row><row r=\"2\"><c r=\"A2\" t=\"s\"><v>2</v></c></row></sheetData></worksheet>");
+                Add(zip,"xl/worksheets/sheet1.xml","<?xml version=\"1.0\" encoding=\"UTF-8\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData><row r=\"1\"><c r=\"A1\" t=\"s\"><v>0</v></c><c r=\"C1\" t=\"s\"><v>1</v></c></row><row r=\"3\"><c r=\"A3\" t=\"s\"><v>2</v></c></row></sheetData></worksheet>");
             }
         }
         static void WriteTableFixture(string path)

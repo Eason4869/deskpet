@@ -19,9 +19,20 @@ namespace Dafeiyu
         [DataMember] public string MediaType {get;private set;}
         [DataMember] public string Data {get;private set;}
         [DataMember] public string Text {get;private set;}[DataMember] public string SourcePath {get;private set;}
+        [DataMember(EmitDefaultValue=false)] internal AttachmentReference ImportedFile {get;private set;}
         public bool IsImage {get{return MediaType!=null && MediaType.StartsWith("image/",StringComparison.Ordinal);}}
         public ChatAttachment Copy(){return (ChatAttachment)MemberwiseClone();}
         public static ChatAttachment FromText(string name,string text){var file=new ChatAttachment{Name=name,Text=text,Data="",MediaType="text/plain"};Snapshot(new[]{file});return file;}
+        internal static ChatAttachment FromImportedFile(AttachmentReference imported, string text)
+        {
+            var file=new ChatAttachment{Name=imported.Name,Text=text,Data="",MediaType="text/plain",ImportedFile=imported};
+            Snapshot(new[]{file});return file;
+        }
+        internal ChatAttachment SelectImportedText(string text)
+        {
+            if(ImportedFile==null)throw new InvalidOperationException();
+            return FromImportedFile(ImportedFile,text);
+        }
         public static ChatAttachment CreateImage(string name,byte[] png)
         {
             if(png==null || png.Length<8 || png.Length>MaximumBytes || png[0]!=137 || png[1]!=80 || png[2]!=78 || png[3]!=71)throw new ApiException(TextResources.Get("chatAttachment.createImage.text"));
@@ -31,7 +42,8 @@ namespace Dafeiyu
         public static List<ChatAttachment> Snapshot(IEnumerable<ChatAttachment> files)
         {
             var copy=files==null?new List<ChatAttachment>():files.Select(f=>f==null?null:f.Copy()).ToList();
-            if(copy.Count>4 || copy.Any(f=>f==null || String.IsNullOrEmpty(f.Name) || f.Name.Length>255 || (f.MediaType!="text/plain" && f.MediaType!="application/pdf" && f.MediaType!="image/png" && f.MediaType!="image/jpeg" && f.MediaType!="image/gif" && f.MediaType!="image/webp") || (f.Text??"").Length>100000 || (f.Data??"").Length>MaximumBytes*4L/3+4) || StoredSize(copy)>MaximumBytes*4L/3+4096)
+            if(copy.Count>4 || copy.Any(f=>f==null || String.IsNullOrEmpty(f.Name) || f.Name.Length>255 || (f.MediaType!="text/plain" && f.MediaType!="application/pdf" && f.MediaType!="image/png" && f.MediaType!="image/jpeg" && f.MediaType!="image/gif" && f.MediaType!="image/webp") || (f.Text??"").Length>100000 || (f.Data??"").Length>MaximumBytes*4L/3+4 ||
+                (f.ImportedFile!=null && (!f.ImportedFile.IsValid || f.ImportedFile.Name!=f.Name || f.MediaType!="text/plain" || !String.IsNullOrEmpty(f.Data) || !String.IsNullOrEmpty(f.SourcePath)))) || StoredSize(copy)>MaximumBytes*4L/3+4096)
                 throw new ApiException(TextResources.Get("chatAttachment.snapshot.text"));
             return copy;
         }
@@ -71,7 +83,8 @@ namespace Dafeiyu
             var parts=new List<object>();
             foreach(var file in Snapshot(message.Attachments))
             {
-                if(file.MediaType=="text/plain")parts.Add(new {type="text",text=TextResources.Format("chatAttachment.content.parts",file.Name,file.Text)});
+                if(file.MediaType=="text/plain")parts.Add(new {type="text",text=TextResources.Format("chatAttachment.content.parts",file.Name,
+                    file.ImportedFile==null?file.Text:TextResources.Format("fileCompatibility.attachmentContent",file.ImportedFile.Id,file.Text))});
                 else if(anthropic)parts.Add(new {type=file.IsImage?"image":"document",source=new {type="base64",media_type=file.MediaType,data=file.Data}});
                 else if(file.IsImage)parts.Add(new {type="image_url",image_url=new {url="data:"+file.MediaType+";base64,"+file.Data}});
                 else parts.Add(new {type="file",file=new {filename=file.Name,file_data="data:"+file.MediaType+";base64,"+file.Data}});

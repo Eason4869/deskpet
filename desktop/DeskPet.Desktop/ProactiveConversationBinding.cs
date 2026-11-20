@@ -29,6 +29,17 @@ internal sealed class ProactiveConversationBinding : IDisposable
     }
     internal void RemoveAttachment(ChatAttachment value)
     {lock(gate){if(disposed||!attachments.Remove(value))return;composerRevision++;}ComposerChanged?.Invoke();}
+    internal void ReplaceAttachment(ChatAttachment previous, ChatAttachment next)
+    {
+        lock(gate)
+        {
+            int index=attachments.IndexOf(previous);
+            if(disposed||index<0)return;
+            attachments[index]=next;
+            composerRevision++;
+        }
+        ComposerChanged?.Invoke();
+    }
     internal ComposerSnapshot CaptureComposer()
     {lock(gate)return new ComposerSnapshot(composerRevision,draft,ChatAttachment.Snapshot(attachments));}
     internal bool ClearSubmittedComposer(ComposerSnapshot submitted)
@@ -52,6 +63,7 @@ internal sealed class ProactiveConversationBinding : IDisposable
         if(item!=null)owner.Observation.Events.BindConversation(item.Id,item.CompanionId,Id);
         var api=transport??new ApiClient();var root=Path.Combine(owner.DataDirectory,"conversations",Id);
         Session=new ConversationSession(api,speech??runtime.CreateSpeech((ApiClient)api),runtime.CreateRecorder,new HistoryStore(Path.Combine(root,"history")),()=>Accepted&&owner.Settings.SaveChatHistory,Id,owner.DataMaintenance);
+        Session.AttachmentDataRoot=owner.DataDirectory;Session.AttachmentOwnerId=Id;
         Session.ProactiveEvents=owner.Observation.Events;
         Session.ImageStore=owner.ImageStore;Session.ImageClient=owner.ImageClient;Session.ImageTasks=owner.ImageTasks;Session.ImageUsage=owner.ImageUsage;
         Session.SelectPersona(definition.PetId);if(item!=null)Session.AttachProactive(item);

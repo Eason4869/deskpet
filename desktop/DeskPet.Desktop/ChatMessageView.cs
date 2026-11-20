@@ -130,6 +130,13 @@ internal sealed class ChatMessageView : Border
                 var name = new TextBlock { Name = "SentFileName", Text = file.Name, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 140, VerticalAlignment = VerticalAlignment.Center };
                 var fileRow = new Grid { ColumnDefinitions = new ColumnDefinitions("26,*") }; fileRow.Children.Add(icon); Grid.SetColumn(name, 1); fileRow.Children.Add(name);
                 child = new Border { Name = "SentFileCard", MaxWidth = 190, Height = 52, CornerRadius = new CornerRadius(10), BorderBrush = DesktopTheme.Brush("#E0E4E9"), BorderThickness = new Thickness(1), Background = DesktopTheme.Surface, Padding = new Thickness(10), Child = fileRow };
+                if (file.ImportedFile != null)
+                {
+                    void Preview() => owner.Run(() => new AttachmentPreview(file, owner.DataDirectory).ShowDialog(window));
+                    child.Focusable = true;
+                    child.PointerReleased += (_, _) => Preview();
+                    child.KeyDown += (_, e) => { if (e.Key is Avalonia.Input.Key.Enter or Avalonia.Input.Key.Space) { e.Handled = true; Preview(); } };
+                }
             }
             child.Margin = new Thickness(6, 0, 0, 6); ToolTip.SetTip(child, file.Name); sentAttachments.Children.Add(child);
         }

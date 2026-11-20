@@ -50,6 +50,8 @@ namespace Dafeiyu
             workspace.DataDirectory=transient?TransientDataDirectory(dataRoot,conversation.Id):ResolveDataDirectory(dataRoot,conversation.Id);
             if(!transient)Directory.CreateDirectory(workspace.DataDirectory);
             workspace.Session=new ConversationSession(apiFactory(),speechFactory(),recorderFactory,new HistoryStore(Path.Combine(workspace.DataDirectory,"history")),workspace.saveHistory,conversation.Id,maintenance);
+            workspace.Session.AttachmentDataRoot=dataRoot;
+            workspace.Session.AttachmentOwnerId=conversation.Id;
             workspace.Session.SelectPersona(conversation.Mode=="work"?"work":String.IsNullOrEmpty(conversation.PetId)?personaId??"":conversation.PetId);
             var kernelStore=new AgentSessionStore(Path.Combine(workspace.DataDirectory,"kernel-sessions"));AgentSessionModel model=null;
             try{if(workspace.saveHistory())model=kernelStore.Load(project.Id,conversation.Id);else if(!transient)kernelStore.Clear();}

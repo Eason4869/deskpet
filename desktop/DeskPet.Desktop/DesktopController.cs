@@ -112,6 +112,7 @@ internal sealed partial class DesktopController : IDisposable
         ImageStore = new GeneratedImageStore(DataDirectory, ImageUsage);
         ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
         Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory,maintenance:DataMaintenance);
+        Session.AttachmentDataRoot = DataDirectory;
         Session.ProactiveEvents=Observation.Events;
         ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage,DataMaintenance);
         ImageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();

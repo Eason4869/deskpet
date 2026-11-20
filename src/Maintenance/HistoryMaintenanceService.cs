@@ -106,6 +106,7 @@ namespace Dafeiyu.Maintenance
                 // to clear after their attachments were independently preserved.
                 foreach(var session in sessions)session.MarkAbsentHistoriesForMaintenance(removed);
                 foreach(var session in sessions)session.ResetHistoriesForMaintenance(removed);
+                if(result.Failures.Count==0)archive.ReleaseImported();
             }
             catch(Exception error){if(!StorageError(error))throw;result.Fail(root,error);}
             finally{foreach(var pin in pins)pin.Dispose();}

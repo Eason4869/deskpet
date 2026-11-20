@@ -52,11 +52,12 @@ internal sealed partial class ChatWindow : Window
     private bool nativePaste, closed;
     private Button? resumeQueue,holdQueue;
     private int uploadEpoch;
+    private CancellationTokenSource? attachmentRead;
     private readonly record struct UploadContext(string Persona, int Epoch);
     private string? activeDraftKey;
     private string LoadDraft(){activeDraftKey=DraftKey;if(ProactiveBinding!=null)return ProactiveBinding.Draft;if(owner.Drafts.TryGetValue(activeDraftKey,out var value))return value;value=!quick&&owner.Settings.SaveChatHistory?owner.ComposerDrafts.Get("desktop:"+activeDraftKey):"";owner.Drafts[activeDraftKey]=value;return value;}
     private void SaveDraft(){var key=activeDraftKey??DraftKey;var value=draft.Text??"";if(ProactiveBinding!=null){ProactiveBinding.Draft=value;if(ProactiveBinding.Accepted&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+key,value);return;}owner.Drafts[key]=value;if(!quick&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+key,value);}
-    private void SynchronizeDraftScope(){if(activeDraftKey==DraftKey)return;SaveDraft();draft.Text=LoadDraft();uploadEpoch++;RefreshAttachments();}
+    private void SynchronizeDraftScope(){if(activeDraftKey==DraftKey)return;SaveDraft();draft.Text=LoadDraft();uploadEpoch++;attachmentRead?.Cancel();RefreshAttachments();}
     private IList<ChatAttachment> Files => ProactiveBinding?.Attachments??(attachments.TryGetValue(DraftKey, out var files) ? files : attachments[DraftKey] = new());
     private string persona;
     private sealed record ModelChoice(string Provider, string Model, string Label) { public override string ToString() => Label; }
@@ -312,14 +313,20 @@ internal sealed partial class ChatWindow : Window
         if(ProactiveBinding!=null&&proactiveAdmissionPending)return;
         owner.Observation.Invalidate(false);
         if(ProactiveBinding!=null){if(ProactiveBinding.Accepted)EnqueueProactive(text);else if(!proactiveAdmissionPending)owner.Run(()=>SendProactiveAsync(text));return;}
-        try { BoundQueue.Enqueue(text, Files); uploadEpoch++; Files.Clear(); RefreshAttachments(); draft.Text = ""; RefreshAction(); } catch (Exception e) { owner.Error(e); }
+        try { BoundQueue.Enqueue(text, Files); uploadEpoch++; attachmentRead?.Cancel(); Files.Clear(); RefreshAttachments(); draft.Text = ""; RefreshAction(); } catch (Exception e) { owner.Error(e); }
     }
     private async Task PickAttachmentsAsync()
     {
         var context = UploadTarget();
         if (OperatingSystem.IsWindows()) { var paths = AttachmentPicker.Show(TryGetPlatformHandle()?.Handle ?? IntPtr.Zero); if (Current(context)) await LoadAttachmentPathsAsync(paths, context); return; }
         if (OperatingSystem.IsMacOS()) { var paths = NativeAttachmentPicker.ShowMac(); if (Current(context)) await LoadAttachmentPathsAsync(paths, context); return; }
-        var picked = await StorageProvider.OpenFilePickerAsync(LocalizedUi.With(new FilePickerOpenOptions { Title = TextResources.Get("chatWindow.pickAttachmentsAsync.title"), AllowMultiple = true, FileTypeFilter = new[] { new FilePickerFileType(TextResources.Get("chatWindow.pickAttachmentsAsync.fileTypeFilterFilePickerFileType")) { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.pdf", "*.docx", "*.txt", "*.md", "*.csv", "*.tsv", "*.json", "*.xml", "*.yaml", "*.yml", "*.log", "*.cs", "*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.html", "*.css", "*.sql", "*.ps1", "*.sh", "*.toml", "*.ini", "*.cfg" } } } },"Title",()=>(TextResources.Get("chatWindow.pickAttachmentsAsync.title"))));
+        var picked = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = TextResources.Get("chatWindow.pickAttachmentsAsync.title"),
+            AllowMultiple = true,
+            FileTypeFilter = new[] { new FilePickerFileType(TextResources.Get("chatWindow.pickAttachmentsAsync.fileTypeFilterFilePickerFileType"))
+                { Patterns = FileContentService.FilePatterns() } }
+        });
         if (!Current(context) || picked.Count == 0) return;
         await LoadAttachmentPathsAsync(picked.Select(f => f.TryGetLocalPath() ?? throw new ApiException(TextResources.Get("chatWindow.pickAttachmentsAsync.pickedSelect"))), context);
     }
@@ -333,15 +340,32 @@ internal sealed partial class ChatWindow : Window
     internal Task AddAttachmentPathsAsync(IEnumerable<string> paths) => LoadAttachmentPathsAsync(paths, UploadTarget());
     private async Task LoadAttachmentPathsAsync(IEnumerable<string> paths, UploadContext context)
     {
-        if (!Current(context)) return;
+        if (!Current(context) || attachmentRead != null) return;
         if (owner.Live.IsActive || owner.Dictation.IsBusy) throw new InvalidOperationException(TextResources.Get("chatWindow.loadAttachmentPathsAsync.text"));
         var selected = paths.ToArray(); if (selected.Length == 0) return;
         if (selected.Length + Files.Count > 4) throw new ApiException(TextResources.Get("chatWindow.loadAttachmentPathsAsync.text.alternativeA"));
         var folders = selected.Where(Directory.Exists).ToArray();
         if (folders.Length > 1) throw new ApiException(TextResources.Get("chatWindow.loadAttachmentPathsAsync.text.alternativeB"));
-        var loaded = await Task.Run(() => selected.Select(p => Directory.Exists(p) ? FolderReference(p) : ChatAttachment.Read(p)).ToList());
-        if (!Current(context)) return;
-        AddAttachments(loaded);
+        string dataRoot = owner.DataDirectory;
+        string attachmentOwner = BoundSession.AttachmentOwnerId;
+        using var read = CancellationTokenSource.CreateLinkedTokenSource(snapshotCancel.Token);
+        attachmentRead = read;
+        FileContentService.Batch? loaded = null;
+        try
+        {
+            using (BoundSession.EnterRequestActivity())
+                loaded = await Task.Run(() => FileContentService.ImportBatch(selected, dataRoot, false, FolderReference, read.Token,attachmentOwner));
+            if (!Current(context)) return;
+            AddAttachments(loaded.Files);
+            if (loaded.Errors.Count != 0) status.Text = string.Join("\n", loaded.Errors);
+            loaded = null;
+        }
+        catch (OperationCanceledException) when (read.IsCancellationRequested) { }
+        finally
+        {
+            attachmentRead = null;
+            if (loaded != null) FileContentService.Discard(dataRoot, loaded.Files);
+        }
     }
     internal void AddAttachments(IEnumerable<ChatAttachment> loaded)
     {
@@ -371,6 +395,44 @@ internal sealed partial class ChatWindow : Window
             var grid = new Grid(); var content = new StackPanel { Spacing = 0 }; content.Children.Add(preview); content.Children.Add(label); grid.Children.Add(content);
             var remove = Ui.Button("×", () => { if(ProactiveBinding!=null)ProactiveBinding.RemoveAttachment(file);else Files.Remove(file);RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = DesktopTheme.Brush("#F2FFFFFF"); LocalizedUi.Tooltip(remove,()=>(TextResources.Format("chatWindow.refreshAttachments.toolTipSetTip",file.Name))); grid.Children.Add(remove);
             var card = new Border { Name = "AttachmentCard", Width = file.IsImage ? 120 : 150, Height = 100, Margin = new Thickness(0, 0, 8, 8), BorderBrush = DesktopTheme.Brush("#E5E7EB"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), ClipToBounds = true, Child = grid }; ToolTip.SetTip(card, file.Name); attachmentChips.Children.Add(card);
+            if (file.ImportedFile != null)
+            {
+                void OpenSelection()
+                {
+                    var scope = UploadTarget();
+                    var dialog = new AttachmentPreview(file, owner.DataDirectory, result =>
+                    {
+                        if (!Current(scope)) return;
+                        if (result.Image != null) { AddAttachments(new[] { ChatAttachment.CreateImage(file.Name + ".png", result.Image) }); return; }
+                        int index = Files.IndexOf(file);
+                        if (index < 0) return;
+                        var selected = file.SelectImportedText(FileContentService.FormatResult(result));
+                        if (ProactiveBinding == null) Files[index] = selected;
+                        else ProactiveBinding.ReplaceAttachment(file, selected);
+                        RefreshAttachments();
+                    });
+                    owner.Run(() => dialog.ShowDialog(this));
+                }
+                content.PointerReleased += (_, _) => OpenSelection();
+                card.Focusable = true;
+                card.KeyDown += (_, e) => { if (ReferenceEquals(e.Source, card) && e.Key is Key.Enter or Key.Space) { e.Handled = true; OpenSelection(); } };
+            }
+            else if (file.IsImage && FileOcrService.Available)
+            {
+                var item = new MenuItem { Header = "OCR" };
+                item.Click += (_, _) => owner.Run(async () =>
+                {
+                    var scope = UploadTarget();
+                    try
+                    {
+                        string extracted = await Task.Run(() => FileOcrService.ReadImage(file, owner.DataDirectory, null, snapshotCancel.Token));
+                        if (Current(scope) && !string.IsNullOrWhiteSpace(extracted))
+                            AddAttachments(new[] { ChatAttachment.FromText(file.Name[..Math.Min(245, file.Name.Length)] + ".txt", extracted) });
+                    }
+                    catch (Exception error) when (FileContentService.IsReadFailure(error)) { if (Current(scope)) status.Text = FileContentService.UserError(error); }
+                });
+                card.ContextMenu = new ContextMenu { ItemsSource = new[] { item } };
+            }
         }
     }
     private void RefreshAction()

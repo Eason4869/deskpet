@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.5-dev.1 · Development preview
+
+- Read selected ranges of text, CSV/TSV, XLS/XLSX, DOC/DOCX, PDF, and PPTX attachments. Fixed duplicate final rows in XLSX. Spreadsheet reads distinguish values, display formats, formulas, and saved results. Legacy DOC and XLS can be read without Office.
+- Browse ZIP and TAR.GZ entries and run read-only queries against standalone SQLite files. Export a consistent standalone copy before opening an active WAL database.
+- Inspect MP3, WAV, and MP4 metadata and extract MP4 frames. Image and scanned PDF OCR depend on available system languages and recognition capabilities. The Windows decoder returns the frame nearest the requested time.
+- Private attachment snapshots support range preview, model submission, and original-file export. Requests contain the selected content and an attachment identifier.
+
 ## [1.0.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.2) · Development preview
 
 - Store Windows installer artwork in separate compression blocks to avoid repeatedly decompressing the application payload before showing the wizard. Preserve the existing UI, five character illustrations, manual selection, and automatic carousel.

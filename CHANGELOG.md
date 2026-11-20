@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.5-dev.1 · 开发预览
+
+- 聊天支持按范围读取文本、CSV/TSV、XLS/XLSX、DOC/DOCX、PDF 和 PPTX。修复 XLSX 末行重复。数值、显示格式、公式与已有缓存值分别展示，旧 DOC 和 XLS 的读取无需安装 Office。
+- 支持列出 ZIP/TAR.GZ 的条目、读取条目内容，并只读查询独立 SQLite 文件。活动 WAL 数据库请先导出一致性的独立副本。
+- 可查看 MP3/WAV/MP4 信息并提取 MP4 视频帧。图片及扫描 PDF 的 OCR 依赖系统语言与识别能力。Windows 的原生抽帧选用最接近请求位置的帧。
+- 附件原始字节保存在应用私有快照中。预览和发送共用快照，已发送附件可导出原件。模型请求只包含选中内容及相应的附件标识。
+
 ## [1.0.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.2) · 开发预览
 
 - 将 Windows 安装界面素材与程序载荷分隔压缩，避免显示窗口前反复解压大型程序数据；保留现有安装界面、五位伙伴立绘与手动、自动轮播效果。

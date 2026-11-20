@@ -212,7 +212,7 @@ namespace Dafeiyu
                 if(conversation==null)
                 {
                     var api=new ApiClient();var voice=new SpeechOutput(api,Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);
-                    conversation=new ConversationSession(api,voice,delegate {return new AudioRecorder();},new HistoryStore(Path.Combine(Store.DirectoryPath,"history")),delegate {return Settings.SaveChatHistory;},maintenance:DataMaintenance);conversation.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);conversation.ApprovalProvider=new AgentApprovalController(this);ConfigureImageServices(conversation);conversation.McpConnections=McpConnections;conversation.SelectPersona(Skin.Id);conversation.StateChanged+=ConversationChanged;conversation.HistoryChanged+=ConversationMemoryChanged;
+                    conversation=new ConversationSession(api,voice,delegate {return new AudioRecorder();},new HistoryStore(Path.Combine(Store.DirectoryPath,"history")),delegate {return Settings.SaveChatHistory;},maintenance:DataMaintenance);conversation.AttachmentDataRoot=Store.DirectoryPath;conversation.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);conversation.ApprovalProvider=new AgentApprovalController(this);ConfigureImageServices(conversation);conversation.McpConnections=McpConnections;conversation.SelectPersona(Skin.Id);conversation.StateChanged+=ConversationChanged;conversation.HistoryChanged+=ConversationMemoryChanged;
                 }
                 return conversation;
             }

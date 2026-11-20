@@ -66,6 +66,7 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--localization-only")return LocalizationTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-tools-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobToolTests.Main() | AgentJobIntegrationTests.Main();}
             if(args.Length==1 && args[0]=="--agent-job-session-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobSessionTests.Main();}
+            if(args.Length==1 && args[0]=="--file-compatibility-only")return FileCompatibilityTests.Main();
             if(args.Length==1 && args[0]=="--agent-jobs-only")return RunAgentJobLogic();
             if(args.Length==1 && args[0]=="--agent-job-integration-only")return RunAgentJobIntegration();
             if(args.Length==1 && args[0]=="--agent-job-contract-only")return AgentJobContractTests.Main();

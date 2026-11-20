@@ -8,7 +8,7 @@ A desktop companion for interactions, conversation and project work.
 
 Version 1.0.3 adds key visibility controls, improves Windows image-result cards, and fixes shared-key provider masking and Windows accessible names. See the [changelog](CHANGELOG.en.md).
 
-Current source development preview: **1.0.4-dev.2**. This preview improves Windows installer startup speed. Companion switching, background material updates, and unified sound settings are described in the [changelog](CHANGELOG.en.md). Check the [release list](https://github.com/Eason4869/deskpet/releases) for preview packages.
+The **1.0.5-dev.1** source preview adds local document and attachment reading with selectable ranges. See the [changelog](CHANGELOG.en.md) for format and platform details.
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 

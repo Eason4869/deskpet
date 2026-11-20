@@ -13,6 +13,18 @@ if (args.Contains("--observation-only"))
     catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
     return;
 }
+if (args.Length == 2 && args[0] == "--file-tools-only")
+{
+    string directory = Path.GetFullPath(args[1]);
+    string recognized = MacServices.RecognizeFileText(Path.Combine(directory, "recognition.png"), 0, "en-US", CancellationToken.None);
+    if (!recognized.Contains("DESKPET TEST", StringComparison.OrdinalIgnoreCase))
+        throw new InvalidDataException("The native OCR fixture was not recognized.");
+    var frame = MacServices.ExtractVideoFrame(Path.Combine(directory, "frame.mp4"), 500, CancellationToken.None);
+    if (frame.Image.Length < 8 || frame.Image[0] != 137 || frame.ActualMilliseconds < 500)
+        throw new InvalidDataException("The native video fixture did not produce the expected PNG frame.");
+    Console.WriteLine("PASS native macOS OCR and video frame");
+    return;
+}
 var checks = 0;
 void Check(bool ok, string name) { if (!ok) throw new Exception(name); checks++; Console.WriteLine("PASS " + name); }
 void Reject<T>(Action action, string name) where T : Exception { try { action(); } catch (T) { Check(true, name); return; } throw new Exception(name); }

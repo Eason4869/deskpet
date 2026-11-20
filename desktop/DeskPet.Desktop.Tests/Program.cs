@@ -54,6 +54,37 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if (args.Contains("--file-compatibility-only"))
+    {
+        using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "files")));
+        var path = Path.Combine(directory, "范围.txt");
+        File.WriteAllText(path, "FIRST_UNSENT\nSECOND_SELECTED");
+        var bad = Path.Combine(directory, "invalid.bin");
+        File.WriteAllText(bad, "not a supported file");
+        var window = new ChatWindow(owner, true);
+        window.Show();
+        Complete(window.AddAttachmentPathsAsync(new[] { path, bad }));
+        var card = window.GetLogicalDescendants().OfType<Border>().Single(c => c.Name == "AttachmentCard");
+        Check(window.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("invalid.bin") == true), "mixed file import retains its valid attachment and shows the per-file error");
+        card.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+        Until(() => window.OwnedWindows.Any(w => w.Name == "AttachmentPreviewDialog"));
+        var dialog = window.OwnedWindows.Single(w => w.Name == "AttachmentPreviewDialog");
+        var items = dialog.GetLogicalDescendants().ToArray();
+        var sections = items.OfType<ComboBox>().Single(c => c.Name == "AttachmentPreviewSections");
+        Until(() => sections.SelectedIndex == 0);
+        items.OfType<TextBox>().Single(t => t.Name == "AttachmentPreviewStart").Text = "2";
+        items.OfType<Button>().Single(c => c.Name == "AttachmentPreviewRead").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var use = items.OfType<Button>().Single(c => c.Name == "AttachmentPreviewUse");
+        Until(() => use.IsEnabled);
+        var selected = items.OfType<TextBox>().Single(t => t.Name == "AttachmentPreviewText").Text;
+        Check(selected?.Contains("SECOND_SELECTED") == true && !selected.Contains("FIRST_UNSENT"), "preview honors its selected range");
+        use.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Until(() => !dialog.IsVisible);
+        window.Close();
+        CloseController(owner);
+        Console.WriteLine("Attachment UI: " + assertions + " passed");
+        return;
+    }
     if(args.Contains("--secret-fields")){Console.WriteLine("SecretFieldChecks: "+(SecretFieldChecks.Run()+SecretFieldChecks.RunProviderSwitch(Path.Combine(directory,"secret-providers")))+" passed");return;}
     Check(SecretFieldChecks.Run()>0,"secret field behavior checks");
     Check(SecretFieldChecks.RunProviderSwitch(Path.Combine(directory,"secret-providers"))>0,"same-key provider switch checks");
@@ -688,11 +719,12 @@ try
     uploadDraft.Text = "保留草稿";
     Complete(uploadWindow.AddAttachmentPathsAsync(new[] { uploadTextPath, Path.Combine(source, "spritesheet.png") }));
     Check(UploadCards() == 2 && uploadDraft.Text == "保留草稿" && !controller.Settings.AgentEnabled, "shared picker/drop/paste file loader adds image and text atomically without changing draft or Agent mode");
-    try { Complete(uploadWindow.AddAttachmentPathsAsync(new[] { uploadTextPath, invalidUploadPath })); throw new Exception("FAIL: unsupported upload accepted"); } catch (ApiException) { assertions++; }
-    Check(UploadCards() == 2 && uploadDraft.Text == "保留草稿", "partly invalid upload adds no files and preserves existing draft and attachments");
-    var oversizedUpload = Path.Combine(directory, "oversized.txt"); using (var oversized = File.Create(oversizedUpload)) oversized.SetLength(ChatAttachment.MaximumBytes + 1L);
-    try { Complete(uploadWindow.AddAttachmentPathsAsync(new[] { oversizedUpload })); throw new Exception("FAIL: oversized upload accepted"); } catch (ApiException) { assertions++; }
-    Check(UploadCards() == 2, "four megabyte limit also applies to shared upload paths");
+    Complete(uploadWindow.AddAttachmentPathsAsync(new[] { uploadTextPath, invalidUploadPath }));
+    Check(UploadCards() == 3 && uploadDraft.Text == "保留草稿", "partly invalid upload preserves the readable file and current draft");
+    Check(uploadWindow.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("invalid.bin") == true), "unsupported file name appears in the per-file error");
+    var oversizedUpload = Path.Combine(directory, "oversized.txt"); using (var oversized = File.Create(oversizedUpload)) oversized.SetLength(FileContentService.DocumentLimit + 1L);
+    Complete(uploadWindow.AddAttachmentPathsAsync(new[] { oversizedUpload }));
+    Check(UploadCards() == 3 && uploadWindow.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("oversized.txt") == true), "document admission applies its byte limit and identifies the rejected file");
     foreach (var remove in uploadWindow.GetLogicalDescendants().OfType<Button>().Where(b => b.Name == "RemoveAttachment").ToList()) remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     Check(UploadCards() == 0 && DragDrop.GetAllowDrop(uploadWindow), "chat window accepts external file drag while clearing test attachments");
     var dragData = new DataTransfer(); var dragFile = DataTransferItem.CreateFile(StorageFile(uploadTextPath)); dragFile.SetText("不应把拖拽的文件路径插入草稿"); dragData.Add(dragFile);

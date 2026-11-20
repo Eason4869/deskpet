@@ -85,6 +85,8 @@ namespace Dafeiyu
                 int code=e.HResult&0xffff;if(attempt>=3 || (code!=32 && code!=33 && code!=1175) || !File.Exists(temp))throw;
                 System.Threading.Thread.Sleep(25*(attempt+1));
             }
+            foreach(var message in queues.Values.SelectMany(items=>items))
+                FileContentService.Track(session.AttachmentDataRoot,message.Attachments,false);
         }
         void Announce(){if(!disposed && Changed!=null)Changed();}
         public void Enqueue(string text,IList<ChatAttachment> attachments=null,bool conversationOnly=false)
@@ -208,6 +210,14 @@ namespace Dafeiyu
                     catch(Exception e)
                     {
                         lock(gate){if(!agentStarted)queues[persona].Insert(0,entry);pauseRevision++;paused.Add(persona);Notice=e is ApiException || e is InvalidOperationException?e.Message:TextResources.Get("conversationQueue.runAsync.invalidOperationExceptionEMessage");if(agentStarted)Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeC");try{Save();}catch(IOException){Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeD");}catch(UnauthorizedAccessException){Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeE");}}return;
+                    }
+                    finally
+                    {
+                        if(!session.AttachmentHistoryEnabled)
+                        {
+                            lock(gate)if(!queues.Values.Any(items=>items.Contains(entry)))
+                                FileContentService.Track(session.AttachmentDataRoot,entry.Attachments,true);
+                        }
                     }
                 }
             }

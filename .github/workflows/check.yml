@@ -89,6 +89,9 @@ jobs:
             }
           }
           if ($failedTargets.Count -gt 0) { throw ("Failed targets: " + ($failedTargets -join ', ')) }
+      - name: Attachment format compatibility (Framework)
+        shell: powershell
+        run: .\Build.ps1 -Target FileCompatibilityTests
       - name: Execute proactive core Windows tests
         shell: powershell
         run: |
@@ -243,6 +246,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Desktop build failed' }
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-host-only
           if ($LASTEXITCODE) { throw 'Avalonia --proactive-host-only failed' }
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --file-compatibility-only
+          if ($LASTEXITCODE) { throw 'Attachment UI checks failed' }
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-admission-only
           if ($LASTEXITCODE) { throw 'Avalonia --proactive-admission-only failed' }
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-reply-only
@@ -275,6 +280,8 @@ jobs:
             if ($LASTEXITCODE) { throw 'Shared image model resolver tests failed' }
             dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --image-input-router-only
             if ($LASTEXITCODE) { throw 'Shared image input router tests failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --file-compatibility-only
+            if ($LASTEXITCODE) { throw 'Portable attachment format compatibility failed' }
             dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --desktop-observation-only
             if ($LASTEXITCODE) { throw 'Shared desktop observation capture tests failed' }
             dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --proactive-conversation-only

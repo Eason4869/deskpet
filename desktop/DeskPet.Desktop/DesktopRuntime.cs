@@ -27,7 +27,17 @@ internal abstract class DesktopRuntime
 internal sealed class MacRuntime : DesktopRuntime
 {
     public override string DataDirectory => MacServices.DataDirectory;
-    public override void InitializeProtection() => MacServices.InstallSecretProtection();
+    public override void InitializeProtection()
+    {
+        MacServices.InstallSecretProtection();
+        FileOcrService.Configure(MacServices.RecognizeFileText);
+        MediaFileReader.ConfigureFrameExtractor((path,milliseconds,token) =>
+        {
+            var frame=MacServices.ExtractVideoFrame(path,milliseconds,token);
+            return new FileReadResult("",
+                FileContentService.FormatFrameTime(milliseconds,frame.ActualMilliseconds),null,frame.Image,"image/png");
+        });
+    }
     public override IReplySpeech CreateSpeech(ApiClient api) => MacServices.CreateSpeech(api);
     public override IAudioRecorder CreateRecorder() => MacServices.CreateRecorder();
     public override IPcmMicrophone CreateMicrophone() => MacServices.CreateMicrophone();

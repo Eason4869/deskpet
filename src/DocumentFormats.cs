@@ -203,7 +203,11 @@ namespace Dafeiyu
 
         static void ReadSheet(ZipArchiveEntry entry, List<string> shared, StringBuilder output, CancellationToken token)
         {
-            var row = new StringBuilder(); int tabs = 0, next = 0, rows = 0; bool inValue = false, inInline = false; string type = null; var value = new StringBuilder(); int cellColumn = -1;
+            var row = new StringBuilder();
+            var value = new StringBuilder();
+            int nextRow = 1, rowNumber = 0, nextColumn = 0, tabs = 0, cellColumn = -1;
+            int rowDepth = -1, cellDepth = -1, inlineDepth = -1, valueDepth = -1;
+            string type = null;
             using (var stream = entry.Open())
             using (var reader = XmlReader.Create(stream, XmlSettings()))
             {
@@ -213,34 +217,66 @@ namespace Dafeiyu
                     if (reader.NodeType == XmlNodeType.Element)
                     {
                         string name = reader.LocalName;
-                        if (name == "row") { row.Length = 0; tabs = 0; next = 0; if (++rows > MaxSheetRows) { output.AppendLine(TextResources.Get("documentFormats.readSheet.outputAppendLine")); return; } }
-                        else if (name == "c") { type = reader.GetAttribute("t"); cellColumn = ColumnIndex(reader.GetAttribute("r")); value.Length = 0; }
-                        else if (name == "v") inValue = true;
-                        else if (name == "is") inInline = true;
-                        else if (name == "t") inValue = inInline;
+                        if (name == "row" && rowDepth < 0)
+                        {
+                            if (!Int32.TryParse(reader.GetAttribute("r"), NumberStyles.None, CultureInfo.InvariantCulture, out rowNumber) || rowNumber < nextRow)
+                                rowNumber = nextRow;
+                            int gap = Math.Min(rowNumber, MaxSheetRows + 1) - nextRow;
+                            if (gap > 0) output.Append('\n', gap);
+                            if (rowNumber > MaxSheetRows) { output.AppendLine(TextResources.Get("documentFormats.readSheet.outputAppendLine")); return; }
+                            row.Length = 0;
+                            tabs = nextColumn = 0;
+                            if (reader.IsEmptyElement)
+                            {
+                                output.Append('\n');
+                                nextRow = rowNumber + 1;
+                            }
+                            else rowDepth = reader.Depth;
+                        }
+                        else if (name == "c" && rowDepth >= 0 && reader.Depth == rowDepth + 1)
+                        {
+                            type = reader.GetAttribute("t");
+                            cellColumn = ColumnIndex(reader.GetAttribute("r"));
+                            value.Length = 0;
+                            inlineDepth = valueDepth = -1;
+                            if (reader.IsEmptyElement) AppendSheetCell(row, cellColumn, "", ref nextColumn, ref tabs);
+                            else cellDepth = reader.Depth;
+                        }
+                        else if (cellDepth >= 0 && !reader.IsEmptyElement)
+                        {
+                            if (name == "is") inlineDepth = reader.Depth;
+                            if (name == "v" || (name == "t" && inlineDepth >= 0)) valueDepth = reader.Depth;
+                        }
                     }
                     else if (reader.NodeType == XmlNodeType.EndElement)
                     {
-                        string name = reader.LocalName;
-                        if (name == "v") inValue = false;
-                        else if (name == "is") inInline = false;
-                        else if (name == "t") { if (inInline) inValue = false; }
-                        else if (name == "c")
+                        if (reader.Depth == valueDepth) valueDepth = -1;
+                        if (reader.Depth == inlineDepth) inlineDepth = -1;
+                        if (reader.Depth == cellDepth)
                         {
-                            int target = cellColumn >= 0 ? cellColumn : next;
-                            if (target < MaxSheetColumns)
-                            {
-                                while (tabs < target) { row.Append('\t'); tabs++; }
-                                row.Append(CellText(type, value.ToString(), shared));
-                                next = target + 1;
-                            }
+                            AppendSheetCell(row, cellColumn, CellText(type, value.ToString(), shared), ref nextColumn, ref tabs);
+                            cellDepth = -1;
                         }
-                        else if (name == "row") output.AppendLine(row.ToString());
+                        if (reader.Depth == rowDepth)
+                        {
+                            output.Append(row).Append('\n');
+                            nextRow = rowNumber + 1;
+                            rowDepth = -1;
+                        }
                     }
-                    else if (reader.NodeType == XmlNodeType.Text && inValue) value.Append(reader.Value);
+                    else if (valueDepth >= 0 && (reader.NodeType == XmlNodeType.Text || reader.NodeType == XmlNodeType.CDATA ||
+                        reader.NodeType == XmlNodeType.Whitespace || reader.NodeType == XmlNodeType.SignificantWhitespace)) value.Append(reader.Value);
                 }
             }
-            if (row.Length > 0) output.AppendLine(row.ToString());
+        }
+
+        static void AppendSheetCell(StringBuilder row, int column, string value, ref int nextColumn, ref int tabs)
+        {
+            int target = column >= 0 ? column : nextColumn;
+            if (target < nextColumn || target >= MaxSheetColumns) return;
+            row.Append('\t', target - tabs).Append(value);
+            tabs = target;
+            nextColumn = target + 1;
         }
 
         static string CellText(string type, string raw, List<string> shared)
