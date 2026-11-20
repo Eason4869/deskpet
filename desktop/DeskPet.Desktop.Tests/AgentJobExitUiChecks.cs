@@ -54,7 +54,12 @@ internal static class AgentJobExitUiChecks
                         owned.Dispose();
                     };
                     if(mode=="preview"){await AgentJobNativeUiChecks.RunInHostAsync(owner,window,root,project,conversation);await owner.ExitAsync();return;}
-                    string pids=Path.Combine(root,"owned.pids");string command="$child=Start-Process -FilePath "+Quote(AgentCommandExecutor.PowerShellPath())+" -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 120' -WindowStyle Hidden -PassThru; [IO.File]::WriteAllText("+Quote(pids)+",([string]$PID+[Environment]::NewLine+[string]$child.Id)); Start-Sleep -Seconds 120";
+                    string pids=Path.Combine(root,"owned.pids");
+                    string pendingPids=pids+".tmp";
+                    string command="$child=Start-Process -FilePath "+Quote(AgentCommandExecutor.PowerShellPath())+
+                        " -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 120' -WindowStyle Hidden -PassThru; "+
+                        "[IO.File]::WriteAllText("+Quote(pendingPids)+",([string]$PID+[Environment]::NewLine+[string]$child.Id)); "+
+                        "[IO.File]::Move("+Quote(pendingPids)+","+Quote(pids)+"); Start-Sleep -Seconds 120";
                     var job=await AgentJobUiChecks.Start(owner.WorkBindings.Jobs.Manager,root,project.Id,conversation.Id,"native-exit",command);
                     await WaitAsync(()=>File.Exists(pids)&&File.ReadAllLines(pids).Length==2,7000,"native process tree readiness");File.WriteAllText(Path.Combine(root,"job.id"),job.Id);
                     File.WriteAllText(Path.Combine(root,"ready.tmp"),File.ReadAllText(pids));File.Move(Path.Combine(root,"ready.tmp"),Path.Combine(root,"host.ready"));

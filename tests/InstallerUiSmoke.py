@@ -270,6 +270,7 @@ def observe_finish_gate(w):
 def complete_install(w):
     click(find(w,'开始安装'))
     values=set();captured=False;animation_samples=[]
+    next_animation_sample=0.0
     end=time.monotonic()+60
     while time.monotonic()<end and not finish_page(w):
         if not args.progress_animation_only:observe_finish_gate(w)
@@ -278,13 +279,16 @@ def complete_install(w):
             if classname(c)=='TNewStaticText' and value.isdigit():
                 values.add(int(value))
                 if 0<int(value)<100 and not captured:snapshot(w,'progress');captured=True
-                if args.progress_animation_only and 0<int(value)<100 and len(animation_samples)<4:
+                if (args.progress_animation_only and 0<int(value)<100 and len(animation_samples)<6
+                        and time.monotonic()>=next_animation_sample):
                     from PIL import Image
                     name='progress-frame-'+str(len(animation_samples));snapshot(w,name)
                     image=Image.open(ROOT/(name+'.png')).convert('RGB')
                     sx,sy=image.width/1000,image.height/636
                     def ring(y):return image.crop((round(400*sx),round(y*sy),round(419*sx),round((y+19)*sy))).tobytes()
                     animation_samples.append((ring(393),ring(432)))
+                    # The native spinner advances on a 100 ms timer.
+                    next_animation_sample=time.monotonic()+0.12
         time.sleep(.015)
     wait(lambda:finish_page(w),'completion page')
     if args.progress_animation_only:
