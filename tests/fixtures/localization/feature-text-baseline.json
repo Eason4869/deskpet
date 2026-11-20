@@ -3378,6 +3378,138 @@
       "expected": "鹅宝的常规动作可离线使用，节日装扮在选中后后台补齐。已有伙伴和装扮可继续使用，更新准备就绪后自动应用。其他伙伴首次选择时按需安装；人格与声音偏好按伙伴分别保存。",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.attachmentContent",
+      "expected": "[附件 ID {0}]\n{1}",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "fileCompatibility.attachmentDenied",
+      "expected": "错误：此附件不在当前会话中。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.changed",
+      "expected": "读取时文件发生变化，请重新添加。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.column",
+      "expected": "起始列",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.columnName",
+      "expected": "列名",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.columns",
+      "expected": "列数",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.componentUnavailable",
+      "expected": "所需的本地组件不可用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.count",
+      "expected": "数量",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.filter",
+      "expected": "筛选值",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.frameAt",
+      "expected": "视频帧（请求 {0} 秒）",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "fileCompatibility.mediaInfo",
+      "expected": "媒体信息",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.mediaInvalid",
+      "expected": "媒体格式无效或无法解码。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.missing",
+      "expected": "附件原件已不可用，请重新添加。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.more",
+      "expected": "可从位置 {0} 继续读取。",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "fileCompatibility.preview",
+      "expected": "预览",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.quota",
+      "expected": "附件存储已达上限。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.start",
+      "expected": "起始位置（视频为毫秒）",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.timeout",
+      "expected": "文件读取超时。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.toolError",
+      "expected": "错误：{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "fileCompatibility.type",
+      "expected": "文件格式不受支持。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.useSelection",
+      "expected": "使用所选内容",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "fileCompatibility.videoFrame",
+      "expected": "视频帧",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }
