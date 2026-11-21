@@ -69,7 +69,10 @@ namespace Dafeiyu.Tests
                     return 0;
                 }
                 var removal=new TextProviderEditor(cfg);
-                typeof(TextProviderEditor).GetMethod("RemoveModel",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(removal,null);
+                var modelList=(ListBox)Field(removal,"models");
+                var modelRow=(DockPanel)((ListBoxItem)modelList.Items[0]).Content;
+                var removeButton=modelRow.Children.OfType<Button>().Single(button=>button.Name=="RemoveConfiguredModel");
+                removeButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Check(Field(removal,"modelForm")==null&&removal.ReadProviders().Single().Models.Count==0,"remove model works before model dialog is ever opened");
                 page=new SettingsPage(pet);host=new Window{Content=page,Width=1030,Height=760};host.Show();Render(host);
                 foreach(string field in new[]{"connections","aiConfiguration","work","quiet","about","conversationSettings","toolsSettings"})Check(Field(page,field)==null,"unvisited settings do not construct "+field);
