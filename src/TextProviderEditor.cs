@@ -92,7 +92,6 @@ namespace Dafeiyu
             discoveryPanel.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("textProviderEditor.textProviderEditor.text.alternativeQ")),11,Ui.Muted));
             discovered=new ListBox{Name=N("DiscoveredTextModels"),MaxHeight=190,HorizontalContentAlignment=HorizontalAlignment.Stretch,BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface,Margin=new Thickness(0,7,0,7)};ScrollViewer.SetHorizontalScrollBarVisibility(discovered,ScrollBarVisibility.Disabled);discoveryPanel.Children.Add(discovered);
             detail.Children.Add(discoveryPanel);
-            var removeModel=LocalizedUi.Button(()=>(TextResources.Get("textProviderEditor.textProviderEditor.text.alternativeV")));removeModel.Name=N("RemoveTextModel");removeModel.HorizontalAlignment=HorizontalAlignment.Left;removeModel.FontSize=11;removeModel.MinHeight=28;removeModel.Margin=new Thickness(0,6,0,0);removeModel.Click+=delegate {RemoveModel();};detail.Children.Add(removeModel);
             feedback=Ui.Text("",11,Ui.Blue);feedback.Name=N("TextProviderNotice");detail.Children.Add(feedback);detail.Children.Add(Extras);
             if(kind!="text"){detail.Children.Clear();detail.Children.Add(Options);LocalizedUi.Label(detail,()=>(TextResources.Get("textProviderEditor.textProviderEditor.text.alternativeE")),providerName);detail.Children.Add(connectionHost);detail.Children.Add(Extras);}
             var detailCard=Glass(detail,14);providerDetail=detailCard;Grid.SetColumn(detailCard,1);Children.Add(detailCard);
@@ -205,6 +204,16 @@ namespace Dafeiyu
         UIElement ModelContent(string id)
         {
             var row=new DockPanel();var edit=UiIcons.Button("settings",()=>(TextResources.Get("textProviderEditor.modelContent.uiIcons")));edit.Name="EditConfiguredModel";edit.Width=edit.Height=26;edit.MinHeight=26;edit.Padding=new Thickness(4);edit.Margin=new Thickness(6,0,0,0);edit.Click+=delegate{OpenModelEditor(id);};DockPanel.SetDock(edit,Dock.Right);row.Children.Add(edit);
+            Func<string> removeLabel=()=>TextResources.Get("providerEditor.providerEditor.text.alternativeC")+" · "+id;
+            var remove=UiIcons.Button("minus",removeLabel);
+            remove.Name="RemoveConfiguredModel";
+            remove.Width=remove.Height=remove.MinHeight=26;
+            remove.Padding=new Thickness(4);
+            remove.Margin=new Thickness(6,0,0,0);
+            LocalizedUi.Set(remove,"ToolTip",removeLabel);
+            remove.Click+=delegate{RemoveModel(id);};
+            DockPanel.SetDock(remove,Dock.Right);
+            row.Children.Add(remove);
             if(id==selected.Connection.Model){var badge=new Border{Child=LocalizedUi.Text(()=>(TextResources.Get("textProviderEditor.modelContent.text")),10,Ui.Blue),Background=Ui.Pale,CornerRadius=new CornerRadius(5),Padding=new Thickness(6,3,6,3),Margin=new Thickness(8,0,0,0),VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(badge,Dock.Right);row.Children.Add(badge);}
             var labels=new StackPanel();var title=Ui.Text(selected.DisplayName(id),12);title.FontWeight=FontWeights.SemiBold;title.TextWrapping=TextWrapping.NoWrap;title.TextTrimming=TextTrimming.CharacterEllipsis;labels.Children.Add(title);
             if(selected.DisplayName(id)!=id){var identifier=Ui.Text(id,11,Ui.Muted);identifier.Margin=new Thickness(0,3,0,0);identifier.TextWrapping=TextWrapping.NoWrap;identifier.TextTrimming=TextTrimming.CharacterEllipsis;labels.Children.Add(identifier);}
@@ -284,11 +293,24 @@ namespace Dafeiyu
             if(selected.Models.Count>=TextProviderSettings.MaximumModels && !selected.Models.Contains(value)){LocalizedUi.Set(feedback,"Text",()=>(TextResources.Format("textProviderEditor.addModel.feedbackTextProviderSettingsMaximumModels",TextProviderSettings.MaximumModels)));return false;}
             if(!selected.Models.Contains(value))selected.Models.Add(value);SetDisplayName(value);SaveCapabilityFields(value);selected.Connection.Model=value;selected.ApplyModelCapabilities(selected.Connection);connection.SetModel(value);RefreshModels();LocalizedUi.Set(feedback,"Text",()=>(TextResources.Get("textProviderEditor.addModel.feedback.alternativeA")));RaiseChanged();return true;
         }
-        void RemoveModel()
+        void RemoveModel(string id)
         {
-            if(models==null)return;var item=models.SelectedItem as ListBoxItem;string value=item==null?null:item.Tag as string;if(value==null)return;selected.Models.Remove(value);selected.ModelDisplayNames.Remove(value);selected.ModelContextWindows.Remove(value);selected.ModelContextOverrides.Remove(value);selected.ModelCapabilities.Remove(value);
-            if(connection.Draft().Model==value){selected.Connection.Model=selected.Models.Count==0?"":selected.Models[0];connection.SetModel(selected.Connection.Model);}
-            updating=true;RefreshModelForm(selected.Connection.Model);updating=false;RefreshModels();RaiseChanged();
+            if(!selected.Models.Remove(id))return;
+            selected.ModelDisplayNames.Remove(id);
+            selected.ModelContextWindows.Remove(id);
+            selected.ModelContextOverrides.Remove(id);
+            selected.ModelCapabilities.Remove(id);
+
+            if(connection.Draft().Model==id)
+            {
+                selected.Connection.Model=selected.Models.Count==0?"":selected.Models[0];
+                updating=true;
+                connection.SetModel(selected.Connection.Model);
+                RefreshModelForm(selected.Connection.Model);
+                updating=false;
+            }
+            RefreshModels();
+            RaiseChanged();
         }
         public ConnectionSettings Preview(){return connection==null?selected.Connection.Copy():connection.Preview();}
         internal List<TextProviderSettings> PreviewProviders()
