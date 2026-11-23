@@ -4,11 +4,9 @@
 
 A desktop companion for interactions, conversation and project work.
 
-**1.0.3 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
+**1.0.5 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Version 1.0.3 adds key visibility controls, improves Windows image-result cards, and fixes shared-key provider masking and Windows accessible names. See the [changelog](CHANGELOG.en.md).
-
-The **1.0.5-dev.1** source preview adds local document and attachment reading with selectable ranges. See the [changelog](CHANGELOG.en.md) for format and platform details.
+Version 1.0.5 adds local attachment reading with selectable ranges for legacy Word and Excel files, modern Office documents, PDFs, archives, SQLite, and common media formats. It also adds per-model removal in Windows and improves installer startup and companion switching. See the [changelog](CHANGELOG.en.md).
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
@@ -18,7 +16,7 @@ The **1.0.5-dev.1** source preview adds local document and attachment reading wi
 
 | Platform | Requirements | Download and scope |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.3 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) and choose the `DeskPet-Windows-Setup-1.0.3.exe` installer or `DeskPet-Windows-1.0.3.zip` portable package. This page primarily describes Windows. |
+| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.5 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) and choose the `DeskPet-Windows-Setup-1.0.5.exe` installer or `DeskPet-Windows-1.0.5.zip` portable package. This page primarily describes Windows. |
 | **macOS preview** | macOS 14+, Apple Silicon or Intel | Choose the matching `preview` DMG / ZIP on the same release page. The Mac app shares part of the core and has its own interface. Windows file-Agent, tool-tab and terminal support does not imply Mac support. |
 
 The release also provides source, companion packs, an authoring template and SHA256 checksums; consult its actual asset list. Windows packages are currently not code-signed. Mac previews are ad-hoc signed, without Developer ID signing or notarization. Download from [Eason4869/deskpet](https://github.com/Eason4869/deskpet).

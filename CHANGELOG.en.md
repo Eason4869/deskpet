@@ -2,7 +2,17 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
-## 1.0.5-dev.1 · Development preview
+## [1.0.5](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · Production release
+
+- Read selected ranges of text, CSV/TSV, XLS/XLSX, DOC/DOCX, PDF, and PPTX in chat. Spreadsheet views show raw values, display formats, formulas, and saved results. Legacy DOC and XLS files open without Office.
+- Browse and read ZIP/TAR.GZ entries or run read-only queries against standalone SQLite files. Export a consistent standalone copy of active WAL databases before opening them.
+- Inspect MP3, WAV, and MP4 metadata and extract MP4 frames. Text recognition in images and scanned PDFs depends on system OCR and installed languages.
+- Preview and send from the same private attachment snapshot. Export original files from sent messages. Model requests contain the selected content and its attachment identifier.
+- Remove individual text models from their rows in Windows model configuration, then save the changes.
+- Improve Windows installer startup, progress animation, and reinstalls. Installed companions switch using local resources first. Upgrades restore the selected companion and check its assets in the background. Ebao’s regular actions work offline.
+- Use one sound toggle for task notifications and companion appear, switch, and hide cues, with a separate volume control for companion sounds.
+
+## [1.0.5-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5-dev.1) · Development preview
 
 - Read selected ranges of text, CSV/TSV, XLS/XLSX, DOC/DOCX, PDF, and PPTX attachments. Fixed duplicate final rows in XLSX. Spreadsheet reads distinguish values, display formats, formulas, and saved results. Legacy DOC and XLS can be read without Office.
 - Browse ZIP and TAR.GZ entries and run read-only queries against standalone SQLite files. Export a consistent standalone copy before opening an active WAL database.

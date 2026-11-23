@@ -2,7 +2,17 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
-## 1.0.5-dev.1 · 开发预览
+## [1.0.5](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · 正式版
+
+- 在聊天中按范围读取文本、CSV/TSV、XLS/XLSX、DOC/DOCX、PDF 和 PPTX。表格可查看原始值、显示格式、公式和已有缓存值。旧版 DOC 和 XLS 无需安装 Office。
+- 支持列出及读取 ZIP/TAR.GZ 条目，也可只读查询独立 SQLite 文件。使用 WAL 的活动数据库需先导出一致的独立副本。
+- 支持查看 MP3、WAV 和 MP4 媒体信息并提取 MP4 视频帧。图片与扫描 PDF 的文字识别取决于系统 OCR 及已安装语言。
+- 预览和发送共用应用私有附件快照。已发送附件可导出原件，模型请求仅包含选中的内容及对应附件标识。
+- Windows「模型配置 → 对话模型」可从每条模型右侧直接移除该模型，点击「保存配置」后生效。
+- 改进 Windows 安装向导的启动速度、进度动效和重装体验。已安装伙伴优先从本地资源切换，升级后恢复所选伙伴并在后台检查其素材。E包的常规动作可离线使用。
+- 任务通知与伙伴出现、切换和隐藏共用一个提示音开关，伙伴音效可独立调节音量。
+
+## [1.0.5-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5-dev.1) · 开发预览
 
 - 聊天支持按范围读取文本、CSV/TSV、XLS/XLSX、DOC/DOCX、PDF 和 PPTX。修复 XLSX 末行重复。数值、显示格式、公式与已有缓存值分别展示，旧 DOC 和 XLS 的读取无需安装 Office。
 - 支持列出 ZIP/TAR.GZ 的条目、读取条目内容，并只读查询独立 SQLite 文件。活动 WAL 数据库请先导出一致性的独立副本。
