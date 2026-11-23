@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -20,12 +20,329 @@ namespace Dafeiyu.Tests
     {
         static int passed;
         static void Check(bool value,string message){if(!value)throw new Exception(message);passed++;Console.WriteLine("PASS "+message);}
+        static void DecodedBudget()
+        {
+            var cache=new CompanionDecodedCache<object>(64);var a=new object();var b=new object();var c=new object();
+            cache.Put("a",a,60);cache.Pin("a");cache.Put("b",b,40);cache.Put("c",c,40);
+            Check(cache.Get("a")==a&&cache.Get("b")==null&&cache.Get("c")==c,"decoded LRU retains current pin and limits noncurrent bytes");
+            Check(cache.RetainedBytes==100 && cache.UnpinnedBytes==40 && cache.PinnedBytes==60 && cache.PinnedResourceCount==1 && cache.PinLeaseCount==1,"decoded ledger separates pinned and noncurrent bytes");
+            cache.Pin("a");cache.Pin("pending");
+            Check(cache.PinnedResourceCount==2 && cache.PinLeaseCount==3 && cache.PinnedBytes==60,"pin ledger includes multiple holders and pending preparation without a cache entry");
+            cache.Unpin("a");cache.Unpin("pending");
+            cache.Unpin("a");Check(cache.UnpinnedBytes<=64,"unpin enforces decoded budget immediately");
+            Check(cache.RetainedBytes==40 && cache.PinnedBytes==0 && cache.PinnedResourceCount==0 && cache.PinLeaseCount==0,"unpin removes the pin ledger and evicts the retired resource");
+            cache.Remove("c");Check(cache.RetainedBytes==0 && cache.UnpinnedBytes==0 && cache.PinnedBytes==0 && cache.PinnedResourceCount==0 && cache.PinLeaseCount==0,"removing final decoded entry clears the actual byte and pin ledger");
+        }
+        static void VerifiedDecode()
+        {
+            string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"verified-wpf-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            try {
+                string path=Path.Combine(root,"gaze.png");WriteNative(path,4,4,16);var bytes=File.ReadAllBytes(path);
+                var files=new Dictionary<string,OfficialCompanionFile>{{"gaze.png",new OfficialCompanionFile(bytes.Length,OfficialCompanionSnapshot.Digest(bytes))}};
+                var asset=new OfficialCompanionAsset("e-bao","E","1.0.0","1.0.0","v1.0.0","e.zip",1,new string('a',64),new OfficialCompanionOutfit[0]);
+                using(var snapshot=new OfficialCompanionSnapshot(new OfficialCompanionInstallation(asset,root),files,"verified",root,null)) {
+                    var image=IllustratedPack.ReadImage(snapshot,"gaze.png",1920,2080);
+                    Check(image.IsFrozen&&image.PixelWidth==1920,"snapshot decoder consumes verified bytes into frozen native image");
+                    bytes[bytes.Length-1]^=1;File.WriteAllBytes(path,bytes);bool rejected=false;
+                    try{IllustratedPack.ReadImage(snapshot,"gaze.png",1920,2080);}catch(InvalidDataException){rejected=true;}
+                    Check(rejected,"snapshot decoder rejects changed bytes even after prior native success");
+                }
+            } finally {Directory.Delete(root,true);}
+        }
         static void Hold(IllustratedAnimation clip,double hold)
         {var property=typeof(IllustratedAnimation).GetProperty("HoldLastSeconds");Check(property!=null,"illustrated jump hold metadata is available");property.SetValue(clip,hold,null);}
         [STAThread] public static int Main(string[] args)
         {
-            try {JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
+            try {if(args.Contains("--fixture-teardown")){FixtureTeardownChecks();Console.WriteLine("WPF fixture teardown: "+passed+" passed");return 0;}if(args.Contains("--selection-admission")){SelectionAdmissionChecks();Console.WriteLine("WPF selection admission: "+passed+" passed");return 0;}if(args.Any(a=>a.StartsWith("--real-performance="))){WpfCompanionPerformance.Run(args.Single(a=>a.StartsWith("--performance-index=")).Substring("--performance-index=".Length),args.Single(a=>a.StartsWith("--real-performance=")).Substring("--real-performance=".Length),args.Where(a=>a.StartsWith("--owned-fixtures=")).Select(a=>a.Substring("--owned-fixtures=".Length)).FirstOrDefault(),args.Contains("--phase-probe"),args.Contains("--natural-background"));return 0;}if(args.Contains("--operation-sounds-ui")){FixtureTeardownChecks();OperationSoundChecks();Console.WriteLine("WPF operation sounds: "+passed+" passed");return 0;}if(args.Contains("--bulk-reader-lifetime")){BulkRecoveryReaderLifetime();Console.WriteLine("WPF bulk reader lifetime: "+passed+" passed");return 0;}if(args.Contains("--installation-status")){InstallationStatusChecks();Console.WriteLine("Installation status: "+passed+" passed");return 0;}if(args.Contains("--bundled-e")){BundledEbaoChecks();Console.WriteLine("Bundled Ebao: "+passed+" passed");return 0;}if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
             catch(Exception error){Console.WriteLine("FAIL WPF official companion: "+error);return 1;}
+        }
+        static void SelectionAdmissionChecks()
+        {
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"admission-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            var settings=new PetSettings{OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};var store=new SettingsStore(Path.Combine(root,"settings.json"));var pet=new PetWindow(null,settings,store,null);
+            try{
+                Field("officialStartupStarted").SetValue(pet,true);store.Save(settings);string path=Path.Combine(root,"settings.json"),selected=settings.SelectedCompanionKey;
+                var time=new DateTime(2001,1,1,0,0,0,DateTimeKind.Utc);File.SetLastWriteTimeUtc(path,time);
+                var begin=typeof(PetWindow).GetMethod("BeginCompanionSelection",BindingFlags.NonPublic|BindingFlags.Instance);
+                begin.Invoke(pet,new object[]{pet.Skin});
+                Check(File.GetLastWriteTimeUtc(path)==time,"admission does not write unchanged settings before requested feedback");
+                settings.PendingOfficialCompanionId="dafeiyu";begin.Invoke(pet,new object[]{pet.Skin});var persisted=store.Load();
+                Check(persisted.PendingOfficialCompanionId==""&&persisted.SelectedCompanionKey==selected,"admission still persists a legacy pending clear without changing last successful selection");
+            }finally{pet.Close();Pump();Directory.Delete(root,true);}
+        }
+        static async Task CloseFixtureAsync(PetWindow pet)
+        {
+            var closed=new TaskCompletionSource<bool>();EventHandler onClosed=delegate{closed.TrySetResult(true);};pet.Closed+=onClosed;
+            try{
+                // Close first schedules asynchronous persistence/draining. The actual
+                // Closed event confirms companion ownership was released and final services started.
+                pet.Close();await closed.Task;await pet.ImageServicesShutdown;
+            }finally{pet.Closed-=onClosed;}
+        }
+        static void FixtureTeardownChecks()
+        {
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            WorkerDrainChecks();
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                string data=fixture.Root;OfficialCompanionInstallation installed;
+                using(var downloads=new OfficialCompanionDownloads(data,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
+                    fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",100);
+                    var prepare=downloads.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(prepare);installed=prepare.Result.Installation;
+                }
+                var settings=new PetSettings{SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};var store=new SettingsStore(Path.Combine(data,"settings.json"));
+                var pet=new PetWindow(null,settings,store,null);Field("officialStartupStarted").SetValue(pet,true);
+                var closed=new TaskCompletionSource<bool>();pet.Closed+=delegate{closed.TrySetResult(true);};
+                var saving=new TaskCompletionSource<bool>();var release=new ManualResetEventSlim();store.BeforeExactSave=delegate{saving.TrySetResult(true);release.Wait();};
+                string key=Dafeiyu.Maintenance.CacheResourceLease.Key(Path.Combine(data,"cache-maintenance"),installed.RootDirectory);
+                try{
+                    Check(pet.Skin.Snapshot!=null&&pet.Skin.Snapshot.Installation.RootDirectory==installed.RootDirectory,"teardown fixture owns actual installed companion snapshot");
+                    Check(File.ReadAllText(key+".owner").Contains(installed.RootDirectory),"locked cache owner record identifies selected official version");
+                    var closing=CloseFixtureAsync(pet);Wait(saving.Task);
+                    bool locked=false;try{using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None)){} }catch(IOException){locked=true;}
+                    Check(locked&&!closed.Task.IsCompleted,"pending close still holds actual snapshot cache lock");
+                    Check(!closing.IsCompleted,"fixture teardown waits for asynchronous close before deleting data");
+                    release.Set();Wait(closing);
+                    Check(closed.Task.IsCompleted&&pet.ImageServicesShutdown.IsCompleted,"teardown observes real Closed and final service shutdown");
+                    using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None))Check(stream.CanWrite,"actual official snapshot owner releases cache lock after teardown");
+                }finally{release.Set();if(!closed.Task.IsCompleted)pet.Close();Wait(closed.Task);Wait(pet.ImageServicesShutdown);store.BeforeExactSave=null;release.Dispose();}
+            }
+        }
+        static void WorkerDrainChecks()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                OfficialCompanionInstallation installed;
+                using(var initial=new OfficialCompanionDownloads(fixture.Root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
+                    fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",100);
+                    var prepare=initial.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(prepare);installed=prepare.Result.Installation;
+                }
+                var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();
+                using(var service=new OfficialCompanionDownloads(fixture.Root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,async(i,c)=>{entered.TrySetResult(true);await release.Task.ConfigureAwait(false);c.ThrowIfCancellationRequested();},OfficialCompanionReadMode.Snapshots))
+                using(var caller=new CancellationTokenSource()){
+                    var settings=new PetSettings{SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
+                    var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(fixture.Root,"settings.json")),null);Field("officialStartupStarted").SetValue(pet,true);
+                    var previous=(OfficialCompanionDownloads)Field("officialDownloads").GetValue(pet);if(previous!=null)Wait(previous.ShutdownAsync());Field("officialDownloads").SetValue(pet,service);
+                    var imageStore=pet.ImageStore;
+                    var closed=new TaskCompletionSource<bool>();pet.Closed+=delegate{closed.TrySetResult(true);};Task closing=null,reader=null,worker=null;bool timedOut=false;
+                    using(var readEntered=new ManualResetEventSlim())using(var readRelease=new ManualResetEventSlim())using(var watchdog=new System.Threading.Timer(_=>readRelease.Set(),null,Timeout.Infinite,Timeout.Infinite))
+                    try{
+                        using(var snapshot=service.CaptureLocalSnapshot("dafeiyu")){
+                            var audit=service.ValidateSnapshotInBackgroundAsync(snapshot,caller.Token);Wait(entered.Task);
+                            var activeAudits=(System.Collections.IDictionary)typeof(OfficialCompanionDownloads).GetField("audits",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(service);var work=activeAudits.Values.Cast<object>().Single();worker=(Task)work.GetType().GetField("Task",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(work);caller.Cancel();
+                            bool cancelled=false;try{Wait(audit);}catch(OperationCanceledException){cancelled=true;}
+                            var audits=(System.Collections.IDictionary)typeof(OfficialCompanionDownloads).GetField("audits",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(service);
+                            Check(cancelled&&audits.Count==0,"WPF cancelled audit has left active dictionary while real worker is gated");
+                        }
+                        var active=pet.Skin.Snapshot;var snapshotGate=typeof(OfficialCompanionSnapshot).GetField("gate",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(active);
+                        reader=Task.Run(()=>{lock(snapshotGate){active.ReadVerifiedBytes("pet.json");readEntered.Set();readRelease.Wait();}});
+                        Wait(Task.Run(()=>readEntered.Wait()));watchdog.Change(8000,Timeout.Infinite);
+                        var shutdownClock=System.Diagnostics.Stopwatch.StartNew();closing=CloseFixtureAsync(pet);Wait(closed.Task);
+                        Check(!readRelease.IsSet,"WPF actual Close reaches Closed without waiting for the active snapshot read lock");
+                        bool dispatched=false;Dispatcher.CurrentDispatcher.BeginInvoke(new Action(()=>dispatched=true));
+                        var disposed=typeof(GeneratedImageStore).GetField("disposed",BindingFlags.NonPublic|BindingFlags.Instance);
+                        Wait(Task.Run(async()=>{while(!(bool)disposed.GetValue(imageStore))await Task.Delay(1).ConfigureAwait(false);}));Pump();
+                        Check(dispatched&&!readRelease.IsSet,"WPF dispatcher and independent image cleanup progress while active snapshot remains held");
+                        string key=Maintenance.CacheResourceLease.Key(Path.Combine(fixture.Root,"cache-maintenance"),installed.RootDirectory);bool locked=false;
+                        try{using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None)){} }catch(IOException){locked=true;}
+                        Check(!closing.IsCompleted&&!pet.ImageServicesShutdown.IsCompleted&&locked,"WPF final image shutdown waits for removed worker retaining actual cache lock");
+                        try{Wait(closing);}catch(TimeoutException error){timedOut=true;Console.WriteLine("WPF_SHUTDOWN_TIMEOUT elapsedMs="+shutdownClock.ElapsedMilliseconds+" type="+error.GetType().FullName+" message="+error.Message+" held="+!readRelease.IsSet+" worker="+worker.Status);}
+                        bool stillLocked=false;try{using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None)){} }catch(IOException){stillLocked=true;}
+                        Check(timedOut&&!readRelease.IsSet&&!worker.IsCompleted&&stillLocked,"WPF five-second host timeout leaves active reader and worker leases intact");
+                        readRelease.Set();Wait(reader);release.TrySetResult(true);try{Wait(worker);}catch(OperationCanceledException){}
+                        Wait((Task)Field("officialResourceShutdown").GetValue(pet));
+                        using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None))Check(stream.CanWrite,"WPF actual resource and worker completion releases original lock after timeout");
+                    }finally{readRelease.Set();if(reader!=null)Wait(reader);release.TrySetResult(true);if(worker!=null)try{Wait(worker);}catch(OperationCanceledException){}if(closing==null)closing=CloseFixtureAsync(pet);try{Wait(closing);}catch(TimeoutException){if(!timedOut)throw;}Wait((Task)Field("officialResourceShutdown").GetValue(pet));}
+                }
+            }
+        }
+        sealed class OperationOutput:ILiveAudioOutput
+        {
+            internal int Plays,Disposals,LastBytes,Volume;public void SetVolume(int v){Volume=v;}public void Enqueue(byte[] bytes,int rate){LastBytes=bytes.Length;Interlocked.Increment(ref Plays);}public void Interrupt(){}public void Dispose(){Interlocked.Increment(ref Disposals);}
+        }
+        static void OperationSoundChecks()
+        {
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"operation-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(data);PetWindow pet=null;Window preferences=null;
+            try{
+                var settings=new PetSettings{OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,HideOnFullscreen=false,Wander=false,FollowCursor=false};foreach(var key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
+                pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);Field("officialStartupStarted").SetValue(pet,true);Field("officialFirstFrameRendered").SetValue(pet,true);
+                var output=new OperationOutput();DateTime now=DateTime.UtcNow;var player=new NotificationSoundPlayer(()=>settings,()=>output,clock:()=>now);Field("notificationSounds").SetValue(pet,player);pet.EnableNotificationAudio();
+                Action<int> wait=count=>{var end=DateTime.UtcNow.AddSeconds(8);while(output.Plays<count&&DateTime.UtcNow<end){Pump();Thread.Sleep(5);}Check(output.Plays==count,"native sound count "+count);player.Stop();SpinWait.SpinUntil(()=>output.Disposals>=count,4000);now=now.AddSeconds(2);};
+                pet.Show();Pump();wait(1);Check(output.LastBytes==36480,"visible launch emits approved Appear");pet.HidePet();wait(2);Check(!pet.IsPetVisible&&output.LastBytes==38400,"explicit hide emits approved Hide");pet.HidePet();Pump();Check(output.Plays==2,"already hidden emits no cue");pet.RestorePet();wait(3);Check(pet.IsPetVisible&&output.LastBytes==36480,"explicit restore emits Appear");pet.RestorePet();Pump();Check(output.Plays==3,"already visible emits no cue");
+                Wait(pet.RequestSkinAsync(pet.Skin,CompanionSelectionOrigin.Settings,null));Pump();Check(output.Plays==3,"same role does not switch");
+                string source=Path.Combine(data,"fixture");Directory.CreateDirectory(source);WriteNative(Path.Combine(source,"action.png"),8,1,8);WriteNative(Path.Combine(source,"gaze.png"),4,4,16);WriteNative(Path.Combine(source,"preview.png"),1,1,1);
+                var manifest=new SkinManifest{Version=2,PackageId="sound-fixture",Name="Sound fixture",Format="illustrated-atlases-v1",CellWidth=480,CellHeight=520,Preview="preview.png",Gaze=new IllustratedGaze{File="gaze.png",Columns=4,Frames=16,Interpolation="none",Order="clockwise-from-up"},Animations=new Dictionary<string,IllustratedAnimation>()};foreach(string action in IllustratedPack.Actions)manifest.Animations[action]=new IllustratedAnimation{File="action.png",Columns=8,Frames=8,Fps=8,Loop=action!="jumping"};string json=Path.Combine(source,"pet.json");using(var stream=File.Create(json))SkinCatalog.Serializer().WriteObject(stream,manifest);var custom=pet.Catalog.Import(json);
+                Wait(pet.RequestSkinAsync(custom,CompanionSelectionOrigin.Settings,null));wait(4);Check(output.LastBytes==41280,"actual changed target first render emits Switch");
+                pet.HidePet();wait(5);Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.Settings,null));Pump();Check(output.Plays==5,"hidden selection stays silent");pet.RestorePet();wait(6);Check(output.LastBytes==36480,"Show wins over hidden selection completion");Pump();Check(output.Plays==6,"hidden completion never replays later");
+                pet.SetQuietMode(true);pet.HidePet();Pump();Check(output.Plays==6,"quiet explicit hide suppressed");pet.SetQuietMode(false);now=now.AddSeconds(2);Check(output.Plays==6,"quiet exit does not replay");
+                settings.NotificationSoundsEnabled=false;var panel=new QuietPanel(pet);preferences=new Window{Content=panel,Width=780,Height=1000};preferences.Show();Pump();Check(Descendants(panel).OfType<CheckBox>().Count(c=>c.Name=="NotificationSoundsEnabled")==1&&!Descendants(panel).OfType<CheckBox>().Any(c=>c.Name=="CompanionOperationSoundsEnabled"),"one visible sound master");var preview=Descendants(panel).OfType<Button>().Single(b=>b.Name=="PreviewCompanionSwitch");var volume=Descendants(panel).OfType<Slider>().Single(v=>v.Name=="CompanionOperationSoundVolume");volume.Value=47;preview.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));wait(7);Check(output.Volume==47&&settings.CompanionOperationSoundVolume==47,"preview uses displayed independent volume");Check(output.LastBytes==41280&&!settings.NotificationSoundsEnabled,"actual preview button works while disabled");Check(Descendants(panel).OfType<Slider>().Single(v=>v.Name=="CompanionOperationSoundVolume").Maximum==100,"native volume range");
+                CaptureBubble(preferences,"task-4-wpf-operation-settings.png");
+                foreach(var language in UiLanguages.Choices.Where(c=>c.Code!="system")){TextResources.ApplyLanguage(TextResources.PrepareLanguage(language.Code));Pump();Check(System.Windows.Automation.AutomationProperties.GetName(preview)==TextResources.Get("operationSounds.switch"),"live localized accessible preview "+language.Code);}
+            }finally{if(preferences!=null)preferences.Close();if(pet!=null)Wait(CloseFixtureAsync(pet));Directory.Delete(data,true);}
+        }
+        static void InstallationStatusChecks()
+        {
+            var status=new CompanionInstallationStatus();Action<long,string,string> send=(r,key,stage)=>status.Accept(new CompanionSelectionUpdate(r,key,"Settings",stage,0));
+            send(1,"official:dafeiyu","requested");Check(!status.Active,"usable local selection has no installation presentation");
+            send(1,"official:dafeiyu","installing");Check(status.Visible(true)&&!status.Visible(false)&&status.CanCancel&&!status.CanRetry,"install shows passive state only while pet visible");
+            status.Dismiss();send(1,"official:dafeiyu","progress");Check(!status.Visible(true)&&status.CanCancel,"close hides request without cancelling it");
+            send(1,"official:dafeiyu","failed");Check(status.CanRetry&&!status.CanCancel&&!status.Visible(true),"failure exposes retry but does not reopen dismissed bubble");
+            send(2,"official:marfu","requested");send(2,"official:marfu","installing");send(1,"official:dafeiyu","completed");Check(status.Request==2&&status.Visible(true),"new intent resets dismissal and rejects stale completion");
+            send(2,"official:marfu","reselect-required");Check(status.Active&&!status.CanCancel&&!status.CanRetry&&status.Text.Length>0,"busy completion explains explicit reselect without queuing");
+            send(3,"official:marfu","requested");send(3,"official:marfu","installing");send(3,"official:marfu","committed");Check(!status.Active,"committed install dismisses progress before sound owned render completion");
+            status.Accept(new CompanionSelectionUpdate(4,"official:marfu","StartupRestore","requested",0));status.Accept(new CompanionSelectionUpdate(4,"official:marfu","StartupRestore","installing",0));Check(!status.Active,"startup restore never presents installation bubble");
+            send(5,"official:marfu","requested");send(5,"official:marfu","installing");send(5,"official:marfu","cancelled");Check(!status.Active,"cancel removes install presentation");
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"bubble-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(data);PetWindow pet=null;CompanionInstallationBubble bubble=null;
+            try {
+                pet=new PetWindow(null,new PetSettings{OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false},new SettingsStore(Path.Combine(data,"settings.json")),null);Field("officialStartupStarted").SetValue(pet,true);
+                bubble=new CompanionInstallationBubble(pet);bubble.Accept(new CompanionSelectionUpdate(1,"official:dafeiyu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(1,"official:dafeiyu","Settings","installing",0));Check(!bubble.IsVisible,"hidden pet does not expose installation window");
+                Check(pet.Notice==bubble.Status.Text&&pet.Notice.Length>0,"hidden installation updates initiating selector immediately without a timer tick");
+                pet.Show();Pump();bubble.Accept(new CompanionSelectionUpdate(2,"official:dafeiyu","Settings","requested",0));Check(!bubble.IsVisible&&pet.Notice=="","new request immediately removes previous presentation");
+                bubble.Accept(new CompanionSelectionUpdate(2,"official:dafeiyu","Settings","installing",0));Check(bubble.IsVisible&&bubble.ShowActivated==false&&pet.Notice==bubble.Status.Text,"Accept immediately shows nonactivating installation and selector status");
+                var message=Descendants(bubble).OfType<TextBlock>().First(t=>t.Name=="CompanionInstallationMessage");string last=message.Text;int refreshes=0,sequence=0;var clock=System.Diagnostics.Stopwatch.StartNew();
+                while(clock.ElapsedMilliseconds<1050){
+                    bubble.Accept(new CompanionSelectionUpdate(2,"official:dafeiyu","Settings","progress",0,false,new OfficialCompanionProgress("dafeiyu","download","",++sequence,1000,sequence%90)));
+                    var frame=new DispatcherFrame();Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background,new Action(()=>frame.Continue=false));Dispatcher.PushFrame(frame);
+                    if(message.Text!=last){refreshes++;last=message.Text;}Thread.Sleep(5);
+                }
+                Check(refreshes>=1&&refreshes<=4,"continuous progress is coalesced to at most four updates per second");CaptureBubble(bubble,"task-3-installing.png");
+                bubble.Accept(new CompanionSelectionUpdate(2,"official:dafeiyu","Settings","committed",0));Check(!bubble.IsVisible&&pet.Notice=="","commit immediately removes bubble and selector status without a timer tick");
+                bubble.Accept(new CompanionSelectionUpdate(3,"official:marfu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(3,"official:marfu","Settings","installing",0));
+                var close=Descendants(bubble).OfType<Button>().First(b=>b.Name=="DismissCompanionInstallation");close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));bubble.Accept(new CompanionSelectionUpdate(3,"official:marfu","Settings","progress",0));Check(!bubble.IsVisible&&bubble.Status.CanCancel,"UI close preserves request through later progress");
+                bubble.Accept(new CompanionSelectionUpdate(3,"official:marfu","Settings","failed",0));Check(!bubble.IsVisible&&bubble.Status.CanRetry,"terminal failure does not reopen dismissed presentation");
+                bubble.Accept(new CompanionSelectionUpdate(4,"official:marfu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(4,"official:marfu","Settings","installing",0));bubble.Accept(new CompanionSelectionUpdate(4,"official:marfu","Settings","failed",0));Check(bubble.IsVisible&&Descendants(bubble).OfType<Button>().First(b=>b.Name=="RetryCompanionInstallation").IsVisible,"new failed install immediately offers retry in native bubble");CaptureBubble(bubble,"task-3-failed.png");
+                bubble.Close();bubble.Accept(new CompanionSelectionUpdate(5,"official:marfu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(5,"official:marfu","Settings","installing",0));Check(bubble.IsVisible,"system close hides presentation and permits a later new request");
+                bubble.Accept(new CompanionSelectionUpdate(5,"official:marfu","Settings","cancelled",0));Check(!bubble.IsVisible&&pet.Notice=="","cancel immediately removes bubble and selector status without a timer tick");
+            }finally{if(bubble!=null)bubble.Shutdown();if(pet!=null)Wait(CloseFixtureAsync(pet));Directory.Delete(data,true);}
+        }
+        static void CaptureBubble(Window window,string name){window.UpdateLayout();var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var output=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,name)))png.Save(output);}
+        static System.Collections.Generic.IEnumerable<DependencyObject> Descendants(DependencyObject root){for(int i=0;i<System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);i++){var child=System.Windows.Media.VisualTreeHelper.GetChild(root,i);yield return child;foreach(var nested in Descendants(child))yield return nested;}}
+        static void BundledEbaoChecks()
+        {
+            string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"bundle-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            try {
+                var catalog=new SkinCatalog(root);var skin=catalog.FindOfficial("e-bao");Check(skin.Illustrated&&skin.Bundle!=null,"production E uses separate illustrated resources");
+                var bundle=skin.Bundle;Check(bundle.Paths.Count()==33&&!bundle.HasCompleteCoverage&&skin.PackageHolidayCatalog.Outfits.Count==0,"offline source declares exact defaults and no wardrobe coverage");
+                Check(!bundle.PrefersBundle("0.11.0-dev.3")&&!bundle.PrefersBundle(bundle.Version),"default-only source preserves older and same-version complete generations");
+                using(WpfPreparedCompanion.Hold(skin)){skin.PreparedOfficialAtlas=skin.Load();foreach(var motion in skin.Manifest.Animations.Values.Concat(skin.Manifest.ExtraAnimations.Values).Concat(skin.Manifest.AlternateAnimations.Values))Check(WpfPreparedCompanion.Load(skin,motion)!=null,"all normal offline actions decode");Check(skin.PreparedOfficialAtlas!=null,"offline gaze decodes");}
+                Check(!Directory.GetDirectories(root,"*",SearchOption.AllDirectories).Any(p=>p.Contains("versions")||p.Contains("bundled-skins")),"embedded selection extracts no package into user cache");
+                using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+                using(var downloads=new OfficialCompanionDownloads(root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync,OfficialCompanionReadMode.Snapshots)){
+                    fixture.Files[OfficialCompanionFixture.PackageName("e-bao")]=NativePackage("e-bao",100);
+                    var install=downloads.EnsureAsync("e-bao",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(install);
+                    string previous=install.Result.Installation.RootDirectory;
+                    using(var reader=downloads.CaptureLocalSnapshot("e-bao")){
+                        Wait(downloads.ConfirmBundleReadyAsync(bundle,CancellationToken.None));Wait(downloads.ScheduleMaintenance());
+                        Check(!bundle.CompletelyVerified&&downloads.Storage.CurrentRoot("e-bao")==previous&&Directory.Exists(previous),"partial confirmation never retires the working full source");
+                        bool rejected=false;try{Maintenance.OfficialCompanionMaintenance.HandoffBundle(downloads.Storage,bundle,CancellationToken.None);}catch(IOException){rejected=true;}
+                        Check(rejected&&reader.ReadVerifiedBytes("holidays/catalog.json").Length>0,"partial cannot supply cleanup replacement proof");
+                    }
+                    var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+                    var settings=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
+                    var wardrobe=new HolidayState();wardrobe.Unlock("e-bao","halloween-2026");wardrobe.ForCharacter("e-bao").PreferredOutfitId="halloween-2026";new HolidayStateStore(Path.Combine(root,"holiday-state.json")).Save(wardrobe);
+                    var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
+                    try {
+                        Field("officialStartupStarted").SetValue(pet,true);
+                        Check(pet.Skin.Bundle==null&&pet.Skin.Manifest.PackVersion==OfficialCompanionFixture.Version&&pet.Holidays.Catalog.Outfits.Any(o=>o.CharacterId=="e-bao"),"startup retains coherent older full E with wardrobe");
+                        Check(pet.Holidays.PreferredOutfitId=="halloween-2026"&&pet.Holidays.EffectiveOutfit!=null&&pet.Holidays.EffectiveOutfit.OutfitId=="halloween-2026","existing selected E outfit survives production startup source resolution");
+                        var select=pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null);Wait(select);
+                        Check(select.Result&&pet.Skin.Bundle==null&&pet.Settings.SelectedCompanionKey=="official:e-bao","reselect preserves complete source and selected identity");
+                    }finally{Wait(CloseFixtureAsync(pet));}
+                }
+                foreach(bool preferred in new[]{true,false}){
+                    string legacy=Path.Combine(root,"legacy-"+preferred);Directory.CreateDirectory(legacy);
+                    var state=new HolidayState();state.Unlock("e-bao","halloween-2026");if(preferred)state.ForCharacter("e-bao").PreferredOutfitId="halloween-2026";new HolidayStateStore(Path.Combine(legacy,"holiday-state.json")).Save(state);
+                    var saved=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
+                    var pet=new PetWindow(null,saved,new SettingsStore(Path.Combine(legacy,"settings.json")),null);
+                    try{Field("officialStartupStarted").SetValue(pet,true);Check(pet.Skin.Embedded&&pet.Skin.Bundle==null&&pet.Holidays.OwnedOutfits.Any(o=>o.OutfitId=="halloween-2026"),"v1.0.3 owned embedded Halloween retains whole legacy source without a managed pointer");Check(!preferred||pet.Holidays.EffectiveOutfit!=null&&pet.Holidays.EffectiveOutfit.OutfitId=="halloween-2026","selected legacy Halloween remains effective");}
+                    finally{Wait(CloseFixtureAsync(pet));}
+                }
+                PartialEbaoStartupChecks(Path.Combine(root,"same"));
+            }finally{Directory.Delete(root,true);}
+        }
+        static void PartialEbaoStartupChecks(string root)
+        {
+            var bundle=OfficialCompanionBundle.Ebao;
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var downloads=new OfficialCompanionDownloads(root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync,OfficialCompanionReadMode.Snapshots)){
+                fixture.PublishedVersion=bundle.Version;
+                foreach(string id in OfficialCompanionFixture.Ids){fixture.Files.Remove(OfficialCompanionFixture.PackageName(id));fixture.Files[OfficialCompanionFixture.PackageName(id).Replace(OfficialCompanionFixture.Version,bundle.Version)]=NativePackage(id,100,false,bundle.Version);}
+                var gate=new TaskCompletionSource<System.Net.Http.HttpResponseMessage>();int requests=0;
+                fixture.Intercept=(request,cancel)=>{if(request.RequestUri.AbsolutePath.EndsWith(".zip",StringComparison.Ordinal)){Interlocked.Increment(ref requests);return gate.Task;}return Task.FromResult<System.Net.Http.HttpResponseMessage>(null);};
+                var settings=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion};
+                var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
+                try{
+                    var original=pet.Skin;var previous=Field("officialDownloads").GetValue(pet) as OfficialCompanionDownloads;if(previous!=null)previous.Dispose();Field("officialDownloads").SetValue(pet,downloads);
+                    pet.Show();Field("officialFirstFrameRendered").SetValue(pet,true);typeof(PetWindow).GetMethod("TryStartOfficialStartup",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+                    var deadline=DateTime.UtcNow.AddSeconds(20);while(requests==0&&DateTime.UtcNow<deadline)Pump();
+                    Check(requests==1&&ReferenceEquals(original,pet.Skin)&&pet.Skin.Bundle==bundle,"same-version partial renders before selected-only silent startup completion despite current app marker");
+                    var question=pet.QuestionController.AskAsync(new AgentQuestionRequest{SessionId="partial-busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
+                    gate.SetResult(OfficialCompanionFixture.Response(fixture.Files[OfficialCompanionFixture.PackageName("e-bao").Replace(OfficialCompanionFixture.Version,bundle.Version)]));
+                    deadline=DateTime.UtcNow.AddSeconds(30);while(Field("deferredOfficial").GetValue(pet)==null&&DateTime.UtcNow<deadline)Pump();
+                    Check(Field("deferredOfficial").GetValue(pet)!=null&&ReferenceEquals(original,pet.Skin),"same-version full completion defers commit while real business is busy");
+                    pet.QuestionController.CancelSession("partial-busy");typeof(PetWindow).GetMethod("TryApplyDeferredOfficial",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+                    Check(pet.Skin.Bundle==null&&pet.Skin.Manifest.PackVersion==bundle.Version&&pet.Holidays.Catalog.Outfits.Any(o=>o.CharacterId=="e-bao")&&pet.Settings.SelectedCompanionKey=="official:e-bao","safe completion atomically publishes same-version full generation and wardrobe");
+                    Check(requests==1&&fixture.Requests.Where(r=>r.EndsWith(".zip")).All(r=>r.Contains("Companion-e-bao-")),"startup never downloads an unselected companion");
+                }finally{Field("officialDownloads").SetValue(pet,null);Wait(CloseFixtureAsync(pet));}
+            }
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(root+"-offline",ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
+                fixture.Offline=true;var pet=new PetWindow(null,new PetSettings{OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false},new SettingsStore(Path.Combine(root+"-offline","settings.json")),null);
+                try{var original=pet.Skin;var previous=Field("officialDownloads").GetValue(pet) as OfficialCompanionDownloads;if(previous!=null)previous.Dispose();Field("officialDownloads").SetValue(pet,downloads);long token=downloads.BeginSelection();
+                    var refresh=(Task<bool>)typeof(PetWindow).GetMethod("RefreshOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{"e-bao",token,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached});Wait(refresh);
+                    Check(!refresh.Result&&ReferenceEquals(original,pet.Skin)&&pet.Skin.Bundle==bundle&&pet.Settings.SelectedCompanionKey=="official:e-bao","offline completion failure preserves usable defaults and identity");
+                }finally{Field("officialDownloads").SetValue(pet,null);Wait(CloseFixtureAsync(pet));}
+            }
+        }
+        static void ReviewFailurePaths()
+        {
+            var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"rv",Guid.NewGuid().ToString("N").Substring(0,8));PetWindow pet=null;
+            try{
+                using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(data,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
+                    fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",100,true);
+                    var install=service.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(install);
+                    var installed=install.Result.Installation;
+                    int repairCalls=0;bool offline=true;fixture.Intercept=(request,cancel)=>{if(request.RequestUri.AbsolutePath.EndsWith(".zip",StringComparison.Ordinal)){repairCalls++;if(offline)return Task.FromResult(OfficialCompanionFixture.Response(new byte[0],HttpStatusCode.NotFound));}return Task.FromResult<System.Net.Http.HttpResponseMessage>(null);};
+                    foreach(var path in new[]{"holidays/catalog.json","holidays/outfit.json"}){
+                        string file=Path.Combine(installed.RootDirectory,path.Replace('/',Path.DirectorySeparatorChar));if(!File.Exists(file))file=Directory.GetFiles(installed.HolidayRootDirectory,"outfit.json",SearchOption.AllDirectories).Single();
+                        var original=File.ReadAllBytes(file);var damaged=(byte[])original.Clone();damaged[0]^=1;File.WriteAllBytes(file,damaged);
+                        var settings=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
+                        pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);var oldService=Field("officialDownloads").GetValue(pet) as OfficialCompanionDownloads;if(oldService!=null)oldService.Dispose();Field("officialDownloads").SetValue(pet,service);Field("officialStartupStarted").SetValue(pet,true);
+                        var old=pet.Skin;var frame=((Image)pet.Content).Source;string persona=pet.Settings.SystemPrompt,key=pet.Settings.SelectedCompanionKey,id=pet.Settings.SkinId;pet.SaveSettings();
+                        var select=pet.RequestSkinAsync(pet.Catalog.FindOfficial("dafeiyu"),CompanionSelectionOrigin.StartupRestore,null);Wait(select);
+                        Check(!select.Result&&ReferenceEquals(pet.Skin,old)&&ReferenceEquals(((Image)pet.Content).Source,frame)&&pet.Settings.SystemPrompt==persona&&pet.Settings.SkinId==id&&pet.Settings.SelectedCompanionKey==key&&new SettingsStore(Path.Combine(data,"settings.json")).Load().SelectedCompanionKey==key,"corrupt wardrobe "+path+" keeps visual persona and saved identity coherent");
+                        File.WriteAllBytes(file,original);Field("officialDownloads").SetValue(pet,null);pet.Close();Pump();pet=null;
+                    }
+                    var cfg=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
+                    pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(data,"settings.json")),null);var unused=Field("officialDownloads").GetValue(pet) as OfficialCompanionDownloads;if(unused!=null)unused.Dispose();Field("officialDownloads").SetValue(pet,service);Field("officialStartupStarted").SetValue(pet,true);
+                    Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("dafeiyu"),CompanionSelectionOrigin.StartupRestore,null));
+                    var active=pet.Skin;Wait(service.ValidateSnapshotInBackgroundAsync(active.Snapshot));
+                    string cold=Path.Combine(active.Source,"cold.png");var coldBytes=File.ReadAllBytes(cold);coldBytes[0]^=1;File.WriteAllBytes(cold,coldBytes);
+                    int before=repairCalls;var currentFrame=((Image)pet.Content).Source;var motion=active.Manifest.Animations["running"];
+                    for(int n=0;n<8;n++)WpfPreparedCompanion.Ready(active,motion);
+                    var deadline=DateTime.UtcNow.AddSeconds(10);while(repairCalls==before&&DateTime.UtcNow<deadline)Pump();
+                    Check(repairCalls==before+1,"cold default corruption requests one silent repair after completed audit");
+                    var repairs=(System.Collections.IDictionary)Field("officialRepairs").GetValue(pet);deadline=DateTime.UtcNow.AddSeconds(15);while(repairs.Count!=0&&DateTime.UtcNow<deadline)Pump();
+                    for(int n=0;n<8;n++)WpfPreparedCompanion.Ready(active,motion);Pump();
+                    Check(repairCalls==before+1&&ReferenceEquals(pet.Skin,active)&&ReferenceEquals(((Image)pet.Content).Source,currentFrame),"offline lazy repair is throttled and retains working frame");
+                    ((System.Collections.IDictionary)Field("officialRepairAfter").GetValue(pet))[active.Snapshot.Generation]=DateTime.MinValue;offline=false;
+                    var busy=pet.QuestionController.AskAsync(new AgentQuestionRequest{SessionId="repair-busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
+                    WpfPreparedCompanion.Ready(active,motion);deadline=DateTime.UtcNow.AddSeconds(30);while((repairCalls<before+2||repairs.Count!=0)&&DateTime.UtcNow<deadline)Pump();
+                    var pending=Field("deferredOfficial").GetValue(pet);Check(pending!=null&&ReferenceEquals(pet.Skin,active),"successful repair remains queued while business is busy");
+                    var prepared=(SkinDefinition)pending.GetType().GetField("Skin",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pending);
+                    ((System.Collections.IDictionary)Field("officialRepairAfter").GetValue(pet))[active.Snapshot.Generation]=DateTime.MinValue;
+                    for(int n=0;n<8;n++)WpfPreparedCompanion.Ready(active,motion);Pump();
+                    Check(repairCalls==before+2&&ReferenceEquals(Field("deferredOfficial").GetValue(pet),pending)&&ReferenceEquals(pet.Skin,active),"pending successful repair suppresses another transfer after retry deadline expires");
+                    pet.QuestionController.CancelSession("repair-busy");typeof(PetWindow).GetMethod("TryApplyDeferredOfficial",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+                    deadline=DateTime.UtcNow.AddSeconds(10);while(ReferenceEquals(pet.Skin,active)&&DateTime.UtcNow<deadline)Pump();
+                    Check(ReferenceEquals(pet.Skin,prepared)&&pet.Settings.SelectedCompanionKey==active.PickerKey&&pet.CurrentCompanionSelection.Stage!="completed","safe idle applies the original successful pending repair without selection cue");
+                    Check(WpfPreparedCompanion.Load(pet.Skin,pet.Skin.Manifest.Animations["running"])!=null,"repaired cold default action decodes");
+                    Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null));int settled=repairCalls;
+                    WpfPreparedCompanion.Ready(active,motion);Pump();Check(pet.Skin.BuiltinCharacterId=="e-bao"&&repairCalls==settled,"late failure from superseded source cannot repair or reclaim user selection");
+                    Field("officialDownloads").SetValue(pet,null);pet.Close();Pump();pet=null;
+                }
+            }finally{if(pet!=null)pet.Close();app.Shutdown();}
         }
         static void JumpHold()
         {
@@ -110,7 +427,7 @@ namespace Dafeiyu.Tests
                 var settings=new PetSettings{SkinId="dafeiyu",SystemPrompt="保留原伙伴人格",PersonaProfileVersion=1,AutoUpdate=false,GreetingEnabled=false,Wander=false,FollowCursor=false,HideOnFullscreen=false,SaveChatHistory=false};
                 foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
                 pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);
-                Check(pet.Skin.BuiltinCharacterId=="e-bao"&&settings.PendingOfficialCompanionId=="dafeiyu","thin startup uses embedded Ebao and persists missing selected role");
+                Check(pet.Skin.BuiltinCharacterId=="e-bao"&&settings.PendingOfficialCompanionId==""&&settings.SelectedCompanionKey=="official:dafeiyu","thin startup preserves legacy selected role without pending network intent");
                 Check(settings.PersonaOverrides["dafeiyu"]=="保留原伙伴人格","startup fallback preserves previous persona before activation");
                 Check(pet.Catalog.Skins.Count(s=>s.IsPlaceholder)==4,"thin startup has exactly four download placeholders");
                 foreach(var skin in pet.Catalog.Skins)Check(SkinCatalog.GetAvatar(skin)!=null,"every thin official avatar decodes without default role artwork");
@@ -121,11 +438,11 @@ namespace Dafeiyu.Tests
                 Check(!pet.SelectSkin(pet.Catalog.FindOfficial("marfu")),"guide companion attempt is notice-only");
                 pet.DownloadAllOfficialAsync(guide).GetAwaiter().GetResult();
                 Check(settings.SkinId==before&&settings.SelectedCompanionKey==picker&&settings.PendingOfficialCompanionId==pending&&settings.SystemPrompt==prompt,"guide attempts preserve selection persona and pending restore");
-                Check(typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet)==null,"guide attempts never create a download service");
+                Check(pet.CurrentCompanionSelection==null&&!app.Windows.OfType<OfficialCompanionProgressWindow>().Any(),"guide attempts never start a selection or download UI");
                 Check(Walk(guide).OfType<Button>().Single(b=>b.Name=="GuideNext").IsEnabled,"notice-only companion lesson remains advanceable");
                 guide.Close();Pump();Check(pet.SelectSkin(pet.Skin),"explicit already-visible Ebao selection succeeds");
                 Check(settings.PendingOfficialCompanionId=="","explicit Ebao selection clears older automatic restore");
-                NativeSelectionRaces(pet);
+                NativeSelectionRaces(pet);BulkRecoveryReaderLifetime();
                 if(legacyAssets!=null)LegacyCacheWithoutEmbeddedPngs(legacyAssets.Substring("--legacy-assets=".Length));
             }finally {
                 if(pet!=null){pet.Close();Pump();}foreach(var window in app.Windows.Cast<Window>().ToArray())window.Close();Pump();app.Shutdown();
@@ -139,6 +456,35 @@ namespace Dafeiyu.Tests
         static void Wait(Task task)
         {var end=DateTime.UtcNow.AddSeconds(60);while(!task.IsCompleted&&DateTime.UtcNow<end)Pump();Check(task.IsCompleted,"controlled asynchronous operation completes within bounded test time");task.GetAwaiter().GetResult();}
         static FieldInfo Field(string name){return typeof(PetWindow).GetField(name,BindingFlags.NonPublic|BindingFlags.Instance);}
+        static void BulkRecoveryReaderLifetime()
+        {
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var service=new OfficialCompanionDownloads(fixture.Root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0),OfficialCompanionReadMode.Snapshots)){
+                fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",100);
+                var install=service.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Force,null,CancellationToken.None);Wait(install);Wait(service.HistoryMaintenance);
+                var original=install.Result.Installation;
+                var pet=new PetWindow(null,new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false},new SettingsStore(Path.Combine(fixture.Root,"settings.json")),null);
+                var native=(WpfOfficialNativeValidator)Field("officialNative").GetValue(pet);
+                var gate=(SemaphoreSlim)typeof(WpfOfficialNativeValidator).GetField("gate",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(native);
+                var waiters=typeof(SemaphoreSlim).GetField("m_asyncHead",BindingFlags.NonPublic|BindingFlags.Instance);
+                Task recovery=null;bool held=false;
+                try{
+                    var previous=(OfficialCompanionDownloads)Field("officialDownloads").GetValue(pet);if(previous!=null)previous.Dispose();Field("officialDownloads").SetValue(pet,service);Field("officialStartupStarted").SetValue(pet,true);
+                    string selected=pet.Settings.SelectedCompanionKey;gate.Wait();held=true;
+                    recovery=(Task)typeof(PetWindow).GetMethod("RefreshBulkInstallations",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(pet,new object[]{pet.Skin,0L,null});
+                    var until=DateTime.UtcNow.AddSeconds(10);while(waiters.GetValue(gate)==null&&!recovery.IsCompleted&&DateTime.UtcNow<until)Pump();
+                    Check(waiters.GetValue(gate)!=null&&!recovery.IsCompleted,"actual WPF bulk recovery is queued at native validation semaphore");
+                    fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",112);
+                    var replace=service.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Force,null,CancellationToken.None,true,true);Wait(replace);Wait(service.ScheduleMaintenance());
+                    Check(replace.Result.Installation.RootDirectory!=original.RootDirectory&&File.Exists(original.PetManifestPath),"WPF bulk native reader keeps exact old root through concurrent publication and cleanup");
+                    gate.Release();held=false;Wait(recovery);Wait(service.HistoryMaintenance);
+                    var validated=(System.Collections.Generic.HashSet<string>)typeof(WpfOfficialNativeValidator).GetField("validated",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(native);
+                    Check(validated.Contains(original.Asset.Id+":"+original.Asset.Sha256),"WPF bulk recovery finishes actual native decoding of its captured generation");
+                    Check(!Directory.Exists(original.RootDirectory)&&Directory.Exists(replace.Result.Installation.RootDirectory)&&pet.Settings.SelectedCompanionKey==selected,"WPF bulk reader release reclaims old root without changing selected role");
+                }finally{if(held)gate.Release();if(recovery!=null)Wait(recovery);pet.Close();Pump();}
+            }
+        }
         static void NativeSelectionRaces(PetWindow pet)
         {
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()) {
@@ -154,9 +500,10 @@ namespace Dafeiyu.Tests
                         return null;
                     };
                     var selection=pet.RequestSkinAsync(pet.Catalog.FindOfficial("dafeiyu"),CompanionSelectionOrigin.StartupRestore,null);Wait(started.Task);
-                    Check(pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Settings.PendingOfficialCompanionId=="dafeiyu","missing request retains old visible source while downloading");
+                    Check(pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Settings.PendingOfficialCompanionId==""&&pet.CurrentCompanionSelection.PickerKey=="official:dafeiyu","missing request retains old visible source with transient download state");
+                    var shared=service.UpdateInBackgroundAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),CancellationToken.None);
                     pet.Catalog.Remove(pet.Catalog.FindOfficial("dafeiyu"));Check(pet.Settings.PendingOfficialCompanionId==""&&!pet.Catalog.Skins.Any(s=>s.BuiltinCharacterId=="dafeiyu"),"hiding pending noncurrent role invalidates restore intent without cancelling shared installation");
-                    Check(pet.SelectSkin(pet.Skin),"already-visible Ebao supersedes in-flight requested role");hold=false;release.TrySetResult(true);Wait(selection);
+                    Check(pet.SelectSkin(pet.Skin),"already-visible Ebao supersedes in-flight requested role");hold=false;release.TrySetResult(true);Wait(selection);Wait(shared);
                     Check(service.Installed("dafeiyu")!=null&&pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Settings.PendingOfficialCompanionId=="","late completed package installs without taking over latest explicit choice");
                     Check(!pet.Catalog.Skins.Any(s=>s.BuiltinCharacterId=="dafeiyu")&&new SettingsStore(Path.Combine(pet.Store.DirectoryPath,"settings.json")).Load().PendingOfficialCompanionId=="","late hidden-role completion cannot unhide or resurrect pending selection after restart");
                     pet.Catalog.RestoreRemoved();pet.Catalog.PreserveActive(pet.Skin);
@@ -182,7 +529,7 @@ namespace Dafeiyu.Tests
                     var shown=(MotionClip)Field("shownMotion").GetValue(pet);int sample=(int)Field("shownSample").GetValue(pet);
                     Check(shown!=null&&shown.AlphaAt(sample,11,0)>16&&shown.AlphaAt(sample,0,0)==0,"source refresh publishes new frame and matching hit mask rather than stale same-persona cache");
                     Check(pet.Holidays.Catalog.Find("dafeiyu","halloween-2026").SourceKey!=oldOutfit.SourceKey,"same outfit version uses refreshed immutable source identity");
-                    var delayed=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{oldInstallation,false});Wait(delayed);
+                    var delayed=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic,null,new[]{typeof(OfficialCompanionInstallation),typeof(bool)},null).Invoke(pet,new object[]{oldInstallation,false});Wait(delayed);
                     Check(delayed.Result.Source==pet.Skin.Source,"delayed older background result cannot replace newer bulk source cache for unchanged selection token");
                     var cache=(System.Collections.IDictionary)Field("officialCatalogs").GetValue(pet);Check(cache.Count<=6,"catalog cache bounds retired sources across updates");
                     Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null));
@@ -208,18 +555,48 @@ namespace Dafeiyu.Tests
                     CompanionPackStorage.SetHidden(pet.Store.DirectoryPath,"official:e-bao",true);Check(new SkinCatalog(pet.Store.DirectoryPath).Skins.Any(s=>s.BuiltinCharacterId=="e-bao"),"persisted Ebao hidden flag cannot remove offline fallback");CompanionPackStorage.SetHidden(pet.Store.DirectoryPath,"official:e-bao",false);
                     var fallback=pet.Catalog.EmbeddedFallback();Wait(pet.RequestSkinAsync(fallback,CompanionSelectionOrigin.StartupRestore,null));Check(pet.Skin.Source==eSource&&!pet.Skin.Embedded,"cached embedded Ebao option prefers receipt-verified installed source without metadata delay");
                     foreach(var window in Application.Current.Windows.OfType<OfficialCompanionProgressWindow>().ToArray())window.Close();
+                    StartupFeedbackRace(pet);
                 }
                 Field("officialDownloads").SetValue(pet,null);
             }
         }
-        internal static byte[] NativePackage(string id,byte color)
+        static void StartupFeedbackRace(PetWindow pet)
+        {
+            var prepare=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic,null,new[]{typeof(string),typeof(CancellationToken)},null).Invoke(pet,new object[]{"dafeiyu",CancellationToken.None});Wait(prepare);
+            var target=prepare.Result;var original=pet.Skin;var history=pet.Conversation.History;
+            Check(target.Snapshot!=null && target.PreparedOfficialAtlas!=null && target.PickerKey!=original.PickerKey,"startup race uses a real prepared verified source distinct from the displayed fallback");
+            // An upgrade can retain the desired role key while displaying fallback.
+            pet.Settings.SelectedCompanionKey=target.PickerKey;pet.Settings.PendingOfficialCompanionId="";pet.Store.Save(pet.Settings);
+            string persona=pet.Settings.SkinId,prompt=pet.Settings.SystemPrompt;
+            string settingsPath=Path.Combine(pet.Store.DirectoryPath,"settings.json");var settingsBytes=File.ReadAllBytes(settingsPath);
+            var deferred=Field("deferredOfficial").GetValue(pet);Field("completionUntil").SetValue(pet,0d);
+            var snapshotGate=typeof(OfficialCompanionSnapshot).GetField("gate",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(target.Snapshot);
+            Task<bool> restore=null;
+            Monitor.Enter(snapshotGate);
+            try {
+                restore=pet.RequestSkinAsync(target,CompanionSelectionOrigin.StartupRestore,null);
+                Check(!restore.IsCompleted && pet.CurrentCompanionSelection.Stage=="requested" && (int)Field("officialPreparationReaders").GetValue(pet)>0,"startup restore is awaiting real asynchronous verified-byte preparation before feedback begins");
+                // Hold the existing consumed-byte read gate, rather than sleeping
+                // or bypassing integrity/decode work to manufacture the race.
+                Field("completionUntil").SetValue(pet,Double.MaxValue);
+            }finally{Monitor.Exit(snapshotGate);}
+            try {
+                Wait(restore);
+                Check(!restore.Result && ReferenceEquals(pet.Skin,original) && pet.CurrentCompanionSelection.Stage=="reselect-required","startup restore cannot commit feedback that began during preparation");
+                Check(pet.Settings.SelectedCompanionKey==target.PickerKey && pet.Settings.SkinId==persona && pet.Settings.SystemPrompt==prompt && ReferenceEquals(pet.Conversation.History,history) && File.ReadAllBytes(settingsPath).SequenceEqual(settingsBytes),"refused automatic restore preserves selected role key, persona, history and persisted settings");
+                Check(ReferenceEquals(Field("deferredOfficial").GetValue(pet),deferred),"refused startup restore does not silently queue another automatic selection");
+                var explicitSelection=pet.RequestSkinAsync(target,CompanionSelectionOrigin.Settings,null);Wait(explicitSelection);
+                Check(explicitSelection.Result && pet.Skin.PickerKey==target.PickerKey,"explicit user selection still commits the same prepared source during completed feedback");
+            }finally{Field("completionUntil").SetValue(pet,0d);}
+        }
+        internal static byte[] NativePackage(string id,byte color,bool coldAction=false,string version=null)
         {
             return OfficialCompanionFixture.Package(id,files=>{
                 foreach(string path in files.Keys.Where(k=>k.EndsWith(".png",StringComparison.Ordinal)).ToArray()) {
                     int columns=path.EndsWith("gaze.png",StringComparison.Ordinal)?4:path.EndsWith("preview.png",StringComparison.Ordinal)?1:8;
                     files[path]=NativePng(columns,columns==4?4:1,columns==4?16:columns,color);
                 }
-                var manifest=OfficialJson.Object(OfficialJson.Parse(files["pet.json"],65536));manifest["avatar"]="avatar.png";files["pet.json"]=OfficialCompanionFixture.Json(manifest);
+                var manifest=OfficialJson.Object(OfficialJson.Parse(files["pet.json"],65536));if(version!=null){manifest["pack_version"]=version;var identity=OfficialJson.Object(OfficialJson.Parse(files["companions.json"],65536));identity["version"]=version;files["companions.json"]=OfficialCompanionFixture.Json(identity);}manifest["avatar"]="avatar.png";if(coldAction){var running=OfficialJson.Object(OfficialJson.Object(manifest["animations"])["running"]);files["cold.png"]=files[(string)running["file"]];running["file"]="cold.png";}files["pet.json"]=OfficialCompanionFixture.Json(manifest);
                 var pixels=new byte[64*64*4];pixels[0]=color;pixels[3]=255;var image=BitmapSource.Create(64,64,96,96,PixelFormats.Bgra32,null,pixels,64*4);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));using(var output=new MemoryStream()){encoder.Save(output);files["avatar.png"]=output.ToArray();}
             });
         }

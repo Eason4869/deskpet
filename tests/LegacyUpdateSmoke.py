@@ -7,12 +7,19 @@ import uuid
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--worker', type=Path, required=True)
+parser.add_argument('--published-app', type=Path, help='Genuine published v1.0.3 app; exercises its client and serialized helper handoff')
 parser.add_argument('--package', type=Path, required=True)
 parser.add_argument('--work-directory', type=Path, help='Isolated test root; avoids nested checkout MAX_PATH limits')
 options = parser.parse_args()
 work = options.work_directory.resolve() if options.work_directory else Path(__file__).resolve().parents[1] / 'work'
 root = work / ('update-' + uuid.uuid4().hex[:12])
 root.mkdir(parents=True)
+if options.published_app:
+    compiler = Path(os.environ['WINDIR']) / 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+    runner = root / 'PublishedHandoff.exe'
+    subprocess.run([str(compiler), '/nologo', '/codepage:65001', '/reference:System.IO.Compression.dll', '/reference:System.Net.Http.dll', '/reference:System.Web.Extensions.dll', '/out:' + str(runner), str(Path(__file__).with_name('LegacyPublishedUpdateSmoke.cs'))], check=True, timeout=30)
+    subprocess.run([str(runner), str(options.published_app.resolve()), str(options.worker.resolve()), str(options.package.resolve())], check=True, timeout=150)
+    raise SystemExit(0)
 source = root / 'ApplyRelease.cs'
 source.write_text(r'''
 using System;

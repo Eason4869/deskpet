@@ -21,9 +21,10 @@ AppSupportURL={#RepositoryUrl}/issues
 AppUpdatesURL={#RepositoryUrl}/releases/latest
 DefaultDirName={localappdata}\Programs\EbaoDeskPet
 UsePreviousAppDir=yes
+DisableDirPage=no
 DefaultGroupName=桌面伙伴
 UsePreviousGroup=no
-DisableProgramGroupPage=auto
+DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible and not arm64
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -43,7 +44,8 @@ VersionInfoCompany=彧晟Eason
 WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes
-DisableWelcomePage=no
+DisableWelcomePage=yes
+DisableReadyPage=yes
 Uninstallable=yes
 
 [Languages]
@@ -54,6 +56,11 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 #include RuntimeFiles
+; InitializeWizard extracts these before the window is shown. Keep their
+; storage separate from the large runtime payload preceding them. PNG is already
+; compressed: store these small UI assets directly for immediate random access.
+Source: "assets\*.png"; Flags: dontcopy solidbreak nocompression
+Source: "..\assets\deskpet-logo.png"; Flags: dontcopy solidbreak nocompression
 
 [InstallDelete]
 Type: files; Name: "{app}\大肥鱼桌宠.exe"
@@ -62,10 +69,7 @@ Type: files; Name: "{app}\大肥鱼桌宠.exe.config"
 [Icons]
 Name: "{group}\桌面伙伴"; Filename: "{app}\桌面伙伴.exe"; WorkingDir: "{app}"
 Name: "{group}\卸载桌面伙伴"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\桌面伙伴"; Filename: "{app}\桌面伙伴.exe"; WorkingDir: "{app}"; Tasks: desktopicon
-
-[Run]
-Filename: "{app}\桌面伙伴.exe"; Description: "启动桌面伙伴"; Flags: nowait postinstall skipifsilent
+Name: "{autodesktop}\桌面伙伴"; Filename: "{app}\桌面伙伴.exe"; WorkingDir: "{app}"; Tasks: desktopicon; Check: CreateSilentDesktopIcon; Flags: uninsneveruninstall
 
 [Code]
 var
@@ -74,20 +78,21 @@ var
   RetiredSuccess: Boolean;
 
 #include "VersionGuard.iss"
+#include "UnicodeShortcut.iss"
+#include "FinishOptions.iss"
+#include "InstallerUi.iss"
 #include "RetireRuntime.iss"
 
-procedure RemoveLegacyShortcut(Path, Target: String);
-var
-  Shell, Shortcut: Variant;
+procedure InitializeWizard;
 begin
-  if not FileExists(Path) then Exit;
-  try
-    Shell := CreateOleObject('WScript.Shell');
-    Shortcut := Shell.CreateShortcut(Path);
-    if CompareText(Shortcut.TargetPath, Target) = 0 then DeleteFile(Path);
-  except
-    { A user-modified or unreadable shortcut is left untouched. }
-  end;
+  InitializeInstallerUi;
+end;
+
+procedure RemoveLegacyShortcut(Path, Target: String);
+var Shortcut: TUnicodeShortcut;
+begin
+  if ReadUnicodeShortcut(Path, Shortcut) then
+    if CompareText(Shortcut.Target, Target) = 0 then DeleteFile(Path);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -95,6 +100,7 @@ var
   RegisteredCommand, LegacyCommand, NewCommand: String;
 begin
   if CurStep = ssInstall then begin
+    WasInstalled := FileExists(ExpandConstant('{app}\桌面伙伴.exe')) or FileExists(ExpandConstant('{app}\大肥鱼桌宠.exe'));
     RetireKnownFiles;
     RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{3B63C162-076E-4B2F-BDCC-2572664875A9}_is1', 'Inno Setup: Icon Group', PreviousIconGroup);
   end;
@@ -129,8 +135,10 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   RegisteredCommand, ExpectedCommand: String;
 begin
+  if CurUninstallStep = usPostUninstall then RestoreCustomDesktopLink;
   if CurUninstallStep = usUninstall then
   begin
+    if OwnedDesktopLink then DeleteFile(DesktopLink);
     ExpectedCommand := '"' + ExpandConstant('{app}\桌面伙伴.exe') + '" --startup';
     if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'DafeiyuDeskPet', RegisteredCommand) then
       if CompareText(RegisteredCommand, ExpectedCommand) = 0 then

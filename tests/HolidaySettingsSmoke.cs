@@ -45,7 +45,10 @@ namespace Dafeiyu.Tests
                 string data=Path.Combine(folder,"data-"+Guid.NewGuid().ToString("N"));pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);
                 // This artificial wardrobe owns its catalog; official startup/hot reload
                 // has separate coverage and must not replace its e-bao definitions.
-                pet.Skin.FixtureEmbedded=true;pet.Show();Pump();
+                pet.Skin.FixtureEmbedded=true;
+                typeof(PetWindow).GetField("officialStartupStarted",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,true);
+                typeof(PetWindow).GetField("officialFirstFrameRendered",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,true);
+                pet.Show();Pump();
                 Check(typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet)==null,"artificial wardrobe startup does not acquire official companion packages");
                 var definitions=new[]{Outfit("e-bao","绯夜小伯爵"),Outfit("dafeiyu","南瓜海盗船长")};var state=new HolidayState();var store=new HolidayStateStore(Path.Combine(data,"holiday-state.json"));var controller=new HolidayController(new HolidayCalendar(),new HolidayCatalog(definitions),state,store.Save);
                 byte[] png=Sheet();pet.HolidayLocalTime=()=>new DateTime(2026,11,2,12,0,0);pet.InitializeHoliday(controller,clip=>new MemoryStream(png,false));

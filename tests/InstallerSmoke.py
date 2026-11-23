@@ -12,6 +12,7 @@ import sys
 import time
 import uuid
 import winreg
+from WindowsShortcut import create_shortcut
 
 PROJECT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(PROJECT))
@@ -36,13 +37,7 @@ legacy_shortcut=None
 foreign_shortcut=None
 
 def shortcut(path,target):
-    # Pass paths through environment variables; never interpolate them into shell code.
-    command='$shell=New-Object -ComObject WScript.Shell; $link=$shell.CreateShortcut($env:DESKPET_TEST_SHORTCUT); $link.TargetPath=$env:DESKPET_TEST_TARGET; $link.Save()'
-    startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
-    result=subprocess.run(['powershell.exe','-NoProfile','-Command',command],
-        env=dict(os.environ,DESKPET_TEST_SHORTCUT=str(path),DESKPET_TEST_TARGET=str(target)),
-        startupinfo=startup,capture_output=True,timeout=10)
-    if result.returncode:raise AssertionError('could not create owned shortcut fixture')
+    create_shortcut(path,target)
 
 def check(value,label):
     global passed

@@ -99,6 +99,7 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
         selected.Protocol = protocol.SelectedItem as string ?? "openai";
         selected.TimeoutSeconds = (int)(timeout.Value ?? 300); selected.Size = ImageWorkspacePage.Parameter(size); selected.Quality = ImageWorkspacePage.Parameter(quality); selected.Normalize();
     }
+    internal bool HasUnsavedChanges {get{Capture();return System.Text.Json.JsonSerializer.Serialize(items)!=System.Text.Json.JsonSerializer.Serialize(owner.Settings.ImageProviders);}}
     private void Save()
     {
         try { Capture(); owner.Settings.ImageProviders = items.Select(p => p.Copy()).ToList(); owner.Settings.ActiveImageProviderId = selected?.Id ?? ""; owner.Save(); LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("imageProviderEditor.save.notice"))); Reload(selected?.Id); }

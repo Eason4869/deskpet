@@ -15,12 +15,12 @@ namespace Dafeiyu.Tests
         {
             using(var root=new AgentJobTestSupport.TemporaryDirectory())
             {
-                var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,ReadReplies=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,OnboardingState="completed"};
-                foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
-                pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root.Path,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();pet.SetPaused(true);
+                pet=AgentJobExitHost.CreateFixturePet(root.Path);pet.Show();pet.SetPaused(true);
                 Exception failure=null;
                 try
                 {
+                    await AgentJobExitHost.VerifyFixtureSourceAsync(pet);
+                    Check(true,"synthetic WPF exit host starts no official work after actual frame and startup callbacks");
                     var property=typeof(PetWindow).GetProperty("AgentJobs",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public);
                     Check(property!=null,"WPF application exposes its owned background job service");
                     var service=(AgentJobApplicationService)property.GetValue(pet,null);

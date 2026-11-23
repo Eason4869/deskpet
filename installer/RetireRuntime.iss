@@ -35,6 +35,7 @@ end;
 procedure DeinitializeSetup;
 var I: Integer; Path, Backup: String;
 begin
+  StopInstallerUi;
   if RetiredPaths = nil then Exit;
   if not RetiredSuccess then
     for I := 0 to RetiredPaths.Count-1 do begin

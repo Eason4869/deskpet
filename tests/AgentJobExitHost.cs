@@ -43,11 +43,33 @@ namespace Dafeiyu.Tests
             var watch=Stopwatch.StartNew();
             while(!condition()){if(watch.ElapsedMilliseconds>milliseconds)throw new TimeoutException(description);await Task.Delay(25);}
         }
-        static async Task RunAsync(string mode,string root)
+        internal static PetWindow CreateFixturePet(string root)
         {
             var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,ReadReplies=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,OnboardingState="completed"};
             foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
-            var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();pet.SetPaused(true);
+            var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
+            pet.Skin.FixtureEmbedded=true;
+            // This host owns only its synthetic local companion and agent tree.
+            // Match the established catalog-fixture binding before Show: neither
+            // first-frame maintenance nor selected-role upgrade belongs to it.
+            foreach(string field in new[]{"officialStartupStarted","officialFirstFrameRendered"})
+                typeof(PetWindow).GetField(field,BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,true);
+            return pet;
+        }
+        internal static async Task VerifyFixtureSourceAsync(PetWindow pet)
+        {
+            // Exercise both production callbacks, not a timing-dependent network
+            // outcome. The queued maintenance callback must also have drained.
+            foreach(string method in new[]{"CompanionFirstFrameRendered","TryStartOfficialStartup"})
+                typeof(PetWindow).GetMethod(method,BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+            await pet.Dispatcher.InvokeAsync(new Action(()=>{}),System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            if(typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet)!=null)
+                throw new Exception("Synthetic exit fixture initiated unrelated official companion work");
+        }
+        static async Task RunAsync(string mode,string root)
+        {
+            var pet=CreateFixturePet(root);pet.Show();pet.SetPaused(true);
+            await VerifyFixtureSourceAsync(pet);
             var field=typeof(PetWindow).GetField("agentJobServices",BindingFlags.Instance|BindingFlags.NonPublic);
             var services=(AgentJobApplicationService)field.GetValue(pet);
             if(mode=="held")
@@ -58,11 +80,15 @@ namespace Dafeiyu.Tests
             typeof(PetWindow).GetField("AgentJobExitNotice",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,(Action<string>)(message=>File.WriteAllText(Path.Combine(root,"exit.held"),message)));
             if(!await services.InitializeAsync())throw new Exception("Host lease initialization failed");
             string pids=Path.Combine(root,"owned.pids");
-            string command="$child=Start-Process -FilePath "+Quote(AgentCommandExecutor.PowerShellPath())+" -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 120' -WindowStyle Hidden -PassThru; [IO.File]::WriteAllText("+Quote(pids)+",([string]$PID+[Environment]::NewLine+[string]$child.Id)); Start-Sleep -Seconds 120";
+            string pendingPids=pids+".tmp";
+            string command="$child=Start-Process -FilePath "+Quote(AgentCommandExecutor.PowerShellPath())+" -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 120' -WindowStyle Hidden -PassThru; "+
+                "[IO.File]::WriteAllText("+Quote(pendingPids)+",([string]$PID+[Environment]::NewLine+[string]$child.Id)); "+
+                "[IO.File]::Move("+Quote(pendingPids)+","+Quote(pids)+"); Start-Sleep -Seconds 120";
+            var spec=new AgentJobSpec(command,"Independent job exit fixture",root,1800);
             var owner=new AgentJobOwner("host-project","host-conversation","primary");
-            var invocation=new AgentToolInvocation("start_job",new Dictionary<string,object>{{"command",command},{"title",command},{"working_directory",root},{"timeout_seconds",1800}},new AgentToolExecutionContext{ProjectId=owner.ProjectId,AgentId="primary",TaskId="host-task",CallId="host-start"});
+            var invocation=new AgentToolInvocation("start_job",new Dictionary<string,object>{{"command",spec.Command},{"title",spec.Title},{"working_directory",spec.WorkingDirectory},{"timeout_seconds",spec.TimeoutSeconds}},new AgentToolExecutionContext{ProjectId=owner.ProjectId,AgentId="primary",TaskId="host-task",CallId="host-start"});
             var context=new AgentJobStartContext(owner,invocation,new Approval(),()=>new AgentJobPolicySnapshot(root,"fixture-directory",1,1800,true,false,false,AgentApprovalMode.Full,null),()=>new Lease(),()=>{});
-            var job=await services.Manager.StartAsync(context,new AgentJobSpec(command,null,root,1800),CancellationToken.None);
+            var job=await services.Manager.StartAsync(context,spec,CancellationToken.None);
             await WaitAsync(()=>File.Exists(pids)&&File.ReadAllLines(pids).Length==2,5000,"Native host tree readiness");
             File.WriteAllText(Path.Combine(root,"job.id"),job.Id);
             File.WriteAllText(Path.Combine(root,"ready.tmp"),File.ReadAllText(pids));File.Move(Path.Combine(root,"ready.tmp"),Path.Combine(root,"host.ready"));

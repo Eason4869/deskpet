@@ -21,7 +21,7 @@ internal sealed class CacheMaintenanceWindow:Window
         service=new CacheMaintenanceService(dataRoot);LocalizedUi.Set(this,"Title",()=>TextResources.Get("cache.title"));Width=520;Height=460;SizeToContent=SizeToContent.Height;MinWidth=380;MinHeight=260;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         summary=SettingsVisual.Text("",30);summary.LineHeight=36;summary.FontWeight=Avalonia.Media.FontWeight.SemiBold;summary.Name="CacheSummary";status=SettingsVisual.Text("",12);status.Name="CacheStatus";status.LineHeight=18;status.MinHeight=18;status.Margin=new Thickness(0,9,0,0);
         updates=SettingsVisual.Text("",13);updates.Name="CacheUpdates";downloads=SettingsVisual.Text("",13);downloads.Name="CacheDownloads";versions=SettingsVisual.Text("",13);versions.Name="CachePackVersions";protectedCount=SettingsVisual.Text("",12,true);protectedCount.Name="CacheProtectedCount";protectedCount.LineHeight=18;
-        var note=SettingsVisual.Text(()=>TextResources.Get("cache.preservedPackVersions"),12,true);note.Name="CachePreservedData";note.LineHeight=19;note.Margin=new Thickness(0,13,0,0);
+        var note=SettingsVisual.Text(()=>TextResources.Get("cache.preservedLatest"),12,true);note.Name="CachePreservedData";note.LineHeight=19;note.Margin=new Thickness(0,13,0,0);
         clean=LocalizedUi.Button(()=>(TextResources.Get("cache.clean")),()=>PendingOperation=CleanAsync());clean.Name="CleanCache";
         rescan=LocalizedUi.Button(()=>(TextResources.Get("cache.rescan")),()=>PendingOperation=RefreshAsync());rescan.Name="RescanCache";
         var cancel=LocalizedUi.Button(()=>(TextResources.Get("common.cancel")),Close);cancel.Name="CancelCache";

@@ -4,9 +4,9 @@
 
 A desktop companion for interactions, conversation and project work.
 
-**1.0.3 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
+**1.0.5 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Version 1.0.3 adds key visibility controls, improves Windows image-result cards, and fixes shared-key provider masking and Windows accessible names. See the [changelog](CHANGELOG.en.md).
+Version 1.0.5 adds local attachment reading with selectable ranges for legacy Word and Excel files, modern Office documents, PDFs, archives, SQLite, and common media formats. It also adds per-model removal in Windows and improves installer startup and companion switching. See the [changelog](CHANGELOG.en.md).
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
@@ -16,7 +16,7 @@ Version 1.0.3 adds key visibility controls, improves Windows image-result cards,
 
 | Platform | Requirements | Download and scope |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.3 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) and choose the `DeskPet-Windows-Setup-1.0.3.exe` installer or `DeskPet-Windows-1.0.3.zip` portable package. This page primarily describes Windows. |
+| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.5 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) and choose the `DeskPet-Windows-Setup-1.0.5.exe` installer or `DeskPet-Windows-1.0.5.zip` portable package. This page primarily describes Windows. |
 | **macOS preview** | macOS 14+, Apple Silicon or Intel | Choose the matching `preview` DMG / ZIP on the same release page. The Mac app shares part of the core and has its own interface. Windows file-Agent, tool-tab and terminal support does not imply Mac support. |
 
 The release also provides source, companion packs, an authoring template and SHA256 checksums; consult its actual asset list. Windows packages are currently not code-signed. Mac previews are ad-hoc signed, without Developer ID signing or notarization. Download from [Eason4869/deskpet](https://github.com/Eason4869/deskpet).
@@ -26,7 +26,7 @@ The Windows installer installs for the current user, normally without administra
 ## Quick start
 
 1. **Try an interaction.** Drag the companion, click its head for a pat, or middle-click to open the action palette. These interactions require no model configuration.
-2. **Choose a companion.** A fresh installation starts with Ebao. Other official companions download their complete packs when first selected. Settings also offers **Download/update all**.
+2. **Choose a companion.** A fresh installation starts with Ebao. Ebao’s regular actions work offline; remaining holiday outfits prepare silently when selected, while owned outfits stay usable. Other official companions download their complete packs when first selected. Settings also offers **Download/update all**.
 3. **Configure a text model.** Open **Settings → Setup guide**, or **Model configuration → Text models**. Add a provider, enter its URL, protocol and API key, save and fetch models, then add the models you need individually. You can also enter a complete model ID manually.
 4. **Test, then chat.** Explicitly run a connection test. Double-click the companion for quick chat; right-click it or double-click the tray icon to open the full window. Defaults: **Enter to send, Shift + Enter for a new line**.
 5. **Switch to Work for files.** Add a project and bind its folder, select a model with native tool calling, review permissions and send a task. Use plan mode to inspect a project first, or stay in ordinary chat.
@@ -154,6 +154,7 @@ Source layout: `src/` contains Windows WPF and shared business logic; `desktop/`
 From PowerShell at the repository root, build Windows with an explicit output directory inside the repository:
 
 ```powershell
+python -m pip install Pillow
 .\Build.ps1 -Target App -OutputDirectory "$PWD\work\local-app"
 ```
 
@@ -164,3 +165,5 @@ Windows uses the system .NET Framework compiler and System.Speech. Docker is not
 Author: **彧晟Eason**. Artwork, platform identifiers, fonts and dependencies have their own sources and licenses. See [artwork and platform sources](docs/sources.md) and [third-party notices](docs/third-party-notices.md). Provider identifiers do not imply a partnership or endorsement.
 
 The repository currently has no standalone LICENSE covering the entire project. Publicly viewable source does not make third-party component licenses apply to the whole project. Confirm authorization with the author before redistribution or commercial use.
+
+Production builds validate the complete pinned Ebao source, then embed only its 33 regular-action, gaze, avatar and metadata entries. The complete ZIP remains a build proof and is never included in the app or runtime package. Python and Pillow prepare and validate it before WPF compilation; runtime reads only demanded ZIP entries. Before an Avalonia production build, run `python tools/prepare_bundled_ebao.py` on Windows. On macOS, pass `--package` with the matching complete Windows-authored Ebao source ZIP (not the derived default ZIP); see [macOS packaging](installer/macos/README.md).

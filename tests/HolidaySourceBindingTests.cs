@@ -31,6 +31,7 @@ namespace Dafeiyu.Tests
             try {
                 Directory.CreateDirectory(root);
                 string oldRoot=Fixture(root,"old","e-bao",41),newRoot=Fixture(root,"new","e-bao",93),otherRoot=Fixture(root,"other","marfu",121);
+                MetadataOnlyCatalog(oldRoot);
                 BoundPixelsAndRepairGeneration(oldRoot,newRoot);
                 UnrelatedReplacementPreservesPlayback(oldRoot,otherRoot);
                 ChangedSourceInvalidatesTickets(oldRoot,newRoot);
@@ -43,6 +44,16 @@ namespace Dafeiyu.Tests
                 string resolved=Path.GetFullPath(root),temporary=Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;
                 if(resolved.StartsWith(temporary,StringComparison.OrdinalIgnoreCase) && Path.GetFileName(resolved).StartsWith("holiday-source-",StringComparison.Ordinal) && Directory.Exists(resolved))Directory.Delete(resolved,true);
             }
+        }
+        static void MetadataOnlyCatalog(string root)
+        {
+            var reads=new List<string>();
+            var catalog=new HolidayCatalog(path=>{reads.Add(path);return File.OpenRead(Path.Combine(root,path));},"receipt-generation",false);
+            Check(catalog.Outfits.Count==1 && catalog.Outfits[0].Ready,"metadata-only catalog retains complete outfit metadata");
+            Check(reads.All(path=>path.EndsWith(".json")),"local metadata catalog never opens costume PNGs");
+            var clip=catalog.Outfits[0].FindClip("idle","default");
+            Check(clip.SourceKey=="receipt-generation","metadata catalog binds stable receipt generation");
+            Check(Read(clip).SequenceEqual(File.ReadAllBytes(Path.Combine(root,clip.Path))),"lazy clip reads the captured byte opener");
         }
         static void BoundPixelsAndRepairGeneration(string oldRoot,string newRoot)
         {

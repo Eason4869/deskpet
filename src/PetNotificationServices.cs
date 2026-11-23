@@ -9,19 +9,33 @@ namespace Dafeiyu
     public sealed partial class PetWindow
     {
         NotificationSoundPlayer notificationSounds;
-        bool notificationAudioReady;
+        bool notificationAudioReady,operationLaunchObserved;
+        readonly CompanionOperationGestures operationGestures=new CompanionOperationGestures();
         TrayNotificationWindow trayNotification;
         readonly ConditionalWeakTable<ConversationSession,object> notificationSessions=new ConditionalWeakTable<ConversationSession,object>();
 
         internal void EnableNotificationAudio(){notificationAudioReady=true;}
         internal void StopNotificationSounds(){if(notificationSounds!=null)notificationSounds.Stop();}
-        void RefreshNotificationSounds(){if(Settings.QuietMode||!Settings.NotificationSoundsEnabled||Settings.Volume<=0||ProactiveGreetingSpeechActive||LiveActive||DictationActive||ConversationSessions.Any(s=>s.Stage==ConversationStage.Speaking))StopNotificationSounds();}
+        internal void RefreshCompanionSoundSettings(){RefreshNotificationSounds();}
+        void RefreshNotificationSounds(){if(notificationSounds!=null)notificationSounds.Refresh();}
+        NotificationSoundPlayer SoundPlayer(){return notificationSounds??(notificationSounds=new NotificationSoundPlayer(()=>Settings,()=>new PcmOutput(),()=>ProactiveGreetingSpeechActive||LiveActive||DictationActive||ConversationSessions.Any(s=>s.Stage==ConversationStage.Speaking)));}
+        internal void PreviewCompanionOperation(CompanionOperationCue cue){PlayCompanionOperation(cue,true);}
+        void PlayCompanionOperation(CompanionOperationCue cue,bool preview=false)
+        {
+            if(closing||!notificationAudioReady||Dispatcher.HasShutdownStarted)return;
+            SoundPlayer().TryPlayOperation(cue,Guid.NewGuid().ToString("N"),preview);
+        }
+        void ObserveCompanionOperation(CompanionSelectionUpdate update){if(operationGestures.Selection(update,IsPetVisible))PlayCompanionOperation(CompanionOperationCue.Switch);}
+        void ObserveCompanionAppearance()
+        {
+            if(operationLaunchObserved||!IsPetVisible)return;operationLaunchObserved=true;
+            operationGestures.VisibilityGesture();PlayCompanionOperation(CompanionOperationCue.Appear);
+        }
         internal void PlayNotificationCue(NotificationCue cue,string eventId)
         {
             if(closing||!notificationAudioReady||Dispatcher.HasShutdownStarted)return;
             if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(()=>PlayNotificationCue(cue,eventId)));return;}
-            if(notificationSounds==null)notificationSounds=new NotificationSoundPlayer(()=>Settings,()=>new PcmOutput(),()=>ProactiveGreetingSpeechActive||LiveActive||DictationActive||ConversationSessions.Any(s=>s.Stage==ConversationStage.Speaking));
-            notificationSounds.TryPlay(cue,eventId);
+            SoundPlayer().TryPlay(cue,eventId);
         }
         internal static void PlayApplicationCue(NotificationCue cue,string eventId)
         {

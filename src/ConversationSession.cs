@@ -106,7 +106,7 @@ namespace Dafeiyu
         private void Save(string id,ConversationLog history,Dafeiyu.Maintenance.UninstallOwner owner=null)
         {
             if(store==null||!saveEnabled())return;
-            try{if(owner!=null)owner.Require(Maintenance);PromoteImageTasksAsync(history,CancellationToken.None,owner).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);var all=history.Messages;var accepted=all.Where((m,i)=>m.Source!="proactive" || all.Skip(i+1).Any(next=>next.Role=="user" && next.Source!="guide" && !next.SyntheticInput && next.Status=="complete")).ToList();if(accepted.Count==0)return;imageHistoryWarning="";store.SaveAsync(id,accepted).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
+            try{if(owner!=null)owner.Require(Maintenance);PromoteImageTasksAsync(history,CancellationToken.None,owner).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);var all=history.Messages;var accepted=all.Where((m,i)=>m.Source!="proactive" || all.Skip(i+1).Any(next=>next.Role=="user" && next.Source!="guide" && !next.SyntheticInput && next.Status=="complete")).ToList();if(accepted.Count==0)return;imageHistoryWarning="";store.SaveAsync(id,accepted).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning)){foreach(var item in accepted)FileContentService.Track(AttachmentDataRoot,item.Attachments,false);history.ReconcileImageUsage();}});}
             catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException))throw;imageHistoryWarning=TextResources.Get("conversationSession.save.imageHistoryWarning");OnWarningChanged();}
         }
         public AgentSessionModel KernelSession{get{return kernelSession;}}
@@ -328,6 +328,7 @@ namespace Dafeiyu
                 if(op.Snapshot.AgentEnabled && Environment.OSVersion.Platform==PlatformID.Win32NT && agent!=null){
                     var approval=ApprovalProvider==null?null:new AgentApprovalTracking(ApprovalProvider,action=>{lock(gate)SetRuntimeAction(op,action);});
                     op.Workspace=OpenAgentWorkspace(op.Snapshot,approval,McpConnections,text);
+                    op.Workspace.SetAttachmentScope(AttachmentDataRoot,request);
                     if(kernelSession==null&&(QuestionProvider!=null||ImageClient!=null))kernelSession=new AgentSessionModel(Guid.NewGuid().ToString("N"),"","local-"+Guid.NewGuid().ToString("N"));
                     op.Workspace.AttachKernelSession(kernelSession);
                     var state=op.ResumeTask??new AgentTaskState{PersonaId=op.PersonaId,Workspace=op.Workspace.Root,Goal=text,RelationshipCompanionId=op.RelationshipCompanionId,RelationshipEventId=op.RelationshipEventId,RelationshipSucceeded=op.RelationshipSucceeded};
@@ -388,7 +389,7 @@ namespace Dafeiyu
             return result;
         }
         static bool SameAttachments(IList<ChatAttachment> a,IList<ChatAttachment> b)
-        {var first=a??new List<ChatAttachment>();var second=b??new List<ChatAttachment>();return first.Count==second.Count && first.Zip(second,(x,y)=>x.Name==y.Name && x.MediaType==y.MediaType && x.Data==y.Data && x.Text==y.Text).All(equal=>equal);}
+        {var first=a??new List<ChatAttachment>();var second=b??new List<ChatAttachment>();return first.Count==second.Count && first.Zip(second,(x,y)=>x.Name==y.Name && x.MediaType==y.MediaType && x.Data==y.Data && x.Text==y.Text && (x.ImportedFile==null?null:x.ImportedFile.Id)==(y.ImportedFile==null?null:y.ImportedFile.Id)).All(equal=>equal);}
         private void AppendDelta(Operation op,string delta)
         {
             if(String.IsNullOrEmpty(delta))return;
@@ -509,6 +510,9 @@ namespace Dafeiyu
             string text=TextResources.Format("conversationSession.resumeAgentTaskAsync.textStateGoal",state.Goal);if(text.Length>8000)text=text.Substring(0,8000);
             return SendTextAsync(text,settings,name,resumeTask:state);
         }
+        internal string AttachmentDataRoot {get;set;}
+        internal string AttachmentOwnerId {get;set;}
+        internal bool AttachmentHistoryEnabled {get{return store!=null&&saveEnabled();}}
         public void ReportNotice(string message){LastNotice=message??"";if(!disposed && StateChanged!=null)StateChanged();}
         public void ReportNotice(LocalizedMessage message){if(message==null)throw new ArgumentNullException("message");SetLocalizedNotice(message);if(!disposed&&StateChanged!=null)StateChanged();}
         public async Task SpeakReplyAsync(string id,PetSettings settings)

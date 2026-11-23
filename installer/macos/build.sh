@@ -27,6 +27,9 @@ cd "$root/desktop"
 dotnet publish DeskPet.Desktop/DeskPet.Desktop.csproj -c Release -r "$rid" --self-contained true \
   -p:PublishSingleFile=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false \
   -p:Version="$version" -p:BuildInParallel=false -m:1 -nr:false -o "$publish"
+sqlite_native="runtimes/$rid/native/libe_sqlite3.dylib"
+cmp "$root/vendor/file-compat/sqlite/$sqlite_native" "$publish/$sqlite_native"
+lipo "$publish/$sqlite_native" -verify_arch "$arch"
 args=(--publish-dir "$publish" --output-directory "$artifacts" --arch "$arch" --mode "$mode" --commit "$(git -C "$root" rev-parse HEAD)")
 if [[ "$mode" == release ]]; then args+=(--release-evidence "$DESKPET_RELEASE_EVIDENCE"); fi
 python3 "$root/tools/mac_package.py" "${args[@]}"

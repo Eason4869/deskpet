@@ -2,6 +2,37 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [1.0.5](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · Production release
+
+- Read selected ranges of text, CSV/TSV, XLS/XLSX, DOC/DOCX, PDF, and PPTX in chat. Spreadsheet views show raw values, display formats, formulas, and saved results. Legacy DOC and XLS files open without Office.
+- Browse and read ZIP/TAR.GZ entries or run read-only queries against standalone SQLite files. Export a consistent standalone copy of active WAL databases before opening them.
+- Inspect MP3, WAV, and MP4 metadata and extract MP4 frames. Text recognition in images and scanned PDFs depends on system OCR and installed languages.
+- Preview and send from the same private attachment snapshot. Export original files from sent messages. Model requests contain the selected content and its attachment identifier.
+- Remove individual text models from their rows in Windows model configuration, then save the changes.
+- Improve Windows installer startup, progress animation, and reinstalls. Installed companions switch using local resources first. Upgrades restore the selected companion and check its assets in the background. Ebao’s regular actions work offline.
+- Use one sound toggle for task notifications and companion appear, switch, and hide cues, with a separate volume control for companion sounds.
+
+## [1.0.5-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5-dev.1) · Development preview
+
+- Read selected ranges of text, CSV/TSV, XLS/XLSX, DOC/DOCX, PDF, and PPTX attachments. Fixed duplicate final rows in XLSX. Spreadsheet reads distinguish values, display formats, formulas, and saved results. Legacy DOC and XLS can be read without Office.
+- Browse ZIP and TAR.GZ entries and run read-only queries against standalone SQLite files. Export a consistent standalone copy before opening an active WAL database.
+- Inspect MP3, WAV, and MP4 metadata and extract MP4 frames. Image and scanned PDF OCR depend on available system languages and recognition capabilities. The Windows decoder returns the frame nearest the requested time.
+- Private attachment snapshots support range preview, model submission, and original-file export. Requests contain the selected content and an attachment identifier.
+
+## [1.0.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.2) · Development preview
+
+- Store Windows installer artwork in separate compression blocks to avoid repeatedly decompressing the application payload before showing the wizard. Preserve the existing UI, five character illustrations, manual selection, and automatic carousel.
+- Animate the active installation ring while pending steps remain static; stop updating the ring on the completion page.
+
+## [1.0.4-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.1) · Development preview
+
+- The Windows installer uses a light two-column layout and five companion portraits. Reinstalls keep an editable location with browse and reset actions. Desktop and login-startup choices apply on Finish while preserving custom entries and silent-update behavior.
+- Switch installed companions from local resources first. A passive bubble reports installation or repair, supports cancellation and retry, and keeps the current companion while work is busy.
+- Restore the last selected companion after an app upgrade, then silently check only that companion for compatible material updates. All current regular Ebao actions are included for offline use. Selecting Ebao silently prepares remaining holiday outfits; offline failure keeps it usable. Existing complete sources and owned outfits retain their whole generation until a complete replacement can safely switch.
+- Load and reuse companion images on demand, verify material in the background, and retire unused old packages while protecting active readers and the latest usable version.
+- One sound toggle controls task notifications and companion appear, switch and hide cues. Companion cues retain their own volume and three previews, respecting quiet mode and occupied speech audio.
+- This is a development preview. Production release 1.0.3 remains Latest.
+
 ## [1.0.3](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · Production release
 
 - Release the key visibility controls and Windows image-card layout improvements from 1.0.3-dev.1.

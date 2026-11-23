@@ -13,6 +13,12 @@ internal static class Native
     [DllImport(Library, EntryPoint="dp_observation_request_access")] internal static extern int ObservationRequestAccess();
     [DllImport(Library, EntryPoint="dp_observation_self_test")] internal static extern int ObservationSelfTest();
     private const string Library = "DeskPetMac";
+    [DllImport(Library, EntryPoint="dp_recognize_file")]
+    internal static extern int RecognizeFile([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int page,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string language, [Out] byte[] output, int capacity);
+    [DllImport(Library, EntryPoint="dp_extract_video_frame")]
+    internal static extern int ExtractVideoFrame([MarshalAs(UnmanagedType.LPUTF8Str)] string path, long milliseconds,
+        [Out] byte[] output, int capacity, out long actualMilliseconds);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void PermissionCallback(int granted);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void HotKeyCallback();
     [DllImport(Library, EntryPoint="dp_keychain_key")] internal static extern int KeychainKey([Out] byte[] key, int length);

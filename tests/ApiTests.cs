@@ -18,8 +18,10 @@ namespace Dafeiyu.Tests
             Run("attachments and reasoning use separate protocol fields in JSON and streaming fallback",async delegate {
                 string directory=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"attachment-api-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
                 string note=Path.Combine(directory,"中文说明.txt"),image=Path.Combine(directory,"图片.png"),pdf=Path.Combine(directory,"文档.pdf");
+                string workbook = Path.Combine(directory, "workbook.xlsx");
                 File.WriteAllText(note,"文件里的中文",new UTF8Encoding(false));File.WriteAllBytes(image,Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5XcAAAAASUVORK5CYII="));File.WriteAllText(pdf,"%PDF-1.4\nfixture");
-                var message=new ChatMessage("user","请检查附件");message.SetAttachments(new[]{ChatAttachment.Read(note),ChatAttachment.Read(image),ChatAttachment.Read(pdf)});message.SetReasoning("never replay reasoning",1000);File.Delete(note);
+                File.WriteAllBytes(workbook, DocumentFormats.WriteDocumentBytes(workbook, "Name\tCount\nPear\t12.5", CancellationToken.None));
+                var message=new ChatMessage("user","请检查附件");message.SetAttachments(new[]{ChatAttachment.Read(note),ChatAttachment.Read(image),ChatAttachment.Read(pdf),ChatAttachment.Read(workbook)});message.SetReasoning("never replay reasoning",1000);File.Delete(note);
                 foreach(bool anthropic in new[]{false,true})foreach(bool stream in new[]{false,true})
                 {
                     string response=anthropic?"{\"content\":[{\"type\":\"thinking\",\"thinking\":\"核对条件\"},{\"type\":\"text\",\"text\":\"完成\"}]}":"{\"choices\":[{\"message\":{\"reasoning_content\":\"核对条件\",\"content\":\"完成\"}}]}";
@@ -28,6 +30,8 @@ namespace Dafeiyu.Tests
                         var cfg=Connection(server.Url,"test");cfg.Protocol=anthropic?"anthropic":"auto";string thoughts="",answer="";
                         Equal("完成",await api.ChatWithReasoningAsync(cfg,new[]{message},d=>answer+=d,d=>thoughts+=d,stream,CancellationToken.None));await server.Done;Equal("核对条件",thoughts);Equal(stream?"完成":"",answer);
                         Assert(!server.Body.Contains("never replay reasoning") && server.Body.Contains("文件里的中文"),"attachment text missing or reasoning replayed");
+                        int pear = server.Body.IndexOf("Pear", StringComparison.Ordinal);
+                        Assert(pear >= 0 && pear == server.Body.LastIndexOf("Pear", StringComparison.Ordinal), "XLSX final row must appear once in the model request");
                         var body=(Dictionary<string,object>)new JavaScriptSerializer().DeserializeObject(server.Body);var input=(Dictionary<string,object>)((object[])body["messages"])[0];var parts=(object[])input["content"];
                         Equal("text",((Dictionary<string,object>)parts[0])["type"]);Equal(anthropic?"image":"image_url",((Dictionary<string,object>)parts[1])["type"]);Equal(anthropic?"document":"file",((Dictionary<string,object>)parts[2])["type"]);
                         Equal(stream,body["stream"]);

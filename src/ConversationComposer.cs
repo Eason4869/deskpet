@@ -23,6 +23,7 @@ namespace Dafeiyu
         readonly Button addAttachment;readonly WrapPanel attachmentChips=new WrapPanel();readonly ScrollViewer attachmentArea;
         readonly System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<ChatAttachment>> attachmentDrafts=new System.Collections.Generic.Dictionary<string,System.Collections.Generic.List<ChatAttachment>>();
         string attachmentPersona;bool loadingAttachments;
+        System.Threading.CancellationTokenSource attachmentRead;
         string AttachmentKey {get{return (session.KernelSession==null?session.GetHashCode().ToString():session.KernelSession.SessionId)+":"+session.PersonaId;}}
         System.Collections.Generic.List<ChatAttachment> Attachments {get{System.Collections.Generic.List<ChatAttachment> files;string id=AttachmentKey;if(!attachmentDrafts.TryGetValue(id,out files))attachmentDrafts[id]=files=new System.Collections.Generic.List<ChatAttachment>();return files;}}
         readonly DictationSession dictation;readonly Button record,finishDictation,stopDictation;readonly FrameworkElement normalSurface;readonly Border recordingSurface;readonly DictationWaveform waveform;
@@ -164,7 +165,9 @@ namespace Dafeiyu
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
-            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");CloseContextPreview();session.InputDraftChanged-=RestoreDraft;if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;session.InputDraftChanged+=RestoreDraft;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);RestoreDraft();BindApprovals();RefreshModels();Refresh();
+            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");
+            if(!ReferenceEquals(session,nextSession)&&attachmentRead!=null)attachmentRead.Cancel();
+            CloseContextPreview();session.InputDraftChanged-=RestoreDraft;if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;session.InputDraftChanged+=RestoreDraft;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);RestoreDraft();BindApprovals();RefreshModels();Refresh();
         }
         void InputChanged(object sender,TextChangedEventArgs args){if(closed)return;if(session.InputDraft!=input.Text)pet.NoteProactiveDraftChanged(session);session.InputDraft=input.Text;RefreshAction();RefreshTrigger();}
         void RestoreDraft(){if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RestoreDraft));return;}input.Text=session.InputDraft;}
@@ -296,23 +299,54 @@ namespace Dafeiyu
         }
         internal async System.Threading.Tasks.Task AddPathsAsync(string[] paths)
         {
-            if(!CanAdd())return;string draftKey=AttachmentKey;loadingAttachments=true;RefreshAction();
-            System.Collections.Generic.List<ChatAttachment> files=null;Exception failure=null;
+            if(!CanAdd()||paths==null||paths.Length==0)return;
+            if(paths.Length+Attachments.Count>4){Error(new ApiException(TextResources.Get("conversationComposer.addPathsAsync.text")));return;}
+            string draftKey=AttachmentKey,dataRoot=pet.Store.DirectoryPath;
+            string attachmentOwner=session.AttachmentOwnerId;
+            loadingAttachments=true;RefreshAction();
+            var read=new System.Threading.CancellationTokenSource();
+            attachmentRead=read;
+            FileContentService.Batch result=null;
+            Exception failure=null;
             try
             {
-                if(paths!=null&&paths.Length>0){if(paths.Length+Attachments.Count>4)throw new ApiException(TextResources.Get("conversationComposer.addPathsAsync.text"));files=await System.Threading.Tasks.Task.Run(()=>paths.Select(path=>
+                using(session.EnterRequestActivity())
+                result=await System.Threading.Tasks.Task.Run(()=>FileContentService.ImportBatch(paths,dataRoot,false,path=>
                 {
-                    if(!System.IO.Directory.Exists(path))return ChatAttachment.Read(path);
                     string full=System.IO.Path.GetFullPath(path);string name=System.IO.Path.GetFileName(full.TrimEnd('\\','/'));if(String.IsNullOrEmpty(name))name=TextResources.Get("conversationComposer.addPathsAsync.name");
                     return ChatAttachment.FromText(TextResources.Format("conversationComposer.addPathsAsync.chatAttachmentFromText",name),TextResources.Format("conversationComposer.addPathsAsync.chatAttachmentFromText.alternativeA",full));
-                }).ToList());}
+                },read.Token,attachmentOwner));
             }
+            catch(OperationCanceledException){ }
             catch(Exception error){failure=error;}
-            await Dispatcher.InvokeAsync(new Action(delegate
+            try
             {
-                try{if(!closed){if(failure!=null){if(failure is System.IO.IOException||failure is UnauthorizedAccessException||failure is System.IO.InvalidDataException||failure is System.Xml.XmlException)LocalizedUi.Set(status,"Text",()=>(TextResources.Get("conversationComposer.addPathsAsync.status")));else Error(failure);}else if(files!=null&&AttachmentKey==draftKey)AddAttachments(files);}}
-                finally{loadingAttachments=false;if(!closed)RefreshAction();}
-            }));
+                await Dispatcher.InvokeAsync(new Action(delegate
+                {
+                    try
+                    {
+                        if(closed)return;
+                        if(failure!=null){Error(failure);return;}
+                        if(result==null||read.IsCancellationRequested||AttachmentKey!=draftKey)return;
+                        AddAttachments(result.Files);
+                        if(result.Errors.Count!=0)status.Text=String.Join("\n",result.Errors);
+                        result=null;
+                    }
+                    catch(Exception error){if(!closed)Error(error);}
+                    finally
+                    {
+                        attachmentRead=null;
+                        loadingAttachments=false;
+                        if(!closed)RefreshAction();
+                    }
+                }));
+            }
+            catch(OperationCanceledException){if(!Dispatcher.HasShutdownStarted)throw;}
+            finally
+            {
+                try{if(result!=null)FileContentService.Discard(dataRoot,result.Files);}
+                finally{read.Dispose();}
+            }
         }
         async System.Threading.Tasks.Task AddBitmapAsync(System.Windows.Media.Imaging.BitmapSource source,string prefix)
         {
@@ -342,6 +376,43 @@ namespace Dafeiyu
                     attachmentCard.Focusable=true;attachmentCard.Cursor=Cursors.Hand;LocalizedUi.Set(attachmentCard,"ToolTip",()=>(TextResources.Format("conversationComposer.refreshAttachments.toolTipFileName.alternativeA",file.Name)));LocalizedUi.Automation(attachmentCard,()=>(TextResources.Format("conversationComposer.refreshAttachments.automationAutomationPropertiesSetName",file.Name)));
                     attachmentCard.MouseLeftButtonUp+=delegate(object sender,MouseButtonEventArgs e){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);};
                     attachmentCard.KeyDown+=delegate(object sender,KeyEventArgs e){if(ReferenceEquals(e.OriginalSource,attachmentCard)&&(e.Key==Key.Enter||e.Key==Key.Space)){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);}};
+                    if(FileOcrService.Available)
+                    {
+                        var ocr=new MenuItem{Header="OCR"};
+                        ocr.Click+=async delegate
+                        {
+                            string key=AttachmentKey;
+                            try
+                            {
+                                string root=pet.Store.DirectoryPath;
+                                string text=await System.Threading.Tasks.Task.Run(()=>FileOcrService.ReadImage(file,root,null,System.Threading.CancellationToken.None));
+                                if(!closed&&AttachmentKey==key&&!String.IsNullOrWhiteSpace(text))
+                                    AddAttachments(new[]{ChatAttachment.FromText(file.Name.Substring(0,Math.Min(245,file.Name.Length))+".txt",text)});
+                            }
+                            catch(Exception error){if(!FileContentService.IsReadFailure(error))throw;status.Text=FileContentService.UserError(error);}
+                        };
+                        attachmentCard.ContextMenu=new ContextMenu();
+                        attachmentCard.ContextMenu.Items.Add(ocr);
+                    }
+                }
+                else if(file.ImportedFile!=null)
+                {
+                    Action show=delegate
+                    {
+                        string key=AttachmentKey;
+                        new AttachmentPreviewWindow(host,file,pet.Store.DirectoryPath,selection=>
+                        {
+                            if(closed||AttachmentKey!=key)return;
+                            int index=Attachments.IndexOf(file);
+                            if(index<0)return;
+                            if(selection.Image!=null){AddAttachments(new[]{ChatAttachment.CreateImage(file.Name+".png",selection.Image)});return;}
+                            Attachments[index]=file.SelectImportedText(FileContentService.FormatResult(selection));
+                            pet.NoteProactiveDraftChanged(session);RefreshAttachments();
+                        }).ShowDialog();
+                    };
+                    attachmentCard.Focusable=true;attachmentCard.Cursor=Cursors.Hand;
+                    attachmentCard.MouseLeftButtonUp+=delegate(object sender,MouseButtonEventArgs e){if(!(e.OriginalSource is Button)){e.Handled=true;show();}};
+                    attachmentCard.KeyDown+=delegate(object sender,KeyEventArgs e){if(ReferenceEquals(e.OriginalSource,attachmentCard)&&(e.Key==Key.Enter||e.Key==Key.Space)){e.Handled=true;show();}};
                 }
                 attachmentChips.Children.Add(attachmentCard);
             }
@@ -488,7 +559,7 @@ namespace Dafeiyu
         }
         internal void Detach()
         {
-            if(closed)return;closed=true;input.TextChanged-=InputChanged;session.InputDraftChanged-=RestoreDraft;meter.Stop();reorder.Cancel();CloseTrigger();DetachContextPreview();
+            if(closed)return;closed=true;if(attachmentRead!=null)attachmentRead.Cancel();input.TextChanged-=InputChanged;session.InputDraftChanged-=RestoreDraft;meter.Stop();reorder.Cancel();CloseTrigger();DetachContextPreview();
             if(predictionSuggestions!=null)predictionSuggestions.Dispose();
             if(changeStatus!=null)changeStatus.Dispose();
             if(approvals!=null)approvals.Dispose();

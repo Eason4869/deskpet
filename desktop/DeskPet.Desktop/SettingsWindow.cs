@@ -24,6 +24,7 @@ internal sealed class SettingsWindow : Window
     private readonly ContentControl pageHost = new() { Name = "SettingsPageHost", HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
     private readonly List<Control?> pages = new();
     private readonly List<Func<Control>> pageFactories = new();
+    internal bool HasUnsavedChanges=>providers.Any(p=>p.HasUnsavedChanges)||imageProvider?.HasUnsavedChanges==true||imChannels?.HasUnsavedChanges==true||conversation?.HasUnsavedChanges==true||this.GetVisualDescendants().OfType<WebSearchSettingsView>().Any(v=>v.HasUnsavedChanges);
     internal string SelectedSection => selectedSection;
     private readonly SpriteAssets avatarAssets;
     private Action? refreshVoice;
@@ -113,6 +114,9 @@ internal sealed class SettingsWindow : Window
     {
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
         var description = Ui.Text(()=>(owner.Skin.DisplayDescription));
+        var installationStatus=Ui.Text(owner.CompanionSelectionNotice);installationStatus.Name="CompanionInstallationStatus";
+        void InstallationChanged(){installationStatus.Text=owner.CompanionSelectionNotice;}
+        owner.Changed+=InstallationChanged;Closed+=(_,_)=>owner.Changed-=InstallationChanged;
         bool refreshingPartners = false;
         var choices = new ComboBox { Name = "PartnerPicker", MinWidth = 0, MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = owner.Skins, SelectedItem = owner.Skin, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         choices.Styles.Add(new Style(s => s.OfType<ComboBoxItem>()) { Setters = { new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch) } });
@@ -170,7 +174,7 @@ internal sealed class SettingsWindow : Window
             LocalizedUi.Set(description,"Text",()=>(owner.Skin.DisplayDescription));
         }
         owner.Changed += CatalogChanged; Closed += (_, _) => owner.Changed -= CatalogChanged;
-        return SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.text.alternativeB"),selectors,SettingsVisual.Wrap(import,bulk),description),
+        return SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.text.alternativeB"),selectors,SettingsVisual.Wrap(import,bulk),description,installationStatus),
             SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.field"),prompt,
             LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.partner.text.alternativeC")), () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices, owner.Skin.OfficialCharacterId ?? owner.Skin.BuiltinCharacterId); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
             LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.partner.text.alternativeD")), () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices, owner.Skin.OfficialCharacterId ?? owner.Skin.BuiltinCharacterId); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
@@ -215,13 +219,16 @@ internal sealed class SettingsWindow : Window
         var general=SettingsVisual.Group(()=>TextResources.Get("settingsLayout.appearanceGroup"),SettingsVisual.Text(()=>TextResources.Get("settingsLayout.instantSave"),12,true),theme,language);
         var imageMotion=LocalizedUi.Check(()=>TextResources.Get("settingsWindow.behavior.check.alternativeI"),s.ImageGenerationMotionEnabled,v=>{s.ImageGenerationMotionEnabled=v;owner.Save();});imageMotion.Name="ImageGenerationMotionEnabled";
         var notificationSounds=LocalizedUi.Check(()=>TextResources.Get("notificationSounds.enabled"),s.NotificationSoundsEnabled,v=>{s.NotificationSoundsEnabled=v;if(!v)owner.StopNotificationSounds();owner.Save();});notificationSounds.Name="NotificationSoundsEnabled";
+        var operationVolume=new Slider{Name="CompanionOperationSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,IsSnapToTickEnabled=true,Value=s.CompanionOperationSoundVolume};LocalizedUi.Automation(operationVolume,()=>TextResources.Get("operationSounds.volume"));operationVolume.ValueChanged+=(_,_)=>{s.CompanionOperationSoundVolume=(int)operationVolume.Value;owner.RefreshCompanionSoundSettings();owner.Save();};
+        Button Preview(CompanionOperationCue cue,Func<string> label){var button=LocalizedUi.Button(label,()=>owner.PreviewCompanionOperation(cue));button.Name="PreviewCompanion"+cue;LocalizedUi.Automation(button,label);return button;}
+        var operationPreviews=SettingsVisual.Wrap(Preview(CompanionOperationCue.Appear,()=>TextResources.Get("operationSounds.appear")),Preview(CompanionOperationCue.Switch,()=>TextResources.Get("operationSounds.switch")),Preview(CompanionOperationCue.Hide,()=>TextResources.Get("operationSounds.hide")));
         var concurrency=new NumericUpDown{Name="ImageGenerationConcurrency",Minimum=1,Maximum=4,Increment=1,Value=s.ImageGenerationConcurrency};concurrency.ValueChanged+=(_,_)=>{if(concurrency.Value.HasValue){s.ImageGenerationConcurrency=(int)concurrency.Value.Value;owner.Save();}};
         var shortcuts=Ui.Column();
         foreach(var entry in new (string Id,Func<string> Title)[]{("chat",()=>TextResources.Get("settingsWindow.behavior.text.alternativeE")),("show",()=>TextResources.Get("settingsWindow.behavior.text.alternativeF")),("hide",()=>TextResources.Get("settingsWindow.behavior.text.alternativeG"))})
             shortcuts.Children.Add(LocalizedUi.Check(entry.Title,s.Hotkeys.GetValueOrDefault(entry.Id)=="enabled",v=>{s.Hotkeys[entry.Id]=v?"enabled":"disabled";owner.Save();owner.RegisterHotkeys();}));
         var data=LocalizedUi.Button(()=>TextResources.Get("dataManagement.title"),()=>SelectSection("storage"));data.Name="GeneralDataManagement";
         return SettingsVisual.Page(general,
-            SettingsVisual.Group(()=>TextResources.Get("settingsLayout.behaviorGroup"),notificationSounds,SettingsVisual.Text(()=>TextResources.Get("notificationSounds.help"),12,true)),
+            SettingsVisual.Group(()=>TextResources.Get("settingsLayout.behaviorGroup"),notificationSounds,SettingsVisual.Text(()=>TextResources.Get("operationSounds.help"),12,true),LocalizedUi.Field(()=>TextResources.Get("operationSounds.volume"),operationVolume),operationPreviews),
             SettingsVisual.Group(()=>TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"),imageMotion,LocalizedUi.Field(()=>TextResources.Get("settingsWindow.behavior.field.alternativeA"),concurrency)),
             SettingsVisual.Group(()=>TextResources.Get("settingsWindow.behavior.text.alternativeD"),shortcuts,
                 LocalizedUi.Button(()=>TextResources.Get("settingsWindow.behavior.text.alternativeH"),()=>{try{MacServices.SetLoginAtStartup(true);}catch(Exception e){owner.Error(e);}}),

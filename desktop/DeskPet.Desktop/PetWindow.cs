@@ -65,12 +65,14 @@ internal sealed partial class PetWindow : Window
         Background = Brushes.Transparent; CanResize = false; ShowInTaskbar = false;
         LocalizedUi.Set(this,"Title",()=>(TextResources.Get("petWindow.petWindow.title")));
         sprite = new SpriteView { Assets = assets, Skin = owner.Skin };
+        sprite.FrameRendered+=owner.CompanionFirstFrameRendered;
         playback = new InteractionPlayback(ResolveHolidayAction);
+        assets.ClipPrepared+=skin=>{if(ReferenceEquals(owner.Skin,skin)){playback.RefreshAppearance();PublishHolidayFrame(playback.Clip,playback.Frame,OriginalMirror());sprite.InvalidateVisual();}};
         InitializeHoliday();
         PointerPressed += Pressed; PointerMoved += Moved; PointerReleased += Released;
         PointerCaptureLost += (_, _) => { if (dragging) FinishDrag(); };
         PointerExited += (_, _) => LeaveHolidayHover();
-        PropertyChanged += (_, e) => {if(e.Property==IsVisibleProperty){owner.Relationships.InvalidateFeedback();owner.Observation.Invalidate();}};
+        PropertyChanged += (_, e) => {if(e.Property==IsVisibleProperty){if(!IsPetVisible)owner.InvalidateCompanionOperation();owner.Relationships.InvalidateFeedback();owner.Observation.Invalidate();}};
         Screens.Changed += ScreensChanged;
         DoubleTapped += (_, _) => owner.ShowChat(true);
         ContextMenu = BuildMenu();
@@ -106,7 +108,7 @@ internal sealed partial class PetWindow : Window
         committedOutfit = null; LeaveHolidayHover(); clouds.InvalidateVisual();
         var previousCompanion=RelationshipIdentity.Resolve(owner.DataDirectory,sprite.Skin.PickerKey,sprite.Skin.OfficialCharacterId,sprite.Skin.Id);
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.InvalidateFeedback();
-        drop.Cancel(); sprite.ResetFrames(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
+        drop.Cancel(); sprite.ResetFrames(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);
         RefreshHoliday(true);
     }
@@ -130,7 +132,7 @@ internal sealed partial class PetWindow : Window
         Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeB")), ShowPalette); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeC")), () => UserInteract("feeding")); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeD")), () => UserInteract("petting"));
         Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeE")), () => { if (action == "sleeping") {Play("idle", false);RecordRelationshipInteraction(true,true);} else UserInteract("sleeping"); });
         Add(()=> (owner.Skin.SpecialAction), () => UserInteract("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(()=> (owner.Skin.SpecialAction2), () => UserInteract("special2"));
-        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeF")), () => Paused = !Paused); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeG")), Hide);
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeF")), () => Paused = !Paused); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeG")), owner.HidePet);
         items.Add(new Separator());
         foreach (var skin in owner.Skins)
         {
@@ -315,7 +317,7 @@ internal sealed partial class PetWindow : Window
     {
         var wasHidden=fullscreenHidden;
         if(hidden!=wasHidden)owner.Relationships.InvalidateFeedback();
-        if(hidden&&!wasHidden)DismissGreeting();
+        if(hidden&&!wasHidden){owner.InvalidateCompanionOperation();DismissGreeting();}
         fullscreenHidden=hidden;Opacity=hidden?0:1;
         if(wasHidden&&IsPetVisible)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,true);
         if(fullscreenHidden)CancelHoliday();

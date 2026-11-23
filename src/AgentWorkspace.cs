@@ -164,6 +164,7 @@ namespace Dafeiyu
                     if(name=="spawn_subagent"||name=="complete_subagent"||name=="interrupt_subagent"){if(subagentScheduler==null)return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeG");var serializer2=new JavaScriptSerializer{MaxJsonLength=65536};if(name=="spawn_subagent"){var profile=new AgentProfileRegistry().Get(GetString(args,"profile","general"));if(profile==null)throw new ArgumentException(TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeH"));var child=subagentScheduler.Schedule(kernelTaskId,profile,GetString(args,"input",""));return serializer2.Serialize(new{child.Id,child.Status,child.ProfileId});}string id=GetString(args,"id",null);if(name=="complete_subagent"){bool ok=subagentScheduler.Complete(id,GetString(args,"result",""));return serializer2.Serialize(new{id,status=ok?"complete":"error"});}bool stopped=subagentScheduler.Interrupt(id);return serializer2.Serialize(new{id,status=stopped?"interrupted":"error"});}
                     if(name=="fetch_url" || name.StartsWith("github_",StringComparison.Ordinal)){if(github==null)return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeI");return github.ExecuteAsync(name,args,token).GetAwaiter().GetResult();}
                     if(name=="load_skill" || name=="read_instructions")return InstructionTool(name,args);
+                    if(IsAttachmentTool(name))return ReadAttachedFile(name,args,callId,token);
                     string path = Resolve(GetString(args, "path", "."));
                     if(name=="inspect_image")return InspectImage(path,args,callId,token);
                     if(name=="git_status"||name=="git_diff"||name=="git_log")return ReadGit(name,path,args,token,authorizedResource);
@@ -282,6 +283,12 @@ namespace Dafeiyu
             using (LockDirectories(Path.GetDirectoryName(path), false))
             {
                 string content;
+                string extension=FileContentService.Extension(path);
+                if(!DocumentFormats.IsDocument(path)&&FileContentService.HasStructuredReader(extension))
+                {
+                    var selection=FileContentService.ReadPath(path,new FileReadRequest{Start=offset+1,Count=limit},token);
+                    return Clip(FileContentService.FormatResult(selection));
+                }
                 if (DocumentFormats.IsDocument(path))
                 {
                     byte[] documentBytes = ReadBytes(path, token, DocumentFormats.MaxDocumentBytes);
@@ -618,7 +625,7 @@ namespace Dafeiyu
         {
             object[] a,b;AgentToolCatalog.Schemas(readOnly,providerCapabilities,dynamicTools,out a,out b,RuntimeToolAvailable);OpenAITools=a;AnthropicTools=b;
         }
-        bool RuntimeToolAvailable(string name){if(name=="web_search")return SearchSession!=null;if(AgentJobTools.IsJobTool(name))return JobsAvailable(name);if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
+        bool RuntimeToolAvailable(string name){if(IsAttachmentTool(name))return HasAttachmentScope();if(name=="web_search")return SearchSession!=null;if(AgentJobTools.IsJobTool(name))return JobsAvailable(name);if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
         public string AvailableToolNames {get{return String.Join(", ",AgentToolCatalog.Definitions.Cast<AgentToolDefinition>().Concat(dynamicTools).Where(d=>d.Name!="complete_subagent"&&(!readOnly||d.ReadOnly)&&(providerCapabilities==null||providerCapabilities.CanUseTool(d.Name))&&RuntimeToolAvailable(d.Name)).Select(d=>d.Name));}}
         internal int ContextSchemaOverheadTokens;
     }

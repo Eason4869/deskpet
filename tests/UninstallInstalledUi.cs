@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -31,7 +32,11 @@ namespace Dafeiyu.Tests
                     string ciphertext=cfg.TextProviders.First(p=>p.Id=="uninstall-fixture").Connection.EncryptedKey;
                     // Automatic shown encounters and the explicit capture must share one fixture clock.
                     var keepsakeTime=new RelationshipTime(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.Zero);
-                    pet=new PetWindow(null,cfg,store,null);pet.KeepsakeTime=()=>keepsakeTime;pet.Closed+=async delegate{await Program.ShutdownAfterCloseAsync(app,pet);};
+                    pet=new PetWindow(null,cfg,store,null);pet.KeepsakeTime=()=>keepsakeTime;
+                    // This fixture exercises uninstall with the embedded companion.
+                    foreach(string field in new[]{"officialStartupStarted","officialFirstFrameRendered"})
+                        typeof(PetWindow).GetField(field,BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,true);
+                    pet.Closed+=async delegate{await Program.ShutdownAfterCloseAsync(app,pet);};
                     pet.Loaded+=async delegate{
                         try{
                             await pet.AgentJobs.InitializeAsync();
@@ -51,6 +56,8 @@ namespace Dafeiyu.Tests
                                     FileStream held=mode=="savefail"?new FileStream(Path.Combine(data,"settings.json.tmp"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None):null;
                                     try{Click(Find<Button>(dialog,"ConfirmUninstall"));await dialog.PendingOperation;}
                                     finally{if(held!=null)held.Dispose();if(busy!=null)busy.Dispose();}
+                                    if(mode=="commit"&&pet.IsVisible)
+                                        throw new Exception("Installed uninstall did not close the host: "+Find<TextBlock>(dialog,"UninstallStatus").Text);
                                     if(mode=="busy"||mode=="savefail"){Assert(pet.IsVisible&&!pet.DataMaintenance.IsMaintenanceActive,"failure must keep host alive");string expected=mode=="busy"?TextResources.Get("dataMaintenance.busy"):TextResources.Get("uninstall.prepareFailed");Assert(Find<TextBlock>(dialog,"UninstallStatus").Text==expected,"actual confirmation failure message must be accurate");dialog.Close();}
                                     if(mode=="veto"){
                                         pet.Closing-=veto;Assert(pet.IsVisible&&!pet.DataMaintenance.IsMaintenanceActive,"installed close veto damaged live host");

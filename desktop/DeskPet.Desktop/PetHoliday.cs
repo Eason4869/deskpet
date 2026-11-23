@@ -166,7 +166,7 @@ internal sealed partial class PetWindow
         var outfit = committedOutfit;
         try
         {
-            var clip = assets.Resolve(owner.Skin, name, useOriginal, outfit);
+            var clip = assets.Ready(owner.Skin,assets.Resolve(owner.Skin, name, useOriginal, outfit));
             assets.PrepareFrame(owner.Skin, clip, 0); return clip;
         }
         catch (Exception error) when (outfit != null && IsHolidayDecodeFailure(error))
@@ -177,6 +177,7 @@ internal sealed partial class PetWindow
     private void PublishHolidayFrame(ClipSpec clip, int frame, bool mirror, bool gazeFrame = false)
     {
         var outfit = committedOutfit;
+        var ready=assets.Ready(owner.Skin,clip);if(!ReferenceEquals(ready,clip)){clip=ready;frame=0;}
         try { assets.PrepareFrame(owner.Skin, clip, frame); }
         catch (Exception error) when (outfit != null && SpriteAssets.IsHolidayClip(clip) && IsHolidayDecodeFailure(error))
         {
@@ -206,6 +207,7 @@ internal sealed partial class PetWindow
         try
         {
             var clip = SpriteAssets.OutfitClip(committedOutfit, ticket.Clip);
+            if(!ReferenceEquals(assets.Ready(owner.Skin,clip),clip)){owner.Holidays.CancelHover();return false;}
             assets.PrepareFrame(owner.Skin, clip, 0);
             holidayPlayback.Start(ticket); PublishHolidayFrame(clip, 0, false);
             sprite.InvalidateVisual(); return true;

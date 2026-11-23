@@ -13,6 +13,13 @@ namespace Dafeiyu.Tests
     {
         static int checks;
         static void Check(bool condition,string description){if(!condition)throw new Exception(description);checks++;Console.WriteLine("PASS "+description);}
+        // These catalog fixtures own their source; production startup has dedicated coverage.
+        static void IsolateCatalog(PetWindow pet)
+        {
+            pet.Skin.FixtureEmbedded=true;
+            foreach(string field in new[]{"officialStartupStarted","officialFirstFrameRendered"})
+                typeof(PetWindow).GetField(field,BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,true);
+        }
         static bool NoOfficialDownloads(PetWindow pet){return typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet)==null;}
         sealed class Clock : IAgentJobClock
         {public DateTime UtcNow{get{return DateTime.UtcNow;}}public long ElapsedMilliseconds{get{return Environment.TickCount&Int32.MaxValue;}}}
@@ -47,7 +54,7 @@ namespace Dafeiyu.Tests
             {
                 var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=true,ReadReplies=false,OnboardingState="completed"};foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
                 var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root.Path,"settings.json")),null);
-                pet.Skin.FixtureEmbedded=true;pet.Show();pet.SetPaused(true);
+                IsolateCatalog(pet);pet.Show();pet.SetPaused(true);
                 var original=pet.AgentJobs;await original.InitializeAsync();await original.StopAllForExitAsync(CancellationToken.None);original.Dispose();
                 var factory=new Factory();var service=new AgentJobApplicationService(root.Path,clock=>factory,new Clock());
                 typeof(PetWindow).GetField("agentJobServices",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,service);await service.InitializeAsync();
@@ -77,7 +84,7 @@ namespace Dafeiyu.Tests
                     using(var secondRoot=new AgentJobTestSupport.TemporaryDirectory())
                     {
                         var second=new PetWindow(null,settings.Copy(),new SettingsStore(Path.Combine(root.Path,"other-settings.json")),null);
-                        second.Skin.FixtureEmbedded=true;
+                        IsolateCatalog(second);
                         var secondClosed=new TaskCompletionSource<bool>();second.Closed+=delegate{secondClosed.TrySetResult(true);};
                         Exception secondFailure=null;
                         try

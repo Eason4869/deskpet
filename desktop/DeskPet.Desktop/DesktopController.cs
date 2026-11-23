@@ -75,7 +75,7 @@ internal sealed partial class DesktopController : IDisposable
         DataDirectory = runtime.DataDirectory;
         Relationships=new RelationshipRuntime(DataDirectory,action=>Dispatcher.UIThread.Post(action),DataMaintenance);
         Directory.CreateDirectory(DataDirectory);
-        Holidays = holidays ?? new HolidayController(new HolidayCalendar(), new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
+        Holidays = holidays ?? new HolidayController(new HolidayCalendar(), SpriteAssets.BundledEbao?.CreateHolidayCatalog() ?? new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
         InitializeHolidayKeepsakes();
         runtime.InitializeProtection();
         var settingsPath = Path.Combine(DataDirectory, "settings.json");
@@ -90,14 +90,20 @@ internal sealed partial class DesktopController : IDisposable
         if (onboarding.Changed) store.Save(Settings);
         showAutomaticGuide = onboarding.ShowGuide || Environment.GetCommandLineArgs().Contains(ApplicationRestart.ResumeArgument);
         InitializeCompanions(officialSourceFactory);
+        companionAssets=spriteAssetsFactory?.Invoke()??new SpriteAssets();
+        companionAssets.DefaultClipFailed+=DefaultCompanionFailed;
         Skins = Task.Run(() => SpriteAssets.LoadSkins(DataDirectory)).GetAwaiter().GetResult();
         embeddedEbao = Skins.First(s => s.OfficialCharacterId == "e-bao" && s.BuiltIn && !s.IsPlaceholder);
-        var requested = Settings.PendingOfficialCompanionId.Length != 0 ? Skins.FirstOrDefault(s => s.OfficialCharacterId == Settings.PendingOfficialCompanionId) : ResolveSavedCompanion();
+        Settings.PendingOfficialCompanionId="";
+        var requested = ResolveSavedCompanion();
         requested ??= embeddedEbao;
+        if(Settings.SelectedCompanionKey.Length==0)Settings.SelectedCompanionKey=requested.PickerKey;
         Skin = RestoreCachedStartupCompanion(requested);
-        if (Skin.IsPlaceholder) { Settings.PendingOfficialCompanionId = Skin.OfficialCharacterId!; Skin = embeddedEbao; }
+        bool companionFallback=Skin.IsPlaceholder;
+        if (companionFallback) { Skin = embeddedEbao; }
+        if(Skin.PackageHolidayCatalog!=null)RebuildCompanionCatalogFor(Skin);
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices, Skin.OfficialCharacterId ?? Skin.BuiltinCharacterId);
-        Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
+        if(!companionFallback||Settings.SelectedCompanionKey.Length==0)Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
         Api = new ApiClient();
         Observation=new DesktopObservationHost(DataMaintenance,runtime.CreateDesktopObservationCapture());
         TextResources.LanguageChanged+=ObservationLanguageChanged;
@@ -106,6 +112,7 @@ internal sealed partial class DesktopController : IDisposable
         ImageStore = new GeneratedImageStore(DataDirectory, ImageUsage);
         ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
         Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory,maintenance:DataMaintenance);
+        Session.AttachmentDataRoot = DataDirectory;
         Session.ProactiveEvents=Observation.Events;
         ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage,DataMaintenance);
         ImageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();
@@ -132,7 +139,8 @@ internal sealed partial class DesktopController : IDisposable
         Questions.Changed += Notify;Questions.Changed+=NotificationQuestionsChanged;
         Session.AgentTaskChanged += Notify;
         WorkBindings=new DesktopWorkspaces(this,runtime,jobsFactory);
-        Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());ObserveNotificationSession(Session);
+        if(Skin.Snapshot!=null||Skin.Bundle!=null)activeCompanionPins=Task.Run(()=>companionAssets.Prepare(Skin)).GetAwaiter().GetResult();
+        Pet = new PetWindow(this, companionAssets);ObserveNotificationSession(Session);
         relationshipFeedback=new RelationshipFeedback(Relationships,id=>!exiting&&id==RelationshipCompanionId&&!Settings.QuietMode&&Pet.RelationshipFeedbackAllowed,ShowRelationshipFeedback,null,action=>Dispatcher.UIThread.Post(action));
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
@@ -208,7 +216,8 @@ internal sealed partial class DesktopController : IDisposable
         UiLanguageChange.Apply(store,Settings,code);
         Notify();
     }
-    public void ShowPet() { if (!Pet.IsVisible) Pet.Show(); Pet.Clamp();Relationships.EnqueueVisit(RelationshipCompanionId,Pet.IsPetVisible); }
+    public void ShowPet() { bool visible=Pet.IsPetVisible;if(!visible){operationGestures.VisibilityGesture();operationLaunchObserved=true;}if (!Pet.IsVisible) Pet.Show(); Pet.Clamp();Relationships.EnqueueVisit(RelationshipCompanionId,Pet.IsPetVisible);if(!visible&&Pet.IsPetVisible)PlayCompanionOperation(CompanionOperationCue.Appear); }
+    public void HidePet(){bool visible=Pet.IsPetVisible;operationGestures.VisibilityGesture();operationLaunchObserved=true;Pet.Hide();if(visible&&!Pet.IsPetVisible)PlayCompanionOperation(CompanionOperationCue.Hide); }
     public void ShowChat(bool quick)
     {
         Observation.Invalidate();
@@ -284,7 +293,7 @@ internal sealed partial class DesktopController : IDisposable
         foreach (var binding in hotkeys) binding.Dispose(); hotkeys.Clear();
         if (!OperatingSystem.IsMacOS()) return;
         // Carbon key codes: Space, D, H. Defaults remain explicit in Settings UI.
-        foreach (var binding in new (string Id, uint Key, Action Action)[] { ("chat", 49, () => ShowChat(true)), ("show", 2, ShowPet), ("hide", 4, Pet.Hide) })
+        foreach (var binding in new (string Id, uint Key, Action Action)[] { ("chat", 49, () => ShowChat(true)), ("show", 2, ShowPet), ("hide", 4, HidePet) })
         {
             if (!Settings.Hotkeys.TryGetValue(binding.Id, out var value) || value != "enabled") continue;
             try { hotkeys.Add(MacServices.RegisterHotKey(binding.Key, MacHotKeyModifiers.Command | MacHotKeyModifiers.Shift, () => Dispatcher.UIThread.Post(binding.Action))); }
@@ -345,7 +354,9 @@ internal sealed partial class DesktopController : IDisposable
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
         relationshipFeedback.Dispose();relationshipNotice?.Close();
-        companionLifetime.Cancel(); preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
+        companionAssets.DefaultClipFailed-=DefaultCompanionFailed;
+        companionInstallationBubble?.Shutdown();companionRefreshProgress?.Dispose();
+        var companions=ShutdownCompanionsAsync();
         lifetime.ShutdownRequested-=ShutdownRequested;
         CloseAgentJobViews();DisposeNotificationServices();DisposeProactiveGreetingSpeech();
         proactiveHistory?.Close();
@@ -355,13 +366,12 @@ internal sealed partial class DesktopController : IDisposable
         Holidays.RetrySave();
         tray?.Dispose();
         foreach(var binding in hotkeys)binding.Dispose();
-        ImageServicesShutdown=Task.Run(async()=>
+        var independent=Task.Run(async()=>
         {
             await ObservationSettingsIdle;
             await Observation.DrainAsync();await DrainProactiveBindingsAsync();
             try{await applicationExitDrain;}catch(Exception){}
             await HolidayKeepsakes.ShutdownAsync();
-            officialCompanions.Dispose();companionNative.Dispose();
             await ImageTasks.StopAsync(CancellationToken.None);
             await WorkBindings.StopForExitAsync();
             FinalizeConversationServices();
@@ -370,5 +380,25 @@ internal sealed partial class DesktopController : IDisposable
             ImageClient.Dispose();
             ImageStore.Dispose();
         });
+        ImageServicesShutdown=Task.WhenAll(companions,independent);
+    }
+    private Task companionResourceShutdown=Task.CompletedTask;
+    private async Task ShutdownCompanionsAsync()
+    {
+        var deadline=Task.Delay(TimeSpan.FromSeconds(5));
+        var source=officialCompanions.ShutdownAsync();
+        // Token callbacks, decoded pins and retained snapshots can wait for a
+        // real reader's locks. Each owner must finish, never on the UI thread.
+        companionResourceShutdown=Task.WhenAll(
+            Task.Run(()=>companionLifetime.Cancel()),
+            Task.Run(()=>preparation?.Dispose()),
+            Task.Run(()=>{
+                activeCompanionPins?.Dispose();
+                OfficialCompanionSnapshot[] snapshots;
+                lock(preparedCompanions){snapshots=companionSnapshots.ToArray();companionSnapshots.Clear();}
+                foreach(var snapshot in snapshots)snapshot.Dispose();
+            }));
+        await OfficialCompanionDownloads.DrainWorkersAsync(Task.WhenAll(source,companionResourceShutdown),deadline).ConfigureAwait(false);
+        companionNative.Dispose();
     }
 }

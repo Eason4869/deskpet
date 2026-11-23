@@ -1,0 +1,7 @@
+This distribution includes OpenMcdf 3.4.0, licensed under the Mozilla Public
+License 2.0. The complete corresponding source is available at:
+
+https://github.com/openmcdf/openmcdf/tree/687fae7286167035a2a1f2c7ab39720679a187a5
+
+The OpenMcdf binaries are unchanged from the official OpenMcdf 3.4.0 NuGet
+package. See OpenMcdf-LICENSE.txt for the license text.

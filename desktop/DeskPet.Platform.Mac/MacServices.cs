@@ -20,6 +20,28 @@ public static class MacServices
     public static string DataDirectory => DirectoryPath("DESKPET_DATA_DIR", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "DeskPet");
     public static string LogDirectory => DirectoryPath("DESKPET_LOG_DIR", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Logs", "DeskPet");
     public static void InstallSecretProtection() { EnsureMac(); SecretProtection.Configure(new MacSecretProtector()); }
+    public static string RecognizeFileText(string path,int page,string language,CancellationToken token)
+    {
+        EnsureMac();
+        token.ThrowIfCancellationRequested();
+        byte[] output=new byte[32*1024];
+        int length=Native.RecognizeFile(path,page,language,output,output.Length);
+        token.ThrowIfCancellationRequested();
+        if(length==-2)throw new NotSupportedException();
+        if(length<0||length>output.Length)throw new InvalidDataException();
+        return System.Text.Encoding.UTF8.GetString(output,0,length);
+    }
+    public static (byte[] Image,long ActualMilliseconds) ExtractVideoFrame(string path,long milliseconds,CancellationToken token)
+    {
+        EnsureMac();
+        token.ThrowIfCancellationRequested();
+        byte[] output=new byte[4*1024*1024];
+        int length=Native.ExtractVideoFrame(path,milliseconds,output,output.Length,out long actual);
+        token.ThrowIfCancellationRequested();
+        if(length<=0||length>output.Length)throw new InvalidDataException();
+        Array.Resize(ref output,length);
+        return (output,actual);
+    }
     public static IAudioRecorder CreateRecorder() { EnsureMac(); return new MacAudioRecorder(false); }
     public static IPcmMicrophone CreateMicrophone() { EnsureMac(); return new MacAudioRecorder(true); }
     public static ILiveAudioOutput CreateLiveOutput() { EnsureMac(); return new MacPcmOutput(); }

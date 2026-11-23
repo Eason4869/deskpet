@@ -11,11 +11,13 @@ namespace Dafeiyu.Maintenance
     internal sealed class AttachmentArchive
     {
         readonly string directory;
+        readonly Dictionary<string,AttachmentReference> preservedImports=new Dictionary<string,AttachmentReference>(StringComparer.Ordinal);
         internal AttachmentArchive(string path){directory=path;}
         internal void Preserve(IEnumerable<ChatAttachment> attachments)
         {
             foreach(var file in attachments??new ChatAttachment[0]){
                 if(file==null)throw new InvalidDataException(TextResources.Get("dataMaintenance.storageFailure"));
+                if(file.ImportedFile!=null){PreserveImported(file.ImportedFile);continue;}
                 if(file.MediaType=="text/plain"&&String.IsNullOrEmpty(file.Data))continue;
                 string extension;switch(file.MediaType){case "image/png":extension=".png";break;case "image/jpeg":extension=".jpg";break;case "image/gif":extension=".gif";break;case "image/webp":extension=".webp";break;case "application/pdf":extension=".pdf";break;default:throw new InvalidDataException(TextResources.Get("dataMaintenance.storageFailure"));}
                 byte[] bytes=Convert.FromBase64String(file.Data??"");if(bytes.Length==0||bytes.Length>ChatAttachment.MaximumBytes)throw new InvalidDataException(TextResources.Get("dataMaintenance.storageFailure"));
@@ -35,6 +37,51 @@ namespace Dafeiyu.Maintenance
                     CachePaths.Check(destination);if(!File.ReadAllBytes(destination).SequenceEqual(bytes))throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));
                 }
             }
+        }
+
+        void PreserveImported(AttachmentReference reference)
+        {
+            var store=new AttachmentFileStore(Path.GetDirectoryName(directory));
+            using(var input=store.Open(reference))
+            {
+                string extension=FileContentService.Extension(input.Path);
+                if(!FileContentService.CanRead(extension))throw new InvalidDataException(TextResources.Get("dataMaintenance.storageFailure"));
+                CachePaths.Check(directory);Directory.CreateDirectory(directory);
+                using(CacheDirectoryPins.OpenDirectory(directory))
+                {
+                    string destination=Path.Combine(directory,reference.Hash+extension);
+                    CachePaths.Check(destination);
+                    if(!File.Exists(destination))
+                    {
+                        string temporary=Path.Combine(directory,Guid.NewGuid().ToString("N")+".tmp");
+                        try
+                        {
+                            using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+                            {input.Stream.CopyTo(output);output.Flush(true);}
+                            VerifyImported(temporary,reference);
+                            AtomicFile.Commit(temporary,destination);
+                        }
+                        finally{if(File.Exists(temporary))File.Delete(temporary);}
+                    }
+                    VerifyImported(destination,reference);
+                    preservedImports[reference.Id]=reference;
+                }
+            }
+        }
+
+        internal void ReleaseImported()
+        {
+            var store=new AttachmentFileStore(Path.GetDirectoryName(directory));
+            foreach(var reference in preservedImports.Values)store.Discard(reference);
+        }
+
+        static void VerifyImported(string path,AttachmentReference reference)
+        {
+            CachePaths.Check(path);
+            using(var file=File.OpenRead(path))
+            using(var sha=SHA256.Create())
+                if(file.Length!=reference.Size||BitConverter.ToString(sha.ComputeHash(file)).Replace("-","").ToLowerInvariant()!=reference.Hash)
+                    throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));
         }
     }
 }

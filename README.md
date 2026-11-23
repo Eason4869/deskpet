@@ -4,9 +4,9 @@
 
 一个可以互动、聊天，也能陪你处理项目文件的桌面伙伴。
 
-**1.0.3 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
+**1.0.5 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
 
-1.0.3 为密钥输入框加入显示／隐藏按钮，改进 Windows 生图结果卡片，并修复同密钥切换遮挡及 Windows 无障碍名称问题。详见[更新日志](CHANGELOG.md)。
+1.0.5 新增文件附件的本地读取和选区发送，支持旧版 Word 和 Excel、现代 Office 文档、PDF、归档、SQLite 和常见媒体文件。Windows 可逐个移除已配置的对话模型，安装向导的启动和伙伴资源切换也有改进。详见 [更新日志](CHANGELOG.md)。
 
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 
@@ -16,7 +16,7 @@
 
 | 平台 | 系统要求 | 下载与范围 |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.3 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3)，选择 `DeskPet-Windows-Setup-1.0.3.exe` 安装版或 `DeskPet-Windows-1.0.3.zip` 便携版。下文主要介绍 Windows。 |
+| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.5 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5)，选择 `DeskPet-Windows-Setup-1.0.5.exe` 安装版或 `DeskPet-Windows-1.0.5.zip` 便携版。下文主要介绍 Windows。 |
 | **macOS 预览** | macOS 14+，Apple Silicon 或 Intel | 在同一发布页选择对应架构的 `preview` DMG / ZIP。共享部分核心，使用独立界面；Windows 的文件 Agent、工具标签与终端不代表 Mac 已支持。 |
 
 发布页同时提供源码、角色包、创作模板及 SHA256 校验文件；实际附件以发布页为准。Windows 安装包当前未做应用代码签名；Mac 预览为 ad-hoc 签名，未做 Developer ID 签名或公证。下载请认准 [Eason4869/deskpet](https://github.com/Eason4869/deskpet)。
@@ -26,7 +26,7 @@ Windows 安装版按当前用户安装，默认目录为 `%LOCALAPPDATA%\Program
 ## 快速开始
 
 1. **先试互动。** 拖动伙伴换位置，单击头部摸摸头，中键打开动作轮盘。桌宠互动不需要配置模型。
-2. **选择伙伴。** 首次启动默认 E包。其他官方伙伴首次选择时下载完整角色包；在设置中也可选择“全量下载／更新”。
+2. **选择伙伴。** 首次启动默认 E包。鹅宝常规动作可离线使用，节日装扮在选中后静默补齐，已有装扮保持可用；其他官方伙伴首次选择时下载完整角色包；在设置中也可选择“全量下载／更新”。
 3. **配置文字模型。** 打开 **设置 → 配置引导**，或进入 **模型配置 → 文字模型**，新增服务商，填写地址、协议和 API Key，保存并获取模型，再逐个添加需要的模型。也可手动填写完整模型 ID。
 4. **测试后聊天。** 主动点击连接测试，确认可用。双击伙伴打开快速对话，右键伙伴或双击托盘图标打开完整窗口。默认 **Enter 发送，Shift + Enter 换行**。
 5. **需要处理文件时切到“工作”。** 添加项目并绑定目录，选择支持原生工具调用的模型，核对权限后发送任务。先用计划模式阅读项目，也可以只使用普通聊天。
@@ -154,10 +154,11 @@ Windows 可在 **关于与更新** 选择正式或预览通道。更新校验附
 在仓库根目录的 PowerShell 中构建 Windows 程序，输出明确留在本仓库：
 
 ```powershell
+python -m pip install Pillow
 .\Build.ps1 -Target App -OutputDirectory "$PWD\work\local-app"
 ```
 
-Windows 构建使用系统 .NET Framework 编译器与 System.Speech；不需要 Docker。共享核心与 Avalonia 开发使用 `desktop/global.json` 指定的 .NET 10 SDK，Mac 原生桥接需在 Mac 构建，见[平台开发说明](desktop/DeskPet.Platform.Mac/README.md)。打包另需 Python / Pillow，安装器构建使用 Inno Setup；以仓库脚本与 CI 为准。
+Windows 构建使用系统 .NET Framework 编译器与 System.Speech；不需要 Docker。共享核心与 Avalonia 开发使用 `desktop/global.json` 指定的 .NET 10 SDK，Mac 原生桥接需在 Mac 构建，见[平台开发说明](desktop/DeskPet.Platform.Mac/README.md)。鹅宝默认资源的构建也需要 Python / Pillow：脚本先按素材注册表校验完整角色包，再仅将全部常规动作、视线、头像和元数据 33 项嵌入 EXE，运行时只读取所需条目，不解压整包。Avalonia 生产构建前运行 `python tools/prepare_bundled_ebao.py`；Mac 将同一源码在 Windows 生成的完整鹅宝来源 ZIP 传入 `--package`（不是派生默认 ZIP）（见 [Mac 打包说明](installer/macos/README.md)）。安装器构建使用 Inno Setup；以仓库脚本与 CI 为准。
 
 ## 源码、素材与许可
 

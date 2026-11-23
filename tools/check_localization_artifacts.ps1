@@ -2,19 +2,30 @@
 $ErrorActionPreference='Stop'
 $project=Split-Path $PSScriptRoot -Parent
 $app=[IO.Path]::GetFullPath($AppRoot)
-$isolated=Join-Path $project ('work/localization-artifacts-'+[Guid]::NewGuid().ToString('N'))
+$work=[IO.Path]::GetFullPath((Join-Path $project 'work'))
+$isolated=Join-Path $work ('localization-artifacts-'+[Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $isolated | Out-Null
-$catalogs=@('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')
-$sha=($catalogs | ForEach-Object { $_+'='+((Get-FileHash -Algorithm SHA256 (Join-Path $project ('assets/locales/'+$_+'.json'))).Hash.ToLowerInvariant()) }) -join ';'
-$compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-$checker=Join-Path $isolated 'VerifyLocalizationArtifacts.exe'
-$response=Join-Path $isolated 'verify.rsp'
-[IO.File]::WriteAllLines($response,@('/nologo','/codepage:65001','/target:exe',('"/out:'+$checker+'"'),('"'+(Join-Path $PSScriptRoot 'localization/VerifyArtifacts.cs')+'"')),[Text.UTF8Encoding]::new($true))
-& $compiler ('@'+$response)
-if($LASTEXITCODE){throw 'Localization artifact checker compilation failed'}
-foreach($name in @('桌面伙伴.exe','DeskPet.Update.exe')) {Copy-Item -LiteralPath (Join-Path $app $name) -Destination $isolated}
 Push-Location $isolated
 try {
+    $catalogs=@('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')
+    $sha=($catalogs | ForEach-Object { $_+'='+((Get-FileHash -Algorithm SHA256 (Join-Path $project ('assets/locales/'+$_+'.json'))).Hash.ToLowerInvariant()) }) -join ';'
+    $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+    $checker=Join-Path $isolated 'VerifyLocalizationArtifacts.exe'
+    $response=Join-Path $isolated 'verify.rsp'
+    [IO.File]::WriteAllLines($response,@('/nologo','/codepage:65001','/target:exe',('"/out:'+$checker+'"'),('"'+(Join-Path $PSScriptRoot 'localization/VerifyArtifacts.cs')+'"')),[Text.UTF8Encoding]::new($true))
+    & $compiler ('@'+$response)
+    if($LASTEXITCODE){throw 'Localization artifact checker compilation failed'}
+    foreach($name in @('桌面伙伴.exe','DeskPet.Update.exe')) {
+        $source=Join-Path $app $name
+        $fixture=Join-Path $isolated $name
+        if (!(Get-Item -LiteralPath $source).IsReadOnly) {
+            try {
+                New-Item -ItemType HardLink -Path $fixture -Target $source -ErrorAction Stop | Out-Null
+                continue
+            } catch { }
+        }
+        Copy-Item -LiteralPath $source -Destination $fixture
+    }
     & $checker $sha (Join-Path $isolated '桌面伙伴.exe') (Join-Path $isolated 'DeskPet.Update.exe')
     if($LASTEXITCODE){throw 'Standalone WPF/helper localization validation failed'}
     foreach($name in @('桌面伙伴.exe','DeskPet.Update.exe')) {
@@ -35,4 +46,9 @@ try {
         }
         Write-Output ('PASS eleven system UI language startup lookups: '+$name)
     }
-} finally {Pop-Location}
+} finally {
+    Pop-Location
+    $fixtureRoot=Get-Item -LiteralPath $isolated
+    if($fixtureRoot.Parent.FullName -ne $work -or $fixtureRoot.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Unexpected localization fixture directory'}
+    Remove-Item -LiteralPath $fixtureRoot.FullName -Recurse -Force
+}

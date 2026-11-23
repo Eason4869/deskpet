@@ -12,7 +12,7 @@ namespace Dafeiyu.Tests
     public static class CompanionStartupTests
     {
         static int checks;
-        static void Check(bool value,string label){if(!value)throw new Exception(label);checks++;}
+        static void Check(bool value,string label){if(!value)throw new Exception(label);checks++;Console.WriteLine("PASS "+label);}
         [STAThread]public static int Main()
         {
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());PetWindow pet=null;
@@ -31,7 +31,7 @@ namespace Dafeiyu.Tests
                     var installed=storage.Publish(stage,asset,CancellationToken.None,()=>{},action=>action());
                     new WpfOfficialNativeValidator().ValidateAsync(installed,CancellationToken.None).GetAwaiter().GetResult();
                     var store=new SettingsStore(Path.Combine(data,"settings.json"));
-                    var settings=new PetSettings{SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,FollowCursor=false,Wander=false,SaveChatHistory=false};
+                    var settings=new PetSettings{LastOnboardingSeries=ReleaseVersion.Parse(ReleaseInfo.DisplayVersion).AssemblyBase.ToString(2),OnboardingVersion=OnboardingUpgrade.WorkGuideVersion,SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,FollowCursor=false,Wander=false,SaveChatHistory=false};
                     store.Save(settings);int requests=fixture.Requests.Count;
                     pet=new PetWindow(null,store.Load(),store,null);
                     Check(pet.Skin.BuiltinCharacterId=="dafeiyu"&&!pet.Skin.IsPlaceholder,"startup restores installed last companion before showing Ebao");
@@ -47,7 +47,7 @@ namespace Dafeiyu.Tests
                     ClosePet(pet);pet=null;
                     File.WriteAllText(Path.Combine(data,"official-companions","dafeiyu","current.txt"),"invalid-pointer");
                     pet=new PetWindow(null,store.Load(),store,null);
-                    Check(pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Settings.PendingOfficialCompanionId=="dafeiyu","damaged cache falls back safely while retaining restore intent");
+                    Check(pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Settings.PendingOfficialCompanionId=="","damaged cache falls back safely without durable pending auto-selection");
                     fixture.Files[OfficialCompanionFixture.PackageName("e-bao")]=WpfOfficialCompanionTests.NativePackage("e-bao",100);
                     using(var transport=fixture.Transport())
                     {
@@ -55,17 +55,38 @@ namespace Dafeiyu.Tests
                         using(var service=new OfficialCompanionDownloads(data,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,native.ValidateAsync))
                         {
                             var started=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();
-                            fixture.Intercept=async(request,cancel)=>{if(request.RequestUri.AbsolutePath.EndsWith(OfficialCompanionFixture.PackageName("e-bao"),StringComparison.Ordinal)){started.TrySetResult(true);await release.Task.ConfigureAwait(false);}return null;};
+                            fixture.Intercept=async(request,cancel)=>{if(request.RequestUri.AbsolutePath.EndsWith(OfficialCompanionFixture.PackageName("dafeiyu"),StringComparison.Ordinal)){started.TrySetResult(true);await release.Task.ConfigureAwait(false);}return null;};
                             typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,service);
                             typeof(PetWindow).GetField("officialStartupStarted",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,false);
                             pet.Settings.PendingOfficialCompanionId="";var previous=pet.Skin;string persona=pet.Settings.SkinId,key=pet.Settings.SelectedCompanionKey;
                             typeof(PetWindow).GetMethod("TryStartOfficialStartup",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
-                            Until(()=>started.Task.IsCompleted,5000);
-                            Check(started.Task.IsCompleted&&ReferenceEquals(previous,pet.Skin),"startup checks current embedded E without waiting for a role switch and keeps its old art");
-                            Check(!app.Windows.OfType<OfficialCompanionProgressWindow>().Any(),"startup package update remains silent");
+                            Until(()=>false,100);
+                            Check(!started.Task.IsCompleted&&ReferenceEquals(previous,pet.Skin),"startup is fully offline and retains embedded E");
+                            Check(!app.Windows.OfType<OfficialCompanionProgressWindow>().Any(),"offline startup opens no download UI");
+                            Check(pet.Settings.SkinId==persona&&pet.Settings.SelectedCompanionKey==key,"offline startup keeps the successful selection identity");
+                            Check(pet.Settings.SelectedCompanionKey=="official:dafeiyu","temporary E fallback preserves last successful saved role");
+                            pet.Show();Until(()=>started.Task.IsCompleted,15000);
+                            Check(started.Task.IsCompleted&&ReferenceEquals(previous,pet.Skin),"upgrade checks saved role after first visible fallback frame while old artwork stays visible");
                             release.TrySetResult(true);
-                            Until(()=>!pet.Skin.Embedded&&pet.Skin.BuiltinCharacterId=="e-bao",60000);
-                            Check(!pet.Skin.Embedded&&pet.Settings.SkinId==persona&&pet.Settings.SelectedCompanionKey==key,"startup download hot loads the same role identity");
+                            Until(()=>pet.Skin.BuiltinCharacterId=="dafeiyu"&&pet.Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion,60000);
+                            Check(pet.Skin.BuiltinCharacterId=="dafeiyu"&&pet.Settings.SelectedCompanionKey=="official:dafeiyu","successful upgrade repair restores saved role without resetting to E; skin="+pet.Skin.BuiltinCharacterId+" key="+pet.Settings.SelectedCompanionKey+" marker="+pet.Settings.LastCompanionUpgradeVersion+" stage="+(pet.CurrentCompanionSelection==null?"none":pet.CurrentCompanionSelection.Stage)+" notice="+pet.Notice);
+                            var selected=pet.Skin;var atlasBefore=selected.PreparedOfficialAtlas;
+                            var question=pet.QuestionController.AskAsync(new AgentQuestionRequest{SessionId="busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
+                            var refused=pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.PassiveMenu,null);Until(()=>refused.IsCompleted,1000);
+                            Check(refused.IsCompleted&&!refused.Result&&ReferenceEquals(pet.Skin,selected)&&pet.QuestionController.Requests.Count==1,"business refusal preserves current role and pending agent question");pet.QuestionController.CancelSession("busy");
+                            var toE=pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null);Until(()=>toE.IsCompleted,10000);Check(toE.IsCompleted&&toE.Result,"embedded local fallback is prepared asynchronously");
+                            using(Maintenance.OfficialCompanionMaintenance.Lock(storage.CharacterRoot("dafeiyu"))){
+                                var warm=pet.RequestSkinAsync(selected,CompanionSelectionOrigin.StartupRestore,null);Until(()=>warm.IsCompleted,5000);
+                                Check(warm.IsCompleted&&warm.Result&&ReferenceEquals(pet.Skin.PreparedOfficialAtlas,atlasBefore),"warm prepared switch bypasses held lifecycle lock and reuses native atlas");
+                            }
+                            var oldSnapshot=pet.Skin.Snapshot;
+                            var fresh=service.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None,true,true);Until(()=>fresh.IsCompleted,30000);fresh.GetAwaiter().GetResult();
+                            var refresh=(Task<bool>)typeof(PetWindow).GetMethod("RefreshOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{"dafeiyu",typeof(PetWindow).GetField("officialRequest",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet),false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached});Until(()=>refresh.IsCompleted,30000);
+                            Check(refresh.IsCompleted&&refresh.Result,"same-role background publication prepares a new generation");
+                            Until(()=>!ReferenceEquals(pet.Skin.Snapshot,oldSnapshot),10000);typeof(PetWindow).GetMethod("RetireOfficialSources",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+                            bool retired=false;try{oldSnapshot.ReadVerifiedBytes("pet.json");}catch(ObjectDisposedException){retired=true;}
+                            Check(retired&&pet.Skin.Snapshot!=null,"safe source replacement releases the retired snapshot lease");
+
                         }
                     }
                 }

@@ -60,6 +60,18 @@ namespace Dafeiyu
         static HolidayState Load(HolidayStateStore store){if(store==null)throw new ArgumentNullException("store");return store.Load();}
         public HolidayController(HolidayCalendar calendar,HolidayCatalog catalog,HolidayState state,Action<HolidayState> save)
         {if(calendar==null || catalog==null || state==null || save==null)throw new ArgumentNullException("Holiday dependencies");this.calendar=calendar;this.catalog=catalog;this.state=state;this.save=save;}
+        // Read-only selection preview for asynchronous native preparation. It does
+        // not consume transitions, unlocks, greetings or the active role context.
+        public OutfitDefinition PreviewOutfit(string character,string stateKey,DateTime localTime,HolidayCatalog source)
+        {
+            if(!ValidCharacter(character)||source==null)return null;
+            HolidayCharacterState role;if(!state.Characters.TryGetValue(HolidayState.SourceKey(stateKey),out role))role=new HolidayCharacterState();
+            if(!role.Enabled)return null;
+            var occurrences=calendar.Resolve(localTime.Date);var automatic=source.Active(character,occurrences);
+            if(automatic!=null){var occurrence=occurrences.First(x=>x.Id==automatic.HolidayId);var activity=role.Activities.FirstOrDefault(x=>x.InstanceKey==occurrence.InstanceKey);if(activity==null||!activity.ManualOverride)return automatic;}
+            if(!String.IsNullOrEmpty(role.PreferredOutfitId)&&role.UnlockedOutfits.Contains(role.PreferredOutfitId)){var preferred=source.Find(character,role.PreferredOutfitId);if(preferred!=null&&preferred.Ready)return preferred;}
+            return null;
+        }
         public void ReplaceCatalog(HolidayCatalog replacement)
         {
             if(replacement==null)throw new ArgumentNullException("replacement");

@@ -51,7 +51,7 @@ namespace Dafeiyu.Tests
     Check(Find<TextBox>(window,"TextProviderNewModel").Text=="second-pending" && Find<TextBox>(window,"TextModelDisplayName").Text=="待保存模型" && window.HasUnsavedEdits,"external selection preserves pending new model ID and alias before Add");
     Find<ListBox>(window,"TextProviderList").SelectedIndex=0;Find<ListBox>(window,"TextProviderList").SelectedIndex=1;Pump();
     Check(Find<TextBox>(window,"TextProviderNewModel").Text=="second-pending" && Find<TextBox>(window,"TextModelDisplayName").Text=="待保存模型","provider navigation preserves staged model ID and alias");
-    Find<ListBox>(window,"TextProviderModels").SelectedValue="second-pending";Click(window,"RemoveTextModel");Click(window,"SaveConnections");
+    ClickRemoveModel(window,"second-pending");Click(window,"SaveConnections");
     Check(pet.Settings.TextProviders[0].DisplayName("first-b")=="深度思考","Chinese model alias saved independently from ID");
     pet.Settings.SelectTextModel(pet.Settings.TextProviders[0].Id,"first-b");window.RefreshTextProviders();Pump();Check(Find<TextBox>(window,"TextProviderName").Text=="主要服务" && !window.HasUnsavedEdits,"external model selection refreshes a clean settings draft");
     Find<TextBox>(window,"TextModelDisplayName").Text="长文思考";pet.Settings.SelectTextModel(pet.Settings.TextProviders[1].Id,"second-a");window.RefreshTextProviders();Pump();Check(Find<TextBox>(window,"TextModelDisplayName").Text=="长文思考" && window.HasUnsavedEdits,"external model selection preserves an edited display-name draft");
@@ -63,13 +63,27 @@ namespace Dafeiyu.Tests
     window.Width=700;window.Height=430;Pump();Check(Inside(Find<Button>(window,"SaveConnections"),window),"save visible at minimum dimensions");Check(Inside(Find<Button>(window,"AiLiveTab"),window),"all service categories remain reachable");
     Check(window.FocusGuideTarget("TextServiceModel")!=null,"existing guide locates editable model field");Pump();Capture(window,Path.Combine(folder,"providers-minimum.png"));
     window.Width=960;window.Height=790;window.SelectAiSection(0);Pump();
-    Find<ListBox>(window,"TextProviderList").SelectedIndex=0;Pump();Find<ListBox>(window,"TextProviderModels").SelectedValue="first-b";Click(window,"RemoveTextModel");Click(window,"SaveConnections");
+    Find<ListBox>(window,"TextProviderList").SelectedIndex=0;Pump();ClickRemoveModel(window,"first-b");
+    Check(window.HasUnsavedEdits && store.Load().TextProviders[0].Models.Contains("first-b"),"removing a model changes only the draft until the user saves");
+    Click(window,"SaveConnections");
     Check(pet.Settings.Text.Model=="first-a" && pet.Settings.TextProviders[0].Models.Count==1,"remove active model falls back within provider");
     Find<ListBox>(window,"TextProviderList").SelectedIndex=1;Click(window,"RemoveTextProvider");Click(window,"SaveConnections");Check(pet.Settings.TextProviders.Count==1 && pet.Settings.Text.ApiKey=="first-secret","remove provider retains valid remaining provider");
     Check(!Find<Button>(window,"RemoveTextProvider").IsEnabled,"last provider cannot be removed");
+    string remainingProviderId=pet.Settings.TextProviders.Single().Id;
+    ClickRemoveModel(window,"first-a");Click(window,"SaveConnections");
+    var modelLess=store.Load();var remaining=modelLess.TextProviders.Single();
+    Check(remaining.Id==remainingProviderId && remaining.Connection.ApiKey=="first-secret" && remaining.Connection.BaseUrl=="https://first.example/v1" && remaining.Models.Count==0 && modelLess.Text.Model=="","saving removal of the last model keeps the provider and clears the active model");
     Console.WriteLine("ProviderUiSmoke: "+passed+" passed; previews: "+folder);return 0;
    }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
    finally{if(window!=null)window.Close();if(pet!=null)pet.Close();Pump();app.Shutdown();}
+  }
+  static void ClickRemoveModel(SettingsWindow window,string model)
+  {
+   var list=Find<ListBox>(window,"TextProviderModels");
+   var row=list.Items.Cast<ListBoxItem>().Single(item=>(string)item.Tag==model);
+   var button=FindIn<Button>(row,"RemoveConfiguredModel");
+   Check(button!=null && button.IsVisible && button.IsEnabled,"configured model has its own visible remove button");
+   button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
   }
   static T Find<T>(SettingsWindow w,string name) where T:FrameworkElement {if(name.StartsWith("TextService")){var details=w.FindControl("TextConnectionDetails") as Expander;if(details!=null)details.IsExpanded=true;w.UpdateLayout();}var result=w.FindControl(name) as T;
    // These legacy assertions exercise model drafts; modal presentation is covered by ModelConfigurationSmoke.

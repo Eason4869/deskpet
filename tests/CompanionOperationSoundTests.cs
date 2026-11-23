@@ -1,0 +1,50 @@
+#if NET8_0_OR_GREATER
+#pragma warning disable 8600,8601,8602,8604,8605
+#endif
+using System;
+using System.IO;
+using System.Reflection;
+using System.Runtime.Serialization.Json;
+using System.Text;
+using System.Threading;
+using System.Security.Cryptography;
+namespace Dafeiyu.Tests {
+public static class CompanionOperationSoundTests {
+ static int checks;
+ static void Check(bool v,string n){if(!v)throw new Exception(n);checks++;Console.WriteLine("PASS "+n);}
+ static void Until(Func<bool> v,string n){Check(SpinWait.SpinUntil(v,4000),n);}
+ static PropertyInfo Enabled=typeof(PetSettings).GetProperty("NotificationSoundsEnabled"),Volume=typeof(PetSettings).GetProperty("CompanionOperationSoundVolume");
+ static bool Play(NotificationSoundPlayer p,string cue,string id,bool preview=false){var t=typeof(PetSettings).Assembly.GetType("Dafeiyu.CompanionOperationCue");return (bool)typeof(NotificationSoundPlayer).GetMethod("TryPlayOperation").Invoke(p,new[]{Enum.Parse(t,cue),(object)id,preview});}
+#if !NET8_0_OR_GREATER
+ [STAThread] public static int Main(){return Run();}
+#endif
+ public static int Run(){try{
+ Check(Enabled!=null&&Volume!=null&&typeof(PetSettings).GetProperty("CompanionOperationSoundsEnabled")==null,"one master preference plus independent operation volume");
+ var settings=new PetSettings();Check((bool)Enabled.GetValue(settings,null)&&(int)Volume.GetValue(settings,null)==30,"master defaults enabled operation volume30");
+ using(var s=new MemoryStream(Encoding.UTF8.GetBytes("{}"))){var old=new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(s);Check((bool)Enabled.GetValue(old,null)&&(int)Volume.GetValue(old,null)==30,"legacy absent settings migrate to master on volume30");}
+ using(var s=new MemoryStream(Encoding.UTF8.GetBytes("{\"NotificationSoundsEnabled\":false}"))){var old=(PetSettings)new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(s);Check(!old.NotificationSoundsEnabled&&(int)Volume.GetValue(old,null)==30,"upgrade retains old master off while defaulting operation volume30");}
+ using(var s=new MemoryStream(Encoding.UTF8.GetBytes("{\"NotificationSoundsEnabled\":false,\"CompanionOperationSoundVolume\":0}"))){var old=(PetSettings)new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(s);Check(!(bool)Enabled.GetValue(old.Copy(),null)&&(int)Volume.GetValue(old.Copy(),null)==0,"legacy master disabled and explicit operation zero survive migration and copy");}
+ var dir=Path.Combine("work","operation-settings-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(dir);try{Enabled.SetValue(settings,false,null);Volume.SetValue(settings,73,null);var store=new SettingsStore(Path.Combine(dir,"settings.json"));store.Save(settings);var saved=store.Load();Check(!(bool)Enabled.GetValue(saved,null)&&(int)Volume.GetValue(saved,null)==73,"independent settings persist");typeof(SettingsStore).GetMethod("CopyPreferences",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new PetSettings(),saved});Check((bool)Enabled.GetValue(saved,null)&&(int)Volume.GetValue(saved,null)==30,"reset includes operation preferences");}finally{Directory.Delete(dir,true);}
+ string[] names={"appear","hide","switch"},hashes={"d4b228c2563eba803a5f6efa5fd74b19d1637aca250022b7504f17e51247b17a","8f7d97ac3f21e46d7544bb9a6cfddd14018b04a1b722a2ac345f8c6d6770f9ee","c0b26a39be738d567f0b3fa7fa204d97315389cce91077bdb3615a7be7914c14"};
+ for(int i=0;i<3;i++)using(var s=typeof(PetSettings).Assembly.GetManifestResourceStream("Dafeiyu.Sounds.companion-"+names[i]+".wav")){Check(s!=null,"approved asset embedded "+names[i]);using(var sha=SHA256.Create())Check(BitConverter.ToString(sha.ComputeHash(s)).Replace("-","").ToLowerInvariant()==hashes[i],"exact approved bytes "+names[i]);s.Position=0;using(var r=new BinaryReader(s)){s.Position=20;Check(r.ReadInt16()==1&&r.ReadInt16()==1&&r.ReadInt32()==48000&&r.ReadInt32()==96000&&r.ReadInt16()==2&&r.ReadInt16()==16,"mono 48k PCM16 "+names[i]);s.Position=40;int length=r.ReadInt32();Check(length>=19200&&length<=57600,"duration 0.2 to 0.6 "+names[i]);}}
+ settings=new PetSettings{Volume=0,NotificationSoundsEnabled=false};DateTime now=DateTime.UtcNow;bool busy=false;var output=new Output();using(var p=new NotificationSoundPlayer(()=>settings,()=>output,()=>busy,()=>now)){
+ Check(!Play(p,"Appear","master-off"),"existing disabled master suppresses new operation sounds");Enabled.SetValue(settings,true,null);Check(Play(p,"Appear","appear"),"operation independent of voice volume");Until(()=>output.Plays==1,"actual PCM output");Check(output.Volume==30,"independent output volume");Until(()=>output.Disposals==1,"operation releases device");Check(!Play(p,"Hide","rapid"),"one second cooldown");now=now.AddSeconds(2);Check(!Play(p,"Appear","appear"),"dedup");Enabled.SetValue(settings,false,null);Check(!Play(p,"Switch","disabled"),"disabled operation suppressed");Check(Play(p,"Switch","preview",true),"preview works with setting off");Until(()=>output.Plays==2,"preview PCM");p.Stop();Until(()=>output.Disposals==2,"stop cancels operation");now=now.AddSeconds(2);settings.QuietMode=true;Check(!Play(p,"Appear","quiet",true),"preview respects quiet");settings.QuietMode=false;busy=true;Check(!Play(p,"Appear","busy",true),"preview respects occupied audio");busy=false;Enabled.SetValue(settings,true,null);Check(!Play(p,"Switch","disabled"),"no replay after enabling");}
+ settings=new PetSettings();output=new Output();int creates=0;using(var p=new NotificationSoundPlayer(()=>settings,()=>{Interlocked.Increment(ref creates);return output;},clock:()=>now)){
+ Check(Play(p,"Switch","switch"),"switch admitted");Until(()=>output.Plays==1,"switch starts");Check(p.TryPlay(NotificationCue.Permission,"priority"),"notification preempts operation");Until(()=>output.Plays==2,"notification begins");Check(output.Disposals>=1,"operation device released before notification output");now=now.AddSeconds(4);Check(!Play(p,"Hide","blocked"),"operation cannot interrupt notification");p.Stop();Until(()=>output.Disposals==2,"speech stop interrupts current device");}
+ var entered=new ManualResetEventSlim();var release=new ManualResetEventSlim();output=new Output();using(var p=new NotificationSoundPlayer(()=>settings,()=>{entered.Set();release.Wait();return output;},clock:()=>now)){
+ Check(Play(p,"Appear","pending"),"pending operation admitted");Until(()=>entered.IsSet,"factory entered");p.Stop();settings.QuietMode=true;Check(!Play(p,"Hide","quietpending"),"quiet suppresses pending");settings.QuietMode=false;release.Set();Until(()=>output.Disposals==1,"cancelled factory disposes output");Check(output.Plays==0&&!Play(p,"Appear","pending"),"no delayed replay after cancellation");}
+ creates=0;using(var p=new NotificationSoundPlayer(()=>settings,()=>{Interlocked.Increment(ref creates);throw new IOException();},clock:()=>now)){Check(Play(p,"Hide","failure"),"device failure stays asynchronous");Until(()=>creates==1,"failure attempted once");}
+ output=new Output();busy=false;settings=new PetSettings();using(var p=new NotificationSoundPlayer(()=>settings,()=>output,()=>busy,()=>now)){
+ Check(Play(p,"Appear","speech-start"),"operation before speech");Until(()=>output.Plays==1,"operation audible before speech");busy=true;p.Refresh();Until(()=>output.Disposals==1,"speech occupancy immediately stops current operation");busy=false;now=now.AddSeconds(2);Enabled.SetValue(settings,false,null);Volume.SetValue(settings,64,null);Check(Play(p,"Hide","disabled-preview",true),"disabled preview admitted");Until(()=>output.Plays==2,"disabled preview delivered");p.Refresh();Check(output.Volume==64,"preview uses selected independent volume");settings.QuietMode=true;p.Refresh();Until(()=>output.Disposals==2,"quiet immediately stops disabled preview");settings.QuietMode=false;}
+ settings=new PetSettings();entered=new ManualResetEventSlim();release=new ManualResetEventSlim();output=new Output();creates=0;using(var p=new NotificationSoundPlayer(()=>settings,()=>{Interlocked.Increment(ref creates);entered.Set();release.Wait();return output;},clock:()=>now)){
+ Check(Play(p,"Appear","slow"),"slow operation accepted");Until(()=>entered.IsSet,"slow operation factory entered");p.Stop();now=now.AddSeconds(2);Play(p,"Hide","noqueue");Thread.Sleep(100);release.Set();Until(()=>output.Disposals==1,"slow cancelled output released");Thread.Sleep(100);Check(creates==1,"operation never queues behind a cancelled slow device");}
+ var policyType=typeof(PetSettings).Assembly.GetType("Dafeiyu.CompanionOperationGestures");Check(policyType!=null,"shared actual gesture policy exists");var policy=Activator.CreateInstance(policyType);var selection=policyType.GetMethod("Selection");Func<long,string,string,bool,bool> select=(id,origin,stage,visible)=>(bool)selection.Invoke(policy,new object[]{new CompanionSelectionUpdate(id,"official:target",origin,stage,0),visible});
+ Check(!select(1,"StartupRestore","requested",true)&&!select(1,"StartupRestore","completed",true),"startup restore never switches");
+ Check(!select(2,"Settings","requested",false)&&!select(2,"Settings","committed",false)&&!select(2,"Settings","completed",true),"hidden install cannot replay switch on show");
+ select(3,"Settings","requested",true);policyType.GetMethod("VisibilityGesture").Invoke(policy,null);Check(!select(3,"Settings","completed",true),"show gesture cancels pending switch");
+ select(4,"Settings","requested",true);Check(select(4,"Settings","completed",true)&&!select(4,"Settings","completed",true),"actual first rendered target switches exactly once");
+ select(5,"Settings","requested",true);select(5,"Settings","committed",false);Check(!select(5,"Settings","completed",true),"hidden commit invalidates eligible request");
+ Console.WriteLine("Companion operation sound tests: "+checks+" passed");return 0;
+ }catch(Exception e){Console.WriteLine("FAIL operation sound: "+e);return 1;}}
+ sealed class Output:ILiveAudioOutput {internal int Plays,Disposals,Volume;public void SetVolume(int v){Volume=v;}public void Enqueue(byte[] p,int r){Interlocked.Increment(ref Plays);}public void Interrupt(){}public void Dispose(){Interlocked.Increment(ref Disposals);}}
+}}

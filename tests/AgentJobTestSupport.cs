@@ -125,7 +125,17 @@ namespace Dafeiyu.Tests
             {
                 string full=System.IO.Path.GetFullPath(Path);
                 if(!full.StartsWith(parent+System.IO.Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Fixture escaped its test root");
-                if(Directory.Exists(full))Directory.Delete(full,true);
+                var elapsed=System.Diagnostics.Stopwatch.StartNew();
+                while(Directory.Exists(full))
+                {
+                    try{Directory.Delete(full,true);return;}
+                    catch(IOException error)
+                    {
+                        int code=error.HResult&0xffff;
+                        if((code!=32&&code!=33&&code!=145)||elapsed.ElapsedMilliseconds>=2000)throw;
+                        Thread.Sleep(50);
+                    }
+                }
             }
         }
         internal sealed class OfflineApi : IConversationApi

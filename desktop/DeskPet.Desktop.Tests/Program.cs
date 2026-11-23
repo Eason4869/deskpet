@@ -21,6 +21,11 @@ using Avalonia.Threading;
 using Dafeiyu;
 using DeskPet.Desktop;
 
+if(args.Length==2&&args[0]=="--companion-lock-probe"){
+    try{using var handle=new FileStream(args[1],FileMode.Open,FileAccess.ReadWrite,FileShare.None);Environment.ExitCode=0;}
+    catch(IOException){Environment.ExitCode=2;}return;
+}
+
 if(args.Length==3&&args[0]=="--agent-job-exit-fixture"){Environment.ExitCode=AgentJobExitUiChecks.RunNativeHost(args[1],args[2]);return;}
 
 if(args.Contains("--relationship-pack-only")){Console.WriteLine("RelationshipPackChecks: "+RelationshipPackChecks.Run()+" passed");return;}
@@ -30,14 +35,17 @@ if(args.Contains("--relationship-pack-only")){Console.WriteLine("RelationshipPac
 var systemLanguageFixture=args.SingleOrDefault(arg=>arg.StartsWith("--system-language-ui="));
 System.Globalization.CultureInfo.CurrentUICulture=System.Globalization.CultureInfo.GetCultureInfo(systemLanguageFixture==null?"zh-CN":systemLanguageFixture.Substring("--system-language-ui=".Length));
 AppBuilder.Configure<TestApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
+if(args.Any(a=>a.StartsWith("--real-performance="))){CompanionPerformanceChecks.Run(args.Single(a=>a.StartsWith("--performance-index=")).Split('=',2)[1],args.Single(a=>a.StartsWith("--real-performance=")).Split('=',2)[1],args.SingleOrDefault(a=>a.StartsWith("--owned-fixtures="))?.Split('=',2)[1],args.Contains("--natural-background"));return;}
 if(args.Length==3&&args[0]=="--holiday-keepsake-child"){Environment.ExitCode=Dafeiyu.Tests.HolidayKeepsakeContractChecks.Child(args[1],args[2],new HolidayKeepsakeSceneValidator());return;}
 if(args.Contains("--holiday-keepsake-json-boundary")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.RunJsonBoundary("work/h1a/json-native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" JSON document boundary contracts");return;}
 if(args.Contains("--holiday-keepsakes")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run("work/h1a/native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" holiday keepsake contracts");return;}
+if(args.Contains("--operation-sounds")){if(Dafeiyu.Tests.CompanionOperationSoundTests.Run()!=0)throw new Exception("Operation sound contracts failed");return;}
 if(args.Contains("--notification-sounds")){if(Dafeiyu.Tests.NotificationSoundTests.Run()!=0)throw new Exception("Notification sound contracts failed");return;}
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
 void Complete(Task task) { Until(() => task.IsCompleted); task.GetAwaiter().GetResult(); }
+void CloseController(DesktopController owner){owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}
 T Result<T>(Task<T> task) { Complete(task); return task.GetAwaiter().GetResult(); }
 void Reject(Action action, string name) { try { action(); } catch (Exception e) when (e is InvalidDataException or ArgumentException or IOException or JsonException) { assertions++; return; } throw new Exception("FAIL: accepted " + name); }
 object Asset(string name, string? url = null) => new { name, browser_download_url = url ?? "https://github.com/Eason4869/deskpet/releases/download/v0.6.0/" + Uri.EscapeDataString(name), size = 1024L };
@@ -46,6 +54,37 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if (args.Contains("--file-compatibility-only"))
+    {
+        using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "files")));
+        var path = Path.Combine(directory, "范围.txt");
+        File.WriteAllText(path, "FIRST_UNSENT\nSECOND_SELECTED");
+        var bad = Path.Combine(directory, "invalid.bin");
+        File.WriteAllText(bad, "not a supported file");
+        var window = new ChatWindow(owner, true);
+        window.Show();
+        Complete(window.AddAttachmentPathsAsync(new[] { path, bad }));
+        var card = window.GetLogicalDescendants().OfType<Border>().Single(c => c.Name == "AttachmentCard");
+        Check(window.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("invalid.bin") == true), "mixed file import retains its valid attachment and shows the per-file error");
+        card.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+        Until(() => window.OwnedWindows.Any(w => w.Name == "AttachmentPreviewDialog"));
+        var dialog = window.OwnedWindows.Single(w => w.Name == "AttachmentPreviewDialog");
+        var items = dialog.GetLogicalDescendants().ToArray();
+        var sections = items.OfType<ComboBox>().Single(c => c.Name == "AttachmentPreviewSections");
+        Until(() => sections.SelectedIndex == 0);
+        items.OfType<TextBox>().Single(t => t.Name == "AttachmentPreviewStart").Text = "2";
+        items.OfType<Button>().Single(c => c.Name == "AttachmentPreviewRead").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var use = items.OfType<Button>().Single(c => c.Name == "AttachmentPreviewUse");
+        Until(() => use.IsEnabled);
+        var selected = items.OfType<TextBox>().Single(t => t.Name == "AttachmentPreviewText").Text;
+        Check(selected?.Contains("SECOND_SELECTED") == true && !selected.Contains("FIRST_UNSENT"), "preview honors its selected range");
+        use.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Until(() => !dialog.IsVisible);
+        window.Close();
+        CloseController(owner);
+        Console.WriteLine("Attachment UI: " + assertions + " passed");
+        return;
+    }
     if(args.Contains("--secret-fields")){Console.WriteLine("SecretFieldChecks: "+(SecretFieldChecks.Run()+SecretFieldChecks.RunProviderSwitch(Path.Combine(directory,"secret-providers")))+" passed");return;}
     Check(SecretFieldChecks.Run()>0,"secret field behavior checks");
     Check(SecretFieldChecks.RunProviderSwitch(Path.Combine(directory,"secret-providers"))>0,"same-key provider switch checks");
@@ -126,8 +165,13 @@ try
         string? Option(string name) { int at = Array.IndexOf(args, name); return at < 0 ? null : at + 1 < args.Length && !args[at + 1].StartsWith("--", StringComparison.Ordinal) ? args[at + 1] : throw new ArgumentException("Missing value for " + name); }
         Console.WriteLine("PASS: " + OfficialCompanionUiChecks.RunActualMaterials(Option("--official-native-materials"), Option("--official-native-index") ?? throw new ArgumentException("Expected --official-native-index"), Option("--report") ?? "work/official-ava-actual-native.json") + " actual complete companion packages"); return;
     }
-    if (args.Contains("--official-thin-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunThin(Path.Combine(directory, "official-thin")) + OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory, "startup-restore-thin"))) + " actual thin companion assertions"); return; }
-    if (args.Contains("--official-companion-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunTiming() + OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection")) + OfficialCompanionUiChecks.RunNative(Path.Combine(directory, "official-native")) + OfficialCompanionUiChecks.RunIdentity(Path.Combine(directory, "official-identity"))) + " official companion assertions"); return; }
+    if(args.Contains("--bulk-reader-lifetime")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunBulkReaderLifetime(Path.Combine(directory,"bulk-reader"))+" bulk reader lifetime checks");return;}
+    if (args.Contains("--official-thin-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunShutdownLeaseProbe(Path.Combine(directory,"shutdown-lease-thin")) + OfficialCompanionUiChecks.RunBulkReaderLifetime(Path.Combine(directory,"bulk-reader-thin")) + OfficialCompanionUiChecks.RunThin(Path.Combine(directory, "official-thin")) + OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory, "startup-restore-thin"))) + " actual thin companion assertions"); return; }
+    if(args.Contains("--installation-status")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunInstallationBubble(Path.Combine(directory,"installation-status"))+" installation status checks");return;}
+    if(args.Contains("--companion-shutdown-lease")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunShutdownLeaseProbe(Path.Combine(directory,"shutdown-lease"))+" companion shutdown checks");return;}
+    if(args.Contains("--bundled-e")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunBundledEbao(Path.Combine(directory,"bundle"))+" bundled E checks");return;}
+    if (args.Contains("--companion-review-fixes")) { Console.WriteLine("PASS: " + OfficialCompanionUiChecks.RunReviewFailures(Path.Combine(directory,"review-fixes")) + " review fix assertions"); return; }
+    if (args.Contains("--official-companion-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunPreparedSwitch(Path.Combine(directory,"prepared-switch")) + OfficialCompanionUiChecks.RunTiming() + OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection")) + OfficialCompanionUiChecks.RunNative(Path.Combine(directory, "official-native")) + OfficialCompanionUiChecks.RunIdentity(Path.Combine(directory, "official-identity"))) + " official companion assertions"); return; }
     if (args.Contains("--holiday-switch-source")) { Console.WriteLine("PASS: " + HolidayWardrobeLayoutChecks.RunSourceSwitch(Path.Combine(directory, "source-switch")) + " source switch assertions"); return; }
     if (args.Contains("--holiday-wardrobe-layout")) { Console.WriteLine("PASS: " + HolidayWardrobeLayoutChecks.Run(Path.Combine(directory, "wardrobe-layout"), Path.GetFullPath("work/holiday-ui")) + " wardrobe layout assertions"); return; }
     if (args.Any(a => a.StartsWith("--holiday-review="))) { var part = args.Single(a => a.StartsWith("--holiday-review=")).Substring("--holiday-review=".Length); Console.WriteLine("PASS: " + HolidayReviewChecks.Run(Path.Combine(directory, "holiday-review"), part) + " holiday review regressions"); return; }
@@ -143,6 +187,7 @@ try
     if(args.Any(a=>a.StartsWith("--settings-visual-ui="))){var language=args.Single(a=>a.StartsWith("--settings-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"settings-visual"),language)+" settings visual assertions");return;}
     if(args.Contains("--data-management-ui-only")){Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"data-management"))+" data UI assertions");return;}
     if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
+    if(args.Contains("--operation-sounds-ui")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunOperationSounds(Path.Combine(directory,"operation-sounds"))+" operation UI assertions");return;}
     if(args.Contains("--notification-integration")){Console.WriteLine("PASS: "+NotificationIntegrationUiChecks.Run(Path.Combine(directory,"notification-integration"))+" notification integration assertions");return;}
     if(args.Contains("--import-ui-only")){Console.WriteLine("PASS: "+ImportDialogUiChecks.Run()+" import UI assertions");return;}
     if(args.Contains("--tray-ui-only")){Console.WriteLine("PASS: "+TrayNotificationUiChecks.Run(Path.Combine(directory,"tray-notification"))+" tray UI assertions");return;}
@@ -156,6 +201,7 @@ try
     }
     assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
     Check(Dafeiyu.Tests.NotificationSoundTests.Run()==0,"shared notification sound contracts");
+    Check(Dafeiyu.Tests.CompanionOperationSoundTests.Run()==0,"shared operation sound contracts");
     assertions+=ImportDialogUiChecks.Run();
     assertions+=NotificationIntegrationUiChecks.Run(Path.Combine(directory,"notification-integration"));
     assertions+=TrayNotificationUiChecks.Run(Path.Combine(directory,"tray-notification"));
@@ -374,19 +420,21 @@ try
     var migrationStore = new SettingsStore(Path.Combine(migrationDirectory, "settings.json")); migrationStore.Save(legacy);
     using (var upgraded = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(migrationDirectory)))
     {
+        try{
         Check(upgraded.ShouldShowAutomaticGuide && upgraded.Settings.OnboardingState == "new" && upgraded.Settings.OnboardingStep == 0, "actual saved 0.5.6 configuration triggers current-version UI guide at first step");
         Check(migrationStore.Load().LastOnboardingSeries == runningSeries, "current series upgrade is persisted before opening UI guide");
         var upgradedGuide = new GuideWindow(upgraded); upgradedGuide.Show(); upgradedGuide.Close(); Dispatcher.UIThread.RunJobs();
         Check(migrationStore.Load().OnboardingState == "deferred", "closing upgraded UI guide persists the deferred state");
-        upgraded.Pet.Close();
+        }finally{CloseController(upgraded);}
     }
     using (var reopened = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(migrationDirectory)))
     {
-        Check(!reopened.ShouldShowAutomaticGuide && reopened.Settings.LastOnboardingSeries == runningSeries, "restarting current version after closing upgrade guide never opens it again");
-        reopened.Pet.Close();
+        try{Check(!reopened.ShouldShowAutomaticGuide && reopened.Settings.LastOnboardingSeries == runningSeries, "restarting current version after closing upgrade guide never opens it again");
+        }finally{CloseController(reopened);}
     }
     var runtime = new TestRuntime(Path.Combine(directory, "data"));
     using var controller = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), runtime);
+    try{
     assertions += ImageUiChecks.Run(Path.Combine(directory, "image-ui"));
     assertions += ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui"));
     const string richMarkdown = "# 原生标题\n\n普通 **粗体**、*斜体*、~~删除~~、`inline()` 和 [文档](https://example.com)。\n\n> 引用文本\n\n3. 有序项目\n4. 第二项\n\n- 无序项目\n\n```csharp\nvar answer = 42;\n```\n\n| 名称 | 值 |\n| --- | --- |\n| Markdown | **已渲染** |";
@@ -534,7 +582,7 @@ try
     Check(narrowScroll.Offset.Y > 0, "slim scrollbar remains draggable from the invisible padded grab area beside its six pixel thumb");
     AvaloniaHeadlessPlatform.ForceRenderTimerTick(); using (var scrollbarFrame = scrollHost.CaptureRenderedFrame()) scrollbarFrame!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "slim-scrollbar.png"), new PngBitmapEncoderOptions()); scrollHost.Close();
     controller.Settings.OnboardingState = "completed"; controller.Save();
-    using (var restarted = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "data")))) { Check(!restarted.ShouldShowAutomaticGuide, "same-series restart does not reopen completed guide"); restarted.Pet.Close(); }
+    using (var restarted = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "data")))) { try{Check(!restarted.ShouldShowAutomaticGuide, "same-series restart does not reopen completed guide");}finally{CloseController(restarted);} }
     Check(!OnboardingUpgrade.Prepare(controller.Settings, runningSeries + ".99").ShowGuide, "patch upgrade does not show UI guide");
     var upgrade = OnboardingUpgrade.Prepare(controller.Settings, followingSeries + ".0"); Check(upgrade.ShowGuide && controller.Settings.OnboardingStep == 0, "next series upgrade resets actual UI guide state");
     Check(!OnboardingUpgrade.Prepare(controller.Settings, followingSeries + ".1").ShowGuide, "claimed next series guide not retriggered");
@@ -671,11 +719,12 @@ try
     uploadDraft.Text = "保留草稿";
     Complete(uploadWindow.AddAttachmentPathsAsync(new[] { uploadTextPath, Path.Combine(source, "spritesheet.png") }));
     Check(UploadCards() == 2 && uploadDraft.Text == "保留草稿" && !controller.Settings.AgentEnabled, "shared picker/drop/paste file loader adds image and text atomically without changing draft or Agent mode");
-    try { Complete(uploadWindow.AddAttachmentPathsAsync(new[] { uploadTextPath, invalidUploadPath })); throw new Exception("FAIL: unsupported upload accepted"); } catch (ApiException) { assertions++; }
-    Check(UploadCards() == 2 && uploadDraft.Text == "保留草稿", "partly invalid upload adds no files and preserves existing draft and attachments");
-    var oversizedUpload = Path.Combine(directory, "oversized.txt"); using (var oversized = File.Create(oversizedUpload)) oversized.SetLength(ChatAttachment.MaximumBytes + 1L);
-    try { Complete(uploadWindow.AddAttachmentPathsAsync(new[] { oversizedUpload })); throw new Exception("FAIL: oversized upload accepted"); } catch (ApiException) { assertions++; }
-    Check(UploadCards() == 2, "four megabyte limit also applies to shared upload paths");
+    Complete(uploadWindow.AddAttachmentPathsAsync(new[] { uploadTextPath, invalidUploadPath }));
+    Check(UploadCards() == 3 && uploadDraft.Text == "保留草稿", "partly invalid upload preserves the readable file and current draft");
+    Check(uploadWindow.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("invalid.bin") == true), "unsupported file name appears in the per-file error");
+    var oversizedUpload = Path.Combine(directory, "oversized.txt"); using (var oversized = File.Create(oversizedUpload)) oversized.SetLength(FileContentService.DocumentLimit + 1L);
+    Complete(uploadWindow.AddAttachmentPathsAsync(new[] { oversizedUpload }));
+    Check(UploadCards() == 3 && uploadWindow.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("oversized.txt") == true), "document admission applies its byte limit and identifies the rejected file");
     foreach (var remove in uploadWindow.GetLogicalDescendants().OfType<Button>().Where(b => b.Name == "RemoveAttachment").ToList()) remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     Check(UploadCards() == 0 && DragDrop.GetAllowDrop(uploadWindow), "chat window accepts external file drag while clearing test attachments");
     var dragData = new DataTransfer(); var dragFile = DataTransferItem.CreateFile(StorageFile(uploadTextPath)); dragFile.SetText("不应把拖拽的文件路径插入草稿"); dragData.Add(dragFile);
@@ -799,8 +848,8 @@ try
     GuideUiChecks(controller);
     editor.Dispose(); editorHost.Close();
     foreach (var window in windows) window.Close();
-    controller.Pet.Close(); Dispatcher.UIThread.RunJobs();
     Console.WriteLine("PASS: " + assertions + " Desktop UI/resource/animation assertions");
+    }finally{CloseController(controller);}
 }
 finally
 {

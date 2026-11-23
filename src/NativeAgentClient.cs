@@ -95,7 +95,7 @@ namespace Dafeiyu
                             workspace.ContextSchemaOverheadTokens=AgentContextBudget.EstimateTokens(new object[]{requestBody(new List<object>())});
                             await prepare().ConfigureAwait(false);
                             workspace.RecordContextUsage(AgentContextBudget.EstimateTokens(new object[]{requestBody(history)}),settings.Model,settings.ContextWindowTokens);
-                            if(workspace.TakeGuidanceAsync!=null){var guides=await workspace.TakeGuidanceAsync(overall.Token).ConfigureAwait(false);foreach(var guide in guides)history.Add(new{role="user",content=ChatAttachment.Content(guide,anthropic)});if(guides.Count>0){await prepare().ConfigureAwait(false);workspace.RecordContextUsage(AgentContextBudget.EstimateTokens(new object[]{requestBody(history)}),settings.Model,settings.ContextWindowTokens);}}
+                            if(workspace.TakeGuidanceAsync!=null){var guides=await workspace.TakeGuidanceAsync(overall.Token).ConfigureAwait(false);workspace.AddScopeAttachments(guides);foreach(var guide in guides)history.Add(new{role="user",content=ChatAttachment.Content(guide,anthropic)});if(guides.Count>0){await prepare().ConfigureAwait(false);workspace.RecordContextUsage(AgentContextBudget.EstimateTokens(new object[]{requestBody(history)}),settings.Model,settings.ContextWindowTokens);}}
                         }
                         var body=requestBody(history);
                         if(workspace==null&&search!=null&&AgentContextBudget.EstimateTokens(new object[]{body})>AgentContextPolicy.Resolve(ModelContextCapacity.Budget(settings,settings.RequestContextCapacity>0?settings.RequestContextCapacity:8192)).InputBudget)
@@ -124,7 +124,7 @@ namespace Dafeiyu
                             if(reply.Calls.Count==0)
                             {
                                 if(String.IsNullOrWhiteSpace(reply.Text))throw AgentInvalid();
-                                if(workspace!=null && workspace.TakeGuidanceAsync!=null){history.Add(reply.Message);var guides=await workspace.TakeGuidanceAsync(overall.Token).ConfigureAwait(false);if(guides.Count>0){foreach(var guide in guides)history.Add(new{role="user",content=ChatAttachment.Content(guide,anthropic)});continue;}}
+                                if(workspace!=null && workspace.TakeGuidanceAsync!=null){history.Add(reply.Message);var guides=await workspace.TakeGuidanceAsync(overall.Token).ConfigureAwait(false);if(guides.Count>0){workspace.AddScopeAttachments(guides);foreach(var guide in guides)history.Add(new{role="user",content=ChatAttachment.Content(guide,anthropic)});continue;}}
                                 string answer=reply.Text.Trim();string footer=search==null?"":search.SourceFooter(answer);if(footer.Length>0&&onDelta!=null)onDelta(footer);return answer+footer;
                             }
                             if(workspace==null&&search==null)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text.alternativeD"));
@@ -178,6 +178,7 @@ namespace Dafeiyu
                             }
                             if(anthropic)history.Add(new {role="user",content=toolResults});
                             else if(inspectedImages.Count>0)history.Add(new{role="user",content=inspectedImages});
+                            if(workspace!=null)workspace.AddScopeAttachments(boundaryGuidance);
                             foreach(var guide in boundaryGuidance)history.Add(new{role="user",content=ChatAttachment.Content(guide,anthropic)});
                         }
                     }

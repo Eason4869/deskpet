@@ -112,7 +112,7 @@ namespace Dafeiyu
             add(0, "network.test", TextResources.Get("onboardingLessons.build.add.alternativeIT"), TextResources.Get("onboardingLessons.build.add.alternativeIU"), "TestUpdateMirror", "read", "");
             add(0, "network.save", TextResources.Get("onboardingLessons.build.add.alternativeIV"), TextResources.Get("onboardingLessons.build.add.alternativeIW"), "UpdateNetwork", "network", "");
             add(0, "update.channel", TextResources.Get("onboarding.channel.title"), TextResources.Get("onboarding.channel.detail"), "UpdateChannel", "read", "");
-            add(0, "pet.select", TextResources.Get("onboardingLessons.build.add.alternativeB"), TextResources.Get("onboardingLessons.build.add.alternativeC"), "SkinPicker", "read", "");
+            add(0, "pet.select", TextResources.Get("onboardingLessons.build.add.alternativeB"), TextResources.Get("onboarding.companionOfflineDefaults"), "SkinPicker", "read", "");
             add(0,"pet.packages",TextResources.Get("onboarding.prepare.packs"),TextResources.Get("onboarding.prepare.packsDetail"),"SkinPicker","prepare-packs","");
             add(0, "pet.reopen", TextResources.Get("onboardingLessons.build.add.alternativeD"), TextResources.Get("onboardingLessons.build.add.alternativeE"), "SkinPicker", "read", "");
             add(1, "persona.read", TextResources.Get("onboardingLessons.build.add.alternativeF"), TextResources.Get("onboardingLessons.build.add.alternativeG"), "PersonaPrompt", "read", "");

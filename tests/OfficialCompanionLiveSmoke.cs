@@ -45,9 +45,14 @@ namespace Dafeiyu.Tests
         [STAThread] public static int Main(string[] args)
         {
             try {
-                if(args.Length!=4)throw new ArgumentException("Supply new data directory, role ID, expected companions-v tag, and --mirror or --direct.");
+                if(args.Length!=5)throw new ArgumentException("Supply new data directory, role ID, exact expected app/companions tag, --mirror or --direct, and the candidate's companion-versions.json registry.");
                 string root=Path.GetFullPath(args[0]),id=args[1],tag=args[2];OfficialCompanionRules.Id(id);
-                if(tag!="companions-v"+ReleaseInfo.DisplayVersion||(args[3]!="--mirror"&&args[3]!="--direct"))throw new ArgumentException("Unexpected release or routing mode.");
+                if((tag!="v"+ReleaseInfo.DisplayVersion&&tag!="companions-v"+ReleaseInfo.DisplayVersion)||(args[3]!="--mirror"&&args[3]!="--direct"))throw new ArgumentException("Unexpected release or routing mode.");
+                var registry=OfficialJson.Object(OfficialJson.File(Path.GetFullPath(args[4]),1024*1024));
+                if(OfficialJson.Integer(registry,"schema_version")!=1)throw new InvalidDataException("Unknown candidate material registry.");
+                var pinned=OfficialJson.Object(OfficialJson.Required(OfficialJson.Object(OfficialJson.Required(registry,"companions")),id));
+                string expectedVersion=OfficialJson.Text(pinned,"pack_version",64),expectedMinimum=OfficialJson.Text(pinned,"min_app_version",64);
+                OfficialCompanionRules.Version(expectedVersion);OfficialCompanionRules.Version(expectedMinimum);
                 if(Directory.Exists(root)||File.Exists(root))throw new IOException("Live acceptance requires a new owned directory.");
                 Directory.CreateDirectory(root);
                 var routing=new OfficialDownloadRouting(args[3]=="--mirror",PetSettings.DefaultUpdateMirror,false,"");
@@ -59,7 +64,7 @@ namespace Dafeiyu.Tests
                 using(var downloads=new OfficialCompanionDownloads(root,ReleaseInfo.DisplayVersion,ReleaseVersion.Parse(ReleaseInfo.DisplayVersion).IsPreview?UpdateChannel.Preview:UpdateChannel.Stable,transport,native.ValidateAsync)) {
                     var result=downloads.EnsureAsync(id,routing,OfficialCompanionCheckMode.Force,progress,cancel.Token).GetAwaiter().GetResult();
                     var asset=result.Installation.Asset;
-                    if(asset.Id!=id||asset.Tag!=tag||asset.Version!=ReleaseInfo.DisplayVersion||result.UsedOfflineFallback||!result.MetadataChecked||!result.InstalledNow)throw new InvalidDataException("Fresh live download did not install the expected published resource.");
+                    if(asset.Id!=id||asset.Tag!=tag||asset.Version!=expectedVersion||asset.MinimumAppVersion!=expectedMinimum||result.UsedOfflineFallback||!result.MetadataChecked||!result.InstalledNow)throw new InvalidDataException("Fresh live download did not install the expected published resource.");
                     var reopened=downloads.Installed(id);
                     if(reopened==null||reopened.RootDirectory!=result.Installation.RootDirectory)throw new InvalidDataException("Installed receipt could not be reopened.");
                     new WpfOfficialNativeValidator().ValidateAsync(reopened,cancel.Token).GetAwaiter().GetResult();

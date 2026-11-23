@@ -120,18 +120,23 @@ namespace Dafeiyu.Tests
                 }
                 using(var feed=new Feed())
                 {
-                    bool handedOff=false;FileStream settingsLock=null;
+                    bool handedOff=false;FileStream settingsLock=null;byte[] lockedBaseline=null;
+                    string settingsPath=Path.Combine(pet.Store.DirectoryPath,"settings.json");
                     using(var controller=new UpdateCoordinator(pet,feed,job=>{handedOff=true;return Task.FromResult(true);},ReleaseInfo.DisplayVersion))
                     try
                     {
                         typeof(PetWindow).GetField("updates",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,controller);
                         controller.Changed+=delegate
                         {
-                            if(controller.IsApplying && settingsLock==null)settingsLock=new FileStream(Path.Combine(pet.Store.DirectoryPath,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read);
+                            if(!controller.IsApplying || settingsLock!=null)return;
+                            settingsLock=new FileStream(settingsPath,FileMode.Open,FileAccess.Read,FileShare.Read);
+                            lockedBaseline=File.ReadAllBytes(settingsPath);
+                            pet.Settings.ReadReplies=true;
                         };
-                        Task task=controller.CheckAndUpdateAsync(true);Wait(()=>task.IsCompleted,4);pet.Settings.ReadReplies=true;
+                        Task task=controller.CheckAndUpdateAsync(true);Wait(()=>task.IsCompleted,4);
                         Wait(()=>settingsLock!=null,8);Wait(()=>!controller.IsBusy,4);
                         Check(!handedOff && pet.IsVisible && controller.Status.Contains("设置尚未保存") && !pet.Store.Load().ReadReplies,"设置写入失败时保留原设置且不启动助手或退出");
+                        Check(lockedBaseline.SequenceEqual(File.ReadAllBytes(settingsPath)),"设置文件加锁后原文件字节保持不变");
                         Check(idleChat.IsEnabled && idleQuick.IsEnabled,"设置保存失败后恢复两个聊天窗口");
                     }
                     finally{if(settingsLock!=null)settingsLock.Dispose();pet.Settings.ReadReplies=false;}
