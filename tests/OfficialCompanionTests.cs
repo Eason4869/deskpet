@@ -674,12 +674,20 @@ namespace Dafeiyu.Tests
                 // digests for the same role, so its own newer job correctly waits.
                 using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0)))
                 using(var other=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0))) {
-                    var slow=s.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);await Timeout(entered.Task);
+                    var slow=s.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
                     try{
+                        await Timeout(entered.Task);
                         f.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{66});serveNew=true;
                         var fresh=await Timeout(other.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None));release.TrySetResult(true);var older=await Timeout(slow);
                         Check(fresh.Installation.Asset.Sha256==s.Installed("dafeiyu").Asset.Sha256&&older.Installation.RootDirectory==fresh.Installation.RootDirectory,"slow old digest cannot replace a newer completed immutable package or return stale root");
-                    }finally{release.TrySetResult(true);Timeout(slow).GetAwaiter().GetResult();}
+                    }finally{
+                        release.TrySetResult(true);
+                        try{Timeout(slow).GetAwaiter().GetResult();}
+                        finally{
+                            // Both services must release their retained leases before the fixture deletes the shared root.
+                            Task.WhenAll(s.ShutdownAsync(),other.ShutdownAsync()).GetAwaiter().GetResult();
+                        }
+                    }
                 }
             }
         }
