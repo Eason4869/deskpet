@@ -57,6 +57,9 @@ namespace Dafeiyu.Maintenance
                 foreach(string owner in owners){
                     string history=Path.Combine(owner,"history");historyDirectories.Add(history);
                     AddFiles(history,"*.history",2,targets,pins,result);AddFiles(Path.Combine(history,"agent-tasks"),"*.task",0,targets,pins,result);AddFiles(Path.Combine(owner,"kernel-sessions"),"*.session",0,targets,pins,result);
+                    foreach(string journal in Children(HistoryStore.AgentTurnsDirectory(history),pins))
+                        if(System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(journal),"^[0-9a-f]{64}$"))
+                            AddAgentTurnJournal(journal,targets,pins,result);
                     foreach(string queue in new[]{Path.Combine(owner,"queued-messages.json"),Path.Combine(owner,"queue.json")})if(File.Exists(queue)){
                         try{CachePaths.Check(queue);if(ConversationQueue.HasPersistedPendingStrict(queue)){result.Status=HistoryMaintenanceStatus.Busy;return;}}
                         catch(Exception error){if(!StorageError(error))throw;result.Fail(queue,error);result.Status=HistoryMaintenanceStatus.Busy;return;}
@@ -122,6 +125,22 @@ namespace Dafeiyu.Maintenance
         {
             CachePaths.Check(directory);if(!Directory.Exists(directory))return;var pin=CacheDirectoryPins.OpenDirectory(directory);pins.Add(pin);
             foreach(string path in Directory.GetFiles(directory,pattern))try{CachePaths.Check(path);if(new FileInfo(path).Length>8*1024*1024+4)throw new InvalidDataException(TextResources.Get("dataMaintenance.storageFailure"));byte[] bytes=File.ReadAllBytes(path);string hash;using(var sha=SHA256.Create())hash=Convert.ToBase64String(sha.ComputeHash(bytes));targets.Add(new Target{Kind=kind,Pins=pin,File=new CacheFile{Path=path,Bytes=bytes.Length,Hash=hash}});}
+            catch(Exception error){if(!StorageError(error))throw;result.Fail(path,error);}
+        }
+        static void AddAgentTurnJournal(string directory,List<Target> targets,List<CacheDirectoryPins> pins,HistoryMaintenanceResult result)
+        {
+            string path=Path.Combine(directory,AgentTurnJournal.FileName);
+            try
+            {
+                CachePaths.Check(path);
+                if(!File.Exists(path))return;
+                var pin=CacheDirectoryPins.OpenDirectory(directory);pins.Add(pin);
+                using(var stream=File.OpenRead(path))using(var sha=SHA256.Create())
+                {
+                    long length=stream.Length;
+                    targets.Add(new Target{Pins=pin,File=new CacheFile{Path=path,Bytes=length,Hash=Convert.ToBase64String(sha.ComputeHash(stream))}});
+                }
+            }
             catch(Exception error){if(!StorageError(error))throw;result.Fail(path,error);}
         }
         static void VerifyUnchanged(CacheFile file){CachePaths.Check(file.Path);using(var stream=File.OpenRead(file.Path))using(var sha=SHA256.Create())if(stream.Length!=file.Bytes||Convert.ToBase64String(sha.ComputeHash(stream))!=file.Hash)throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));}

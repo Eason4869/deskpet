@@ -182,14 +182,16 @@ internal sealed class ChatMessageView : Border
         {if(jobs==null){jobs=new DesktopAgentJobsPanel(owner.WorkBindings.Jobs,session.KernelSession.ProjectId,session.KernelSession.ConversationId,message.Id,true);jobHost.Content=jobs;}}
         else if(jobs!=null){jobs.Dispose();jobs=null;jobHost.Content=null;}
         reasoning.Text = message.Reasoning ?? "";
-        bool active = message.Status == "pending" && string.IsNullOrEmpty(message.Content);
+        bool active = message.Status == "pending" && (message.WorkMode || string.IsNullOrEmpty(message.Content));
+        bool recoveredWork = message.WorkMode && (message.Status is "interrupted" or "cancelled" or "error");
+        bool showRecord = showHistory || recoveredWork;
         bool detailChanged = detailedSetting != detailedProcess;
         if (active && detailChanged) thinking.IsExpanded = detailedProcess;
         detailedSetting = detailedProcess;
-        processArea.IsVisible = active || showHistory && (!string.IsNullOrWhiteSpace(message.Reasoning) || message.ToolEvents?.Count > 0);
+        processArea.IsVisible = active || showRecord && (!string.IsNullOrWhiteSpace(message.Reasoning) || message.ToolEvents?.Count > 0);
         thinking.IsVisible = processArea.IsVisible;
         reasoning.IsVisible = !string.IsNullOrWhiteSpace(message.Reasoning);
-        tools.IsVisible = (active || showHistory) && message.ToolEvents != null && message.ToolEvents.Count > 0;
+        tools.IsVisible = (active || showRecord) && message.ToolEvents != null && message.ToolEvents.Count > 0;
         var events = message.ToolEvents ?? new();
         foreach (var stale in toolRows.Keys.Where(id => !events.Any(t => t != null && t.Id == id)).ToList()) { tools.Children.Remove(toolRows[stale]); toolRows.Remove(stale); }
         foreach (var item in events.Where(t => t != null && !string.IsNullOrWhiteSpace(t.Id)))

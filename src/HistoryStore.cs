@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace Dafeiyu
 {
     // All filesystem mutations run in order on a background worker, including deletion.
-    public sealed class HistoryStore
+    public sealed partial class HistoryStore
     {
         private const int MaximumBytes=8*1024*1024;
         private readonly string directory;
@@ -24,6 +24,7 @@ namespace Dafeiyu
         private readonly Dictionary<string,string> warnings=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
         public string Warning { get { lock(gate)return warning; } }
         public event Action WarningChanged;
+        internal Action BeforeAgentTurnReplay {get;set;}
         [DataContract] private sealed class Document
         {
             [DataMember] public int Version=1;
@@ -40,7 +41,7 @@ namespace Dafeiyu
         }
         internal string MaintenancePath(string persona){return FilePath(persona);}
         internal void ForgetRemovedForMaintenance(string path)
-        {lock(gate)unreadableFiles.Remove(path);ReleasePendingImages(path);SetWarning(path,"");}
+        {lock(gate)unreadableFiles.Remove(path);ReleasePendingImages(path);SetWarning(path,"");SetWarning(AgentTurnPath(path),"");}
         private void SetWarning(string path,string value)
         { Action changed;lock(gate){if(String.IsNullOrEmpty(value))warnings.Remove(path);else warnings[path]=value;string merged=String.Join(" ",warnings.Values.Distinct());if(warning==merged)return;warning=merged;changed=WarningChanged;}if(changed!=null)changed(); }
         private Task Enqueue(Action action)
@@ -51,16 +52,41 @@ namespace Dafeiyu
         public IList<ChatMessage> Load(string petId)
         {
             FlushAsync().GetAwaiter().GetResult();string path=FilePath(petId);
-            try {
-                if(!File.Exists(path))return new List<ChatMessage>();
-                if(new FileInfo(path).Length>MaximumBytes)throw new SerializationException();
-                byte[] plain=SecretProtection.Unprotect(File.ReadAllBytes(path));
-                if(plain.Length>MaximumBytes)throw new SerializationException();
-                Document document;using(var stream=new MemoryStream(plain))document=(Document)new DataContractJsonSerializer(typeof(Document)).ReadObject(stream);
-                if(document==null || document.Version!=1 || document.Messages==null || document.Messages.Count>400)throw new SerializationException();
-                var log=new ConversationLog();log.Replace(document.Messages);lock(gate)unreadableFiles.Remove(path);SetWarning(path,"");return log.Messages;
+            try
+            {
+                for(int attempt=0;attempt<3;attempt++)
+                {
+                    if(!File.Exists(path))return new List<ChatMessage>();
+                    if(new FileInfo(path).Length>MaximumBytes)throw new SerializationException();
+                    byte[] encrypted=File.ReadAllBytes(path);
+                    byte[] plain=SecretProtection.Unprotect(encrypted);
+                    if(plain.Length>MaximumBytes)throw new SerializationException();
+                    Document document;using(var stream=new MemoryStream(plain))document=(Document)new DataContractJsonSerializer(typeof(Document)).ReadObject(stream);
+                    if(document==null || document.Version!=1 || document.Messages==null || document.Messages.Count>400)throw new SerializationException();
+                    bool hasPendingAgentReply=document.Messages.Any(CanReplayAgentReply);
+                    if(hasPendingAgentReply||File.Exists(AgentTurnPath(path)))
+                    {
+                        var beforeReplay=BeforeAgentTurnReplay;
+                        if(beforeReplay!=null)beforeReplay();
+                        ReplayAgentTurns(path,document.Messages);
+                        // A writer can replace the checkpoint and compact its journal between our reads.
+                        if(hasPendingAgentReply&&!SameHistorySnapshot(path,encrypted))continue;
+                    }
+                    var log=new ConversationLog();log.Replace(document.Messages);lock(gate)unreadableFiles.Remove(path);SetWarning(path,"");return log.Messages;
+                }
+                throw new IOException("Conversation history changed during Agent recovery.");
             }
             catch(Exception e) { if(!IsStorageError(e))throw;lock(gate)unreadableFiles.Add(path);SetWarning(path,TextResources.Get("historyStore.load.setWarning"));return new List<ChatMessage>(); }
+        }
+        static bool SameHistorySnapshot(string path,byte[] encrypted)
+        {
+            try
+            {
+                var info=new FileInfo(path);
+                return info.Exists&&info.Length==encrypted.Length&&File.ReadAllBytes(path).SequenceEqual(encrypted);
+            }
+            catch(FileNotFoundException){return false;}
+            catch(DirectoryNotFoundException){return false;}
         }
         internal ImageAssetUsageRegistry ImageUsage {get;set;}
         internal static IList<ChatMessage> InspectFileStrict(string path)
@@ -73,6 +99,7 @@ namespace Dafeiyu
         public Task SaveAsync(string petId,IList<ChatMessage> messages)
         {
             var copy=messages.Select(m=>m.Copy()).ToList();string path=FilePath(petId);var protection=ImageUsage==null?null:ImageUsage.AcquireMessages(copy);
+            var turnCheckpoints=copy.Where(m=>!String.IsNullOrEmpty(m.AgentTurnStreamId)).ToArray();
             return Enqueue(delegate {
                 if(protection!=null)lock(gate){List<IDisposable> pending;if(!pendingImageReferences.TryGetValue(path,out pending)){pending=new List<IDisposable>();pendingImageReferences[path]=pending;}pending.Add(protection);}
                 string temporary=null;
@@ -93,6 +120,7 @@ namespace Dafeiyu
                     using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){stream.Write(encrypted,0,encrypted.Length);stream.Flush(true);}
                     AtomicFile.Commit(temporary,path);
                     temporary=null;ReleasePendingImages(path);SetWarning(path,"");
+                    CompactAgentTurns(path,turnCheckpoints);
                 }
                 catch(Exception e) { if(!IsStorageError(e))throw;SetWarning(path,TextResources.Get("historyStore.saveAsync.setWarning.alternativeA")); }
                 finally { if(temporary!=null)try{File.Delete(temporary);}catch(IOException){}catch(UnauthorizedAccessException){} }
@@ -102,6 +130,7 @@ namespace Dafeiyu
         {
             string path=FilePath(petId);return Enqueue(delegate {
                 try {
+                    DiscardAgentTurns(path);
                     try{File.Delete(path);}catch(DirectoryNotFoundException){}
                     lock(gate)unreadableFiles.Remove(path);ReleasePendingImages(path);SetWarning(path,"");
                 }

@@ -55,6 +55,18 @@ namespace Dafeiyu.Tests
         }
         [STAThread] public static int Main()
         {
+            Run("global history clear removes work stream journals for unloaded chats",async()=>{
+                string root=Root(),owner=Path.Combine(root,"projects","project","chats","unloaded");
+                var store=new HistoryStore(Path.Combine(owner,"history"));
+                var log=new ConversationLog();ChatMessage user;var reply=log.BeginTurn("work","text",out user);
+                string stream=Guid.NewGuid().ToString("N");log.MarkAgentTurn(reply.Id,stream,0);
+                await store.SaveAsync("pet",log.Messages);
+                var recording=store.CreateAgentTurnRecording("pet");recording.BeginSegment(stream,"task");recording.Text("uncheckpointed output");recording.Close();
+                await store.FlushAsync();
+                string journal=Directory.GetFiles(owner,"turn.events",SearchOption.AllDirectories).Single();
+                var result=await new HistoryMaintenanceService(root,new DataMaintenanceGate()).ClearAllAsync();
+                Check(result.Status==HistoryMaintenanceStatus.Complete&&!File.Exists(journal)&&store.Load("pet").Count==0,"global clear retained a work stream or its history");
+            });
             passed=failed=0;
             Run("all canonical histories and contexts clear without touching project files or relationship receipts",async()=>{
                 string root=Root();string[] owners={root,Path.Combine(root,"conversations","loaded"),Path.Combine(root,"conversations","unloaded"),Path.Combine(root,"projects","legacy","chats","old")};

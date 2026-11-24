@@ -47,7 +47,7 @@
     <Compile Include="../../tests/ImageGalleryLayoutTests.cs" Link="Regression/ImageGalleryLayoutTests.cs" />
     <Compile Include="../../tests/ImageGenerationBackendTests.cs" Link="Regression/ImageGenerationBackendTests.cs" />
     <Compile Include="../../tests/McpConnectionTests.cs" Link="Regression/McpConnectionTests.cs" />
-    <Compile Include="../../tests/AgentContextPolicyTests.cs;../../tests/AgentRunRecoveryTests.cs;../../tests/AgentTaskMemoryTests.cs;../../tests/AgentIsolationTests.cs;../../tests/AgentApprovalTests.cs" Link="Regression/%(Filename)%(Extension)" />
+    <Compile Include="../../tests/AgentContextPolicyTests.cs;../../tests/AgentRunRecoveryTests.cs;../../tests/AgentSessionModelTests.cs;../../tests/AgentTaskMemoryTests.cs;../../tests/AgentIsolationTests.cs;../../tests/AgentApprovalTests.cs" Link="Regression/%(Filename)%(Extension)" />
     <ProjectReference Include="../DeskPet.Core/DeskPet.Core.csproj" />
     <Compile Include="../../tests/ApiTests.cs;../../tests/StreamingTests.cs;../../tests/ProxyTests.cs;../../tests/ConversationTests.cs;../../tests/HistoryTests.cs;../../tests/QueueTests.cs;../../tests/DictationTests.cs;../../tests/ProviderTests.cs;../../tests/LiveTests.cs;../../tests/GreetingTests.cs;../../tests/AiGreetingTests.cs" Link="Regression/%(Filename)%(Extension)" />
   </ItemGroup>

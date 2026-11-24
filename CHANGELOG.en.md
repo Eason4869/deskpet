@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.6-dev.2 · Development preview
+
+**Updated on 2026-11-24 (Asia/Shanghai)**
+
+- The work agent saves visible reply fragments, tool progress, and result summaries as ordered, encrypted events.
+- Reopening an interrupted work conversation restores saved content and marks it as incomplete in the WPF and Avalonia chat views. Local replay makes zero model or tool calls.
+
 ## 1.0.6-dev.1 · Development preview
 
 - The Windows work agent stores execution records by task. Existing journals migrate automatically, completed records no longer block new tasks, and uncertain outcomes prompt for review.

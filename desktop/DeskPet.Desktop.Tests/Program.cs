@@ -539,7 +539,7 @@ try
     richReply = richLog.Update(richReply.Id, "", "pending", "先检查仓库\n再确认结果\n继续处理", 3300, richTools); richView.Update(richReply);
     Check(ReferenceEquals(thought, richView.GetLogicalDescendants().OfType<Expander>().Single(e => e.Name == "ReasoningDetails")) && thought.IsExpanded && toolDetails.IsExpanded, "stream updates preserve reasoning and tool expansion state");
     richReply = richLog.Update(richReply.Id, richMarkdown, "pending"); richView.Update(richReply);
-    Check(!thought.IsVisible && !toolDetails.Parent!.GetValue(Visual.IsVisibleProperty) && !footer.IsVisible, "starting final Markdown hides thinking and keeps actions hidden until completion");
+    Check(thought.IsVisible && toolDetails.Parent!.GetValue(Visual.IsVisibleProperty) && !footer.IsVisible, "work progress stays visible beside streamed Markdown until completion");
     richReply = richLog.Update(richReply.Id, richMarkdown, "complete"); richView.Update(richReply); Dispatcher.UIThread.RunJobs();
     var markdownBody = richView.GetLogicalDescendants().OfType<MarkdownView>().Single();
     var richText = markdownBody.GetLogicalDescendants().OfType<SelectableTextBlock>().ToList();
@@ -566,8 +566,14 @@ try
     }
     moreReply.ContextMenu.Items.OfType<MenuItem>().Single(i => i.Header as string == "查看思考过程").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
     Check(thought.IsVisible && thought.IsExpanded, "hidden thinking can be reopened without losing expansion state");
+    var recoveredReply=richLog.Update(richReply.Id,richMarkdown,"interrupted",tools:richTools);
+    var recoveredView=new ChatMessageView(recoveredReply,controller,richHost);
+    var recoveredProcess=recoveredView.GetLogicalDescendants().OfType<Expander>().Single(e=>e.Name=="ReasoningDetails");
+    var recoveredFooter=recoveredView.GetLogicalDescendants().OfType<StackPanel>().Single(p=>p.Name=="ReplyActions");
+    Check(recoveredProcess.IsVisible && !recoveredProcess.IsExpanded && !recoveredFooter.IsVisible, "reopened work replies offer an expandable process record without completed-reply actions");
+    richLog.StartProcessing(richReply.Id, false);
     richReply = richLog.Update(richReply.Id, richMarkdown, "pending"); richView.Update(richReply);
-    Check(!thought.IsVisible && !footer.IsVisible, "a regenerated reply resets explicit thinking history and hides actions while streaming");
+    Check(!thought.IsVisible && !footer.IsVisible, "a regenerated chat reply resets explicit thinking history and hides actions while streaming");
     var richUserView = new ChatMessageView(richUser, controller, richHost);
     Check(richUserView.IsUser && richUserView.HorizontalAlignment == Avalonia.Layout.HorizontalAlignment.Right && richUserView.GetLogicalDescendants().OfType<MarkdownView>().Any() && !richUserView.GetLogicalDescendants().OfType<StackPanel>().Any(p => p.Name == "ReplyActions"), "user Markdown retains right-aligned bubble without assistant actions");
     richHost.Close();
