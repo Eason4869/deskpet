@@ -151,6 +151,21 @@ namespace Dafeiyu
             try{string path=Path.Combine(job.WorkDirectory,"result.json");CheckRecordPath(path);UpdateInstall.Write(path,result);}catch(Exception){}
             try{string path=Path.Combine(job.InstallationDirectory,"data","uninstall-result.json");CheckRecordPath(path);UpdateInstall.Write(path,result);}catch(Exception){}
         }
+        static string UninstallerTemp(string installationDirectory)
+        {
+            string data=Path.Combine(installationDirectory,"data");
+            string local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string defaultTemp=String.IsNullOrEmpty(local)?null:Path.Combine(local,"Temp");
+            foreach(string candidate in new[]{Path.GetTempPath(),defaultTemp})
+            {
+                if(String.IsNullOrEmpty(candidate)||!Directory.Exists(candidate))continue;
+                string full=Path.GetFullPath(candidate);
+                if(Same(full,data)||full.StartsWith(data+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))continue;
+                try{NoLinks(full);return full;}
+                catch(InvalidOperationException){}catch(IOException){}catch(UnauthorizedAccessException){}
+            }
+            return null;
+        }
         internal static int RunWorker(string path)
         {
             UninstallJob job=null;bool trusted=false;
@@ -179,10 +194,35 @@ namespace Dafeiyu
                 CheckAbort(job);string uninstallerPath=Validate(job);
                 string uninstallLog=Path.Combine(job.WorkDirectory,"inno-uninstall.log");CheckRecordPath(uninstallLog);
                 if(File.Exists(uninstallLog)||Directory.Exists(uninstallLog))throw Failure();
-                // Inno suppresses the second startup confirmation with SILENT.
-                // Never force-close apps, request a reboot, or delete data here.
-                using(var uninstaller=Process.Start(new ProcessStartInfo(uninstallerPath,"/SILENT /NORESTART /LOG="+UpdateInstall.Quote(uninstallLog)){UseShellExecute=false,WorkingDirectory=job.InstallationDirectory}))
-                {uninstaller.WaitForExit();if(uninstaller.ExitCode!=0)throw Failure();}
+                int workerId;
+                using(var current=Process.GetCurrentProcess())workerId=current.Id;
+                var start=new ProcessStartInfo(uninstallerPath,"/SILENT /NORESTART /DESKPETUNINSTALLUI /DESKPETUNINSTALLWORKER="+workerId)
+                {UseShellExecute=false,WorkingDirectory=job.InstallationDirectory};
+                // Inno's running clone and its open log must stay outside data.
+                string temp=UninstallerTemp(job.InstallationDirectory),liveLog=null;
+                if(temp!=null)
+                {
+                    start.EnvironmentVariables["TEMP"]=temp;
+                    start.EnvironmentVariables["TMP"]=temp;
+                    string candidate=Path.Combine(temp,"DeskPet-Uninstall-"+Path.GetFileName(job.WorkDirectory)+".log");
+                    if(!File.Exists(candidate)&&!Directory.Exists(candidate))
+                    {
+                        liveLog=candidate;
+                        start.Arguments+=" /LOG="+UpdateInstall.Quote(liveLog);
+                    }
+                }
+                try
+                {
+                    using(var uninstaller=Process.Start(start))
+                    {uninstaller.WaitForExit();if(uninstaller.ExitCode!=0)throw Failure();}
+                }
+                finally
+                {
+                    // The live log records the clone's final steps. Keep a snapshot
+                    // with the durable job for users who keep their application data.
+                    try{if(liveLog!=null){CheckRecordPath(liveLog);CheckRecordPath(uninstallLog);File.Copy(liveLog,uninstallLog,false);}}
+                    catch(IOException){}catch(UnauthorizedAccessException){}catch(InvalidOperationException){}
+                }
                 if(UpdateInstall.GetUninstallerPath(job.InstallationDirectory)!=null||File.Exists(Path.Combine(job.InstallationDirectory,UpdateInstall.ExecutableName)))throw Failure();
                 Result(job,true,"");return 0;
             }

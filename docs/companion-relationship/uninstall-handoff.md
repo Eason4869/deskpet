@@ -72,8 +72,9 @@ UTC start ticks, and installed display/numeric/build identity. The helper:
 4. Rejects basename, relative, drive-relative and root-relative job targets.
    Revalidates registration, paths, hashes and identities, and launches the exact
    canonical absolute registered path returned by that final validation with
-   `/SILENT /NORESTART` plus an owned log path. It never
-   force-kills processes, requests reboot, or recursively deletes user data.
+   `/SILENT /NORESTART /DESKPETUNINSTALLUI` and its worker PID. When a safe
+   temporary directory is available, Inno uses it for the running clone and live
+   log. The helper never force-kills processes, requests reboot, or deletes data.
 5. Checks the uninstaller exit code, missing application executable and removed
    registration before recording success.
 
@@ -91,10 +92,16 @@ success claim is made. When all relevant storage is unavailable, durable failure
 evidence cannot be guaranteed.
 
 The retained job folder holds `ready`, `commit-stage`, `commit`, `abort`,
-`result.json`, optional `error.log`, and `inno-uninstall.log`. A best-effort
+`result.json`, optional `error.log`, and a best-effort `inno-uninstall.log`
+snapshot. The live temporary log can contain later Inno messages. A best-effort
 `data/uninstall-result.json` mirrors the result. Receipts from abandoned tickets
 are failure evidence, not instructions to show an unsolicited startup warning.
 No receipts authorize a later retry; each retry requires a fresh confirmed job.
+
+The interactive completion page keeps data by default. Checking the data option
+and clicking Finish prompts Inno to wait for the worker to release the job
+files, then remove this installation's `data` directory. Closing the page
+leaves data in place. Unattended runs leave data in place.
 
 ## Owned acceptance fixture
 

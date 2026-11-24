@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.6-dev.3 · Development preview
+
+- The Windows uninstall wizard uses the installer’s branding and companion artwork, with a progress view and a dedicated completion page.
+- The completion page keeps application data by default and lets you remove settings, chat history, and app files stored in the current installation.
+
 ## 1.0.6-dev.2 · Development preview
 
 **Updated on 2026-11-24 (Asia/Shanghai)**

@@ -423,6 +423,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Installer UI checks failed' }
           python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler --progress-animation-only
           if ($LASTEXITCODE) { throw 'Native installer acceptance failed' }
+          python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler --uninstall-ui-only
+          if ($LASTEXITCODE) { throw 'Native uninstaller UI checks failed' }
       - name: Preserve native installer UI evidence
         if: always()
         uses: actions/upload-artifact@v6
@@ -488,6 +490,7 @@ jobs:
             work/uc-*/i/data/pre-uninstall.json
             work/uc-*/i/data/uninstall/*/*.log
             work/uc-*/i/data/uninstall/*/result.json
+            work/uc-*/temp/DeskPet-Uninstall-*.log
             work/uninstall-handoff-*/install.log
             work/uninstall-handoff-*/owned */data/uninstall/*/*.log
             work/uninstall-handoff-*/owned */data/uninstall/*/result.json

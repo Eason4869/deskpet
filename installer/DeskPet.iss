@@ -10,6 +10,7 @@
 #ifndef InstallerBaseName
   #error Missing InstallerBaseName
 #endif
+#define UninstallWizardFlags "/SILENT /DESKPETUNINSTALLUI /DESKPETUNINSTALLCONFIRM"
 
 [Setup]
 AppId={{3B63C162-076E-4B2F-BDCC-2572664875A9}
@@ -61,6 +62,9 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 ; compressed: store these small UI assets directly for immediate random access.
 Source: "assets\*.png"; Flags: dontcopy solidbreak nocompression
 Source: "..\assets\deskpet-logo.png"; Flags: dontcopy solidbreak nocompression
+; The uninstaller reads these before Inno removes the installed files.
+Source: "assets\e-bao-panel.png"; DestDir: "{app}\uninstall-ui"; Flags: ignoreversion solidbreak nocompression
+Source: "..\assets\deskpet-logo.png"; DestDir: "{app}\uninstall-ui"; Flags: ignoreversion nocompression
 
 [InstallDelete]
 Type: files; Name: "{app}\大肥鱼桌宠.exe"
@@ -68,7 +72,7 @@ Type: files; Name: "{app}\大肥鱼桌宠.exe.config"
 
 [Icons]
 Name: "{group}\桌面伙伴"; Filename: "{app}\桌面伙伴.exe"; WorkingDir: "{app}"
-Name: "{group}\卸载桌面伙伴"; Filename: "{uninstallexe}"
+Name: "{group}\卸载桌面伙伴"; Filename: "{uninstallexe}"; Parameters: "{#UninstallWizardFlags}"
 Name: "{autodesktop}\桌面伙伴"; Filename: "{app}\桌面伙伴.exe"; WorkingDir: "{app}"; Tasks: desktopicon; Check: CreateSilentDesktopIcon; Flags: uninsneveruninstall
 
 [Code]
@@ -82,6 +86,7 @@ var
 #include "FinishOptions.iss"
 #include "InstallerUi.iss"
 #include "RetireRuntime.iss"
+#include "UninstallUi.iss"
 
 procedure InitializeWizard;
 begin
@@ -102,10 +107,11 @@ begin
   if CurStep = ssInstall then begin
     WasInstalled := FileExists(ExpandConstant('{app}\桌面伙伴.exe')) or FileExists(ExpandConstant('{app}\大肥鱼桌宠.exe'));
     RetireKnownFiles;
-    RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{3B63C162-076E-4B2F-BDCC-2572664875A9}_is1', 'Inno Setup: Icon Group', PreviousIconGroup);
+    RegQueryStringValue(HKCU, UninstallRegistryKey, 'Inno Setup: Icon Group', PreviousIconGroup);
   end;
   if CurStep = ssPostInstall then
   begin
+    RegisterUninstallWizard;
     LegacyCommand := '"' + ExpandConstant('{app}\大肥鱼桌宠.exe') + '" --startup';
     NewCommand := '"' + ExpandConstant('{app}\桌面伙伴.exe') + '" --startup';
     if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'DafeiyuDeskPet', RegisteredCommand) then
@@ -131,11 +137,27 @@ begin
     SuppressibleMsgBox('请先安装 Microsoft .NET Framework 4.8 或更新版本，再运行此安装包。', mbError, MB_OK, IDOK);
 end;
 
+function InitializeUninstall: Boolean;
+begin
+  Result := InitializeUninstallWizard;
+  if Result then Result := PreserveCustomDesktopLink;
+end;
+
+procedure DeinitializeUninstall;
+begin
+  try
+    CleanupCustomDesktopLinkBackup;
+  finally
+    DestroyUninstallWizard;
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   RegisteredCommand, ExpectedCommand: String;
 begin
   if CurUninstallStep = usPostUninstall then RestoreCustomDesktopLink;
+  if CurUninstallStep = usDone then ShowUninstallCompletion;
   if CurUninstallStep = usUninstall then
   begin
     if OwnedDesktopLink then DeleteFile(DesktopLink);

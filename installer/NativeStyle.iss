@@ -12,6 +12,7 @@ var
   PrimarySurface, SecondarySurface, LinkSurface, DotSurface, ActiveDotSurface,
     FocusPrimary, FocusSecondary, FocusLink, FocusDot: TPngImage;
   HeaderPreviousProc: LongWord;
+  DragHeader, DragForm: HWND;
 
 function StyleGetLong(Window: HWND; Index: Integer): LongWord; external 'GetWindowLongW@user32.dll stdcall';
 function StyleSetLong(Window: HWND; Index: Integer; Value: LongWord): LongWord; external 'SetWindowLongW@user32.dll stdcall';
@@ -110,19 +111,32 @@ end;
 function HeaderDragProc(Window: HWND; Msg, WParam, LParam: LongWord): Longint;
 begin
   if Msg = $201 then begin
-    StyleReleaseCapture; SendMessage(WizardForm.Handle, $A1, 2, 0); Result := 0;
+    StyleReleaseCapture; SendMessage(DragForm, $A1, 2, 0); Result := 0;
   end else Result := StyleCallProc(HeaderPreviousProc, Window, Msg, WParam, LParam);
 end;
 
-procedure InitializeHeaderDrag;
+procedure InitializeHeaderDrag(Header: TPanel; Form: TSetupForm);
 begin
-  HeaderPreviousProc := StyleSetLong(HeaderPanel.Handle, -4, CreateCallback(@HeaderDragProc));
+  DragHeader := Header.Handle;
+  DragForm := Form.Handle;
+  HeaderPreviousProc := StyleSetLong(DragHeader, -4, CreateCallback(@HeaderDragProc));
+end;
+
+procedure StopHeaderDrag;
+begin
+  if (HeaderPreviousProc <> 0) and StyleIsWindow(DragHeader) then
+    StyleSetLong(DragHeader, -4, HeaderPreviousProc);
+  HeaderPreviousProc := 0;
+end;
+
+procedure RoundWizardFrame(Form: TSetupForm);
+begin
+  StyleSetRegion(Form.Handle, StyleRegion(0, 0, Form.Width, Form.Height, ScaleX(24), ScaleY(24)), True);
 end;
 
 procedure StopNativeStyle;
 begin
-  if (HeaderPreviousProc <> 0) and StyleIsWindow(HeaderPanel.Handle) then
-    StyleSetLong(HeaderPanel.Handle, -4, HeaderPreviousProc);
+  StopHeaderDrag;
   if PrimarySurface <> nil then begin
     PrimarySurface.Free; SecondarySurface.Free; LinkSurface.Free; DotSurface.Free; ActiveDotSurface.Free;
     FocusPrimary.Free; FocusSecondary.Free; FocusLink.Free; FocusDot.Free;

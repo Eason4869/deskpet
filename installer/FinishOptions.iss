@@ -132,7 +132,7 @@ begin
   end;
 end;
 
-procedure DeinitializeUninstall;
+procedure CleanupCustomDesktopLinkBackup;
 begin
   { Cancelling uninstall must not leave a redundant custom-link backup. }
   if (UninstallDesktopBackup = '') or not FileExists(UninstallDesktopBackup) then Exit;
@@ -168,7 +168,7 @@ begin
   LaunchOnFinish := True;
 end;
 
-function InitializeUninstall: Boolean;
+function PreserveCustomDesktopLink: Boolean;
 var I: Integer; Candidate: String;
 begin
   Result := True;

@@ -13,6 +13,7 @@ import hashlib
 import os
 import re
 import shutil
+import stat
 import subprocess
 import time
 import uuid
@@ -27,6 +28,7 @@ parser.add_argument('--mutate-no-previous-dir',action='store_true',help='Mutatio
 parser.add_argument('--mutate-unready-finish',action='store_true',help='Mutation check: remove only the unready Finish-entry guard in the owned copy.')
 parser.add_argument('--finish-regressions-only',action='store_true',help='Run the focused completion state/ownership regressions only.')
 parser.add_argument('--progress-animation-only',action='store_true',help='Check the active spinner moves while the pending ring stays still.')
+parser.add_argument('--uninstall-ui-only',action='store_true',help='Check native uninstall progress, completion and optional data removal.')
 args=parser.parse_args()
 PROJECT=Path(__file__).resolve().parents[1]
 ROOT=PROJECT/'work'/('installer-ui-'+uuid.uuid4().hex)
@@ -200,8 +202,8 @@ def path_page():
 def path_edit(w):
     return next(c for c in controls(w) if classname(c)=='TNewPathEdit')
 
-def snapshot(w,name):
-    time.sleep(.2)
+def snapshot(w,name,settle=.2):
+    if settle:time.sleep(settle)
     from PIL import Image
     rect=W.RECT();user.GetWindowRect.argtypes=[W.HWND,ctypes.POINTER(W.RECT)];user.GetWindowRect(w,ctypes.byref(rect))
     width,height=rect.right-rect.left,rect.bottom-rect.top
@@ -233,6 +235,127 @@ def registered_uninstaller():
     path=Path(command.split('"')[1] if command.startswith('"') else command)
     assert path.resolve().parent==INSTALL.resolve() and re.fullmatch(r'unins\d+\.exe',path.name),'uninstaller must belong to the exact owned installation'
     return path
+
+
+def uninstall_ui():
+    data = INSTALL/'data'
+    settings = data/'settings.json'
+    history = data/'history'/'conversation.json'
+    outside = ROOT/'outside-data'
+    outside.mkdir()
+    sentinel = outside/'do-not-delete.txt'
+    sentinel.write_bytes(b'outside the owned app data')
+    data_label = '删除应用数据文件'
+    user.GetWindowLongW.argtypes=[W.HWND,ctypes.c_int];user.GetWindowLongW.restype=ctypes.c_long
+
+    def check_chrome(w,can_close):
+        close=find(w,'关闭')
+        check(user.GetWindowLongW(w,-16)&0x00C00000==0 and close and bool(user.IsWindowEnabled(close))==can_close,
+              'uninstall uses one branded title bar with the correct close state')
+
+    def install():
+        p=setup('/VERYSILENT','/SUPPRESSMSGBOXES')
+        check(p.wait(timeout=40)==0,'owned test install succeeds')
+        history.parent.mkdir(parents=True,exist_ok=True)
+        settings.write_bytes(b'{"owned":true}')
+        history.write_bytes(b'owned chat history')
+        return registered_uninstaller()
+
+    def completion():
+        return next((w for w in windows()
+                     if user.IsWindowVisible(w) and text(w)=='桌面伙伴 · 卸载完成'
+                     and find(w,'完成')), None)
+
+    def show_completion():
+        w=wait(completion,'native uninstall completion')
+        check(not (INSTALL/'桌面伙伴.exe').exists() and settings.is_file() and history.is_file(),
+              'uninstall completion appears after program removal with data still present')
+        option=find(w,data_label)
+        check(option and user.IsWindowEnabled(option) and user.SendMessageW(option,0xF0,0,0)==0,
+              'data removal is available and unchecked by default')
+        check_chrome(w,True)
+        return w,option
+
+    executable=install()
+    p=start([executable,'/SILENT','/NORESTART','/DESKPETUNINSTALLUI','/LOG='+str(ROOT/'uninstall-ui-keep.log')])
+    def active_progress():
+        for w in windows():
+            if user.IsWindowVisible(w) and text(w)=='桌面伙伴 · 正在卸载':
+                if any(re.fullmatch(r'[1-9]\d?%',text(c)) for c in controls(w)):
+                    return w
+        return None
+    progress=wait(active_progress,'native uninstall reports intermediate progress')
+    check_chrome(progress,False)
+    snapshot(progress,'uninstall-progress',settle=0)
+    w,_=show_completion()
+    snapshot(w,'uninstall-complete')
+    click(find(w,'完成'))
+    wait(lambda:not user.IsWindow(w),'close completion after keeping data')
+    check(p.wait()==0 and settings.read_bytes()==b'{"owned":true}' and history.read_bytes()==b'owned chat history',
+          'normal Finish preserves all data when the option is unchecked')
+
+    executable=install()
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER,APP_KEY) as key:
+        command=winreg.QueryValueEx(key,'UninstallString')[0]
+        quiet=winreg.QueryValueEx(key,'QuietUninstallString')[0]
+    check(command == f'"{executable}" /SILENT /DESKPETUNINSTALLUI /DESKPETUNINSTALLCONFIRM',
+          'Windows Settings runs the same uninstall wizard')
+    quiet_flags=quiet.split('"',2)[2].upper().split()
+    check(quiet_flags in [['/SILENT'],['/VERYSILENT']],
+          'Windows silent uninstall keeps its unattended command')
+    shell_flags=command.split('"',2)[2].split()
+    p=start([executable,*shell_flags,'/NORESTART','/LOG='+str(ROOT/'uninstall-ui-delete.log')])
+    confirm=wait(lambda:next((w for w in windows() if classname(w)=='#32770' and user.IsWindowVisible(w)),None),
+                 'Windows Settings uninstall confirmation')
+    user.GetDlgItem.argtypes=[W.HWND,ctypes.c_int];user.GetDlgItem.restype=W.HWND
+    check((INSTALL/'桌面伙伴.exe').exists() and settings.is_file(),
+          'Windows Settings confirmation precedes program and data removal')
+    click(user.GetDlgItem(confirm,6))  # IDYES
+    w,option=show_completion()
+    click(option)
+    wait(lambda:user.SendMessageW(option,0xF0,0,0)==1,'data removal checkbox is selected')
+    check(data.is_dir(),'selecting the checkbox does not immediately remove data')
+    junction=data/'outside-link'
+    assert junction.parent.resolve()==data.resolve() and outside.resolve().parent==ROOT.resolve()
+    subprocess.run(['cmd.exe','/d','/c','mklink','/J',str(junction),str(outside)],
+                   check=True,capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW)
+    assert junction.lstat().st_reparse_tag==stat.IO_REPARSE_TAG_MOUNT_POINT, 'the owned data contains an actual NTFS junction'
+    snapshot(w,'uninstall-complete-selected')
+    with history.open('rb') as locked:
+        click(find(w,'完成'))
+        wait(lambda:find(w,'部分数据未能删除。请关闭占用文件的程序后重试。'),'cleanup failure is displayed')
+        check(user.IsWindow(w) and not settings.exists() and history.is_file() and locked.read()==b'owned chat history',
+              'failed cleanup keeps the completion page open so remaining files can be retried')
+    click(find(w,'完成'))
+    wait(lambda:not user.IsWindow(w),'close completion after deleting data')
+    check(p.wait()==0 and not data.exists() and sentinel.read_bytes()==b'outside the owned app data',
+          'checked Finish removes the entire owned data tree without following its junction')
+    check(not any(classname(window)=='#32770' and user.IsWindowVisible(window) for window in windows()),
+          'normal completion displays no second native success dialog')
+
+    executable=install()
+    p=start([executable,'/SILENT','/NORESTART','/DESKPETUNINSTALLUI'])
+    w,option=show_completion()
+    click(option)
+    wait(lambda:user.SendMessageW(option,0xF0,0,0)==1,'selection before closing')
+    click(find(w,'关闭'))
+    wait(lambda:not user.IsWindow(w),'close completion using the window close action')
+    check(p.wait()==0 and settings.is_file() and history.is_file(),
+          'window close preserves data even if the checkbox was selected')
+
+    executable=install()
+    p=start([executable,*quiet_flags,'/NORESTART'])
+    check(p.wait()==0,'registered quiet uninstall returns without waiting for the wizard')
+    wait(lambda:not executable.exists(),'quiet removal self-terminates')
+    check(not completion() and settings.is_file() and history.is_file(),
+          'registered quiet uninstall preserves data without a completion page')
+
+    executable=install()
+    p=start([executable,'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DESKPETUNINSTALLUI'])
+    check(p.wait()==0,'unattended uninstall returns without waiting for the wizard')
+    wait(lambda:not executable.exists(),'unattended removal self-terminates')
+    check(not completion() and settings.is_file() and history.is_file(),
+          'unattended uninstall never displays a cleanup choice or deletes data')
 
 def finish_page(w):
     action=find(w,'完成并启动');later=find(w,'完成，稍后启动')
@@ -349,14 +472,22 @@ def compile_fixture():
         content=content.replace('{autodesktop}',str(DESKTOP)).replace('{userprograms}',str(ROOT/'programs')).replace('{group}',str(ROOT/'group'))
         file.write_text(content,encoding='utf-8-sig')
     source=ROOT/'Fixture.cs'
-    source.write_text('[assembly:System.Reflection.AssemblyVersion("1.0.4.0")][assembly:System.Reflection.AssemblyInformationalVersion("1.0.4-dev.1")]'+'class Fixture {static void Main(){System.IO.File.AppendAllText(System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory,"launch.txt"),"launch\\n");}}',encoding='utf-8')
+    version,assembly='1.0.4-dev.1','1.0.4.0'
+    if args.uninstall_ui_only:
+        release=(PROJECT/'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')
+        version=re.search(r'DisplayVersion="([^"]+)"',release)[1]
+        assembly=re.search(r'AssemblyVersion="([^"]+)"',release)[1]
+    source.write_text(f'[assembly:System.Reflection.AssemblyVersion("{assembly}")][assembly:System.Reflection.AssemblyInformationalVersion("{version}")]'+'class Fixture {static void Main(){System.IO.File.AppendAllText(System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory,"launch.txt"),"launch\\n");}}',encoding='utf-8')
     payload=ROOT/'runtime';payload.mkdir()
     csc=Path(os.environ['WINDIR'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
     subprocess.run([str(csc),'/nologo','/target:winexe','/out:'+str(payload/'桌面伙伴.exe'),str(source)],check=True,capture_output=True)
     (payload/'payload.bin').write_bytes(os.urandom(24*1024*1024))
+    if args.uninstall_ui_only:
+        for index in range(1600):
+            (payload/f'progress-{index:04d}.bin').write_bytes(b'owned uninstall progress fixture')
     include=ROOT/'runtime.iss'
     include.write_text('Source: "'+str(payload/'*')+'"; DestDir: "{app}"; Flags: ignoreversion\n',encoding='utf-8-sig')
-    command=[args.compiler,'/Qp','/DRuntimeDir='+str(payload),'/DRuntimeFiles='+str(include),'/DProductVersion=1.0.4-dev.1','/DInformationalVersion=1.0.4-dev.1','/DAssemblyVersion=1.0.4.0','/DRepositoryUrl=https://example.invalid','/DInstallerBaseName=installer','/DOutputDir='+str(ROOT),script/'DeskPet.iss']
+    command=[args.compiler,'/Qp','/DRuntimeDir='+str(payload),'/DRuntimeFiles='+str(include),'/DProductVersion='+version,'/DInformationalVersion='+version,'/DAssemblyVersion='+assembly,'/DRepositoryUrl=https://example.invalid','/DInstallerBaseName=installer','/DOutputDir='+str(ROOT),script/'DeskPet.iss']
     result=subprocess.run(list(map(str,command)),capture_output=True,timeout=120)
     (ROOT/'compile.log').write_bytes(result.stdout+result.stderr)
     if result.returncode: print((result.stdout+result.stderr).decode('utf-8',errors='replace'),flush=True)
@@ -469,6 +600,11 @@ def finish_regressions():
 
 try:
     compile_fixture()
+    if args.uninstall_ui_only:
+        uninstall_ui()
+        (ROOT/'result.json').write_text(json.dumps({'passed':passed,'root':str(ROOT)},ensure_ascii=False,indent=2),encoding='utf-8')
+        print('Uninstall UI smoke: '+str(passed)+' passed; evidence '+str(ROOT),flush=True)
+        raise SystemExit(0)
     if args.progress_animation_only:
         p=setup();w=path_page();complete_install(w)
         click(find(w,'完成，稍后启动'));check(p.wait(timeout=20)==0,'animation fixture finishes normally')
@@ -516,7 +652,7 @@ try:
     complete_install(w)
     check(user.SendMessageW(find(w,'创建桌面快捷方式'),0xF0,0,0)==1 and user.SendMessageW(find(w,'开机时启动桌面伙伴'),0xF0,0,0)==1,'upgrade preserves owned shortcut and startup selections')
     click(find(w,'创建桌面快捷方式'));click(find(w,'开机时启动桌面伙伴'));click(find(w,'完成并启动'));check(p.wait(timeout=20)==0,'Finish and launch succeeds')
-    wait(lambda:(INSTALL/'launch.txt').exists(),'one launch')
+    wait(lambda:(INSTALL/'launch.txt').is_file() and (INSTALL/'launch.txt').read_bytes().endswith(b'\n'),'one complete launch record')
     check((INSTALL/'launch.txt').read_text().splitlines()==['launch'] and not SHORTCUT.exists() and run_value() is None,'explicit unchecked owned options remove only own settings and launch once')
     p=start([ROOT/'legacy-installer.exe','/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/DIR='+str(INSTALL),'/TASKS=desktopicon','/LOG='+str(ROOT/'legacy-install.log')])
     check(p.wait(timeout=60)==0 and SHORTCUT.exists(),'genuine old unconditional desktop icon entry is present in uninstall log')

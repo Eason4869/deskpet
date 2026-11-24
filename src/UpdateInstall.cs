@@ -32,6 +32,7 @@ namespace Dafeiyu
     {
         public const string ExecutableName="桌面伙伴.exe",WorkerName="DeskPet.Update.exe";
         const string UninstallKey=@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{3B63C162-076E-4B2F-BDCC-2572664875A9}_is1";
+        const string UninstallWizardArguments=" /SILENT /DESKPETUNINSTALLUI /DESKPETUNINSTALLCONFIRM";
         static readonly HashSet<string> rootFiles=new HashSet<string>(StringComparer.OrdinalIgnoreCase){ExecutableName,ExecutableName+".config",WorkerName,WorkerName+".config","README.md","CHANGELOG.md"};
         static Version VersionOf(string version)
         {
@@ -54,7 +55,13 @@ namespace Dafeiyu
                     {
                         // A portable copy may reuse a directory left in the uninstall registry.
                         // Only a live Inno uninstaller belonging to this directory selects Setup.
-                        string uninstaller=command.Trim().Trim('"');
+                        command=command.Trim();
+                        if(command.EndsWith(UninstallWizardArguments,StringComparison.OrdinalIgnoreCase))
+                        {
+                            command=command.Substring(0,command.Length-UninstallWizardArguments.Length);
+                            if(command.Length<3||command[0]!='"'||command[command.Length-1]!='"')continue;
+                        }
+                        string uninstaller=command.Trim('"');
                         string uninstallDirectory=Path.GetDirectoryName(uninstaller);
                         if(Path.IsPathRooted(uninstaller) && !String.IsNullOrWhiteSpace(uninstallDirectory) && Same(value,directory) && Same(uninstallDirectory,directory) &&
                             Regex.IsMatch(Path.GetFileName(uninstaller),@"^unins[0-9]+\.exe$",RegexOptions.IgnoreCase) &&
