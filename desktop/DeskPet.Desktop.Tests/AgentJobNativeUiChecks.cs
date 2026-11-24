@@ -56,7 +56,13 @@ internal static class AgentJobNativeUiChecks
             await WaitAsync(()=>idleConnection.Client.Poll(0,SelectMode.SelectRead)&&idleConnection.Available==0,1000,"native idle preconnection cleanup");Check(true,"native stop closes the owned server's idle preconnection");
             var timings=new List<object>();foreach(int code in new[]{0,7})
             {
-                watch.Restart();var terminal=await AgentJobUiChecks.Start(owner.WorkBindings.Jobs.Manager,root,project.Id,conversation.Id,"native-exit-"+code,"exit "+code);string expected=AgentJobUiText.State(code==0?AgentJobState.Succeeded:AgentJobState.Failed);
+                string exitReady=Path.Combine(root,"exit-"+code+".ready"),exitSignal=Path.Combine(root,"exit-"+code+".signal");
+                string exitCommand="[IO.File]::WriteAllText("+Quote(exitReady)+",'ready'); while(![IO.File]::Exists("+Quote(exitSignal)+")){Start-Sleep -Milliseconds 10}; exit "+code;
+                var terminal=await AgentJobUiChecks.Start(owner.WorkBindings.Jobs.Manager,root,project.Id,conversation.Id,"native-exit-"+code,exitCommand);
+                await WaitAsync(()=>File.Exists(exitReady),15000,"native exit fixture readiness "+code);
+                string expected=AgentJobUiText.State(code==0?AgentJobState.Succeeded:AgentJobState.Failed);
+                // Start timing once PowerShell has initialized and the fixture can exit on demand.
+                watch.Restart();File.WriteAllText(exitSignal,"exit");
                 await WaitAsync(()=>AgentJobUiChecks.All<DesktopAgentJobCard>(panel).Any(card=>card.DataContext is DesktopAgentJobsPanel.Row row&&row.Job.Id==terminal.Id&&AgentJobUiChecks.All<TextBlock>(card).Any(text=>text.Name=="AgentJobStatus"&&text.Text!.Contains(expected)&&text.Text.Contains(TextResources.Format("agent.jobs.ui.exitCode",code)))),2000,"native exit state "+code);
                 var snapshot=owner.WorkBindings.Jobs.Manager.ListForProject(project.Id).Single(value=>value.Id==terminal.Id);Check(watch.ElapsedMilliseconds<2000&&snapshot.RootExitCode==code&&snapshot.RootExitObservedUtc.HasValue&&snapshot.TreeExitObservedUtc.HasValue,"native exit "+code+" is visible within two seconds with separate root/tree observations");timings.Add(new{code,visible_ms=watch.ElapsedMilliseconds,root_observed=snapshot.RootExitObservedUtc,tree_observed=snapshot.TreeExitObservedUtc});
             }
