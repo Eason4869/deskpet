@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.6-dev.1 · Development preview
+
+- The Windows work agent stores execution records by task. Existing journals migrate automatically, completed records no longer block new tasks, and uncertain outcomes prompt for review.
+- Work sessions keep distinct outcomes for completion, failure, cancellation, and interruption. Resuming a task preserves confirmed results.
+- The work task panel shows model request counts and recorded token usage, with controls to stop or continue a task.
+
 ## [1.0.5](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · Production release
 
 - Read selected ranges of text, CSV/TSV, XLS/XLSX, DOC/DOCX, PDF, and PPTX in chat. Spreadsheet views show raw values, display formats, formulas, and saved results. Legacy DOC and XLS files open without Office.

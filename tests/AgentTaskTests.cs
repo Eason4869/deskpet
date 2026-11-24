@@ -16,6 +16,14 @@ namespace Dafeiyu.Tests
             string result=Call(w,"update_plan",new{steps=new[]{new{text="Read project",status="complete"},new{text="Implement",status="in_progress"}}});Check(!result.StartsWith("错误："),"plan is recorded through the real tool dispatcher");
             var state=typeof(AgentWorkspace).GetProperty("TaskState");Check(state!=null,"workspace exposes actual task state");object task=state.GetValue(w,null);Type taskType=task.GetType();
             Check(new JavaScriptSerializer().Serialize(task).Contains("Read project"),"task snapshot includes plan steps");
+            AgentTaskState progress=null;
+            w.TaskChanged=snapshot=>progress=snapshot;
+            w.RecordModelRequest();
+            Check(progress.ModelRequests==1 && progress.EstimatedTotalTokens==0,"a dispatched request is visible before usage is available");
+            w.RecordModelUsage(1234);
+            Check(progress.EstimatedTotalTokens==1234 && progress.ModelRequests==1,"recorded usage publishes the estimate without counting another request");
+            w.RecordModelRequest();
+            Check(progress.ModelRequests==2 && progress.EstimatedTotalTokens==1234,"a request with no recorded usage preserves the prior estimate");
             Type storeType=typeof(AgentWorkspace).Assembly.GetType("Dafeiyu.AgentTaskStore");Check(storeType!=null,"encrypted task store is available");
             string directory=Path.Combine(root,"task-store");object store=Activator.CreateInstance(storeType,new object[]{directory});
             storeType.GetMethod("SaveAsync").Invoke(store,new[]{task});((System.Threading.Tasks.Task)storeType.GetMethod("FlushAsync").Invoke(store,null)).GetAwaiter().GetResult();

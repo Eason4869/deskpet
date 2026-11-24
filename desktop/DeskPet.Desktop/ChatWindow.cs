@@ -88,7 +88,11 @@ internal sealed partial class ChatWindow : Window
         LocalizedUi.Automation(profileButton,()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeK")));
         questions.Name = "AgentQuestions";
         var header = Ui.Column(Ui.Row(profileButton, partnerName, LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text")), owner.ShowSettings), LocalizedUi.Button(()=>(quick ? TextResources.Get("chatWindow.chatWindow.text.alternativeA") : TextResources.Get("chatWindow.chatWindow.text.alternativeB")), () => {if(ProactiveBinding!=null)owner.ExpandProactive(ProactiveBinding);else owner.ShowChat(!quick);})), status, questions);
-        if(!quick&&ProactiveBinding==null)header.Children.Add(CreateWorkBindingActions());
+        if (!quick && ProactiveBinding == null)
+        {
+            header.Children.Add(CreateWorkBindingActions());
+            header.Children.Add(CreateAgentTaskProgress());
+        }
         DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         primary = Ui.Button("≋", () => { if (!string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0) Send(); else if (BoundSession.IsBusy) owner.Run(StopBoundAsync); else owner.ShowLive(); });
         primary.Name = "PrimaryChatAction"; primary.Width = primary.Height = 32; primary.Padding = new Thickness(0); primary.HorizontalContentAlignment = HorizontalAlignment.Center; primary.VerticalContentAlignment = VerticalAlignment.Center; primary.CornerRadius = new CornerRadius(16); primary.Background = DesktopTheme.Brush("#357FF5"); primary.Foreground = Avalonia.Media.Brushes.White;
@@ -468,6 +472,7 @@ internal sealed partial class ChatWindow : Window
         partnerAvatar.Skin = ChatCompanion; LocalizedUi.Set(partnerName,"Text",()=>(ChatCompanion.DisplayName));
         if (ProactiveBinding==null&&binding==null && persona != owner.Skin.Id) { uploadEpoch++; SaveDraft(); persona = owner.Skin.Id; draft.Text = LoadDraft(); foreach (var oldView in rendered.Values) oldView.DisposeImages(); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
         SynchronizeDraftScope();
+        RefreshAgentTaskProgress();
         LocalizedUi.Set(status,"Text",()=>(BoundSession.Stage + (owner.Dictation.IsBusy ? TextResources.Format("chatWindow.refresh.ownerSessionStage",owner.Dictation.Stage) : "") + " · " + BoundSession.LastNotice + " " + owner.Dictation.LastNotice + " " + BoundQueue.Notice + " " + BoundSession.HistoryWarning+" "+owner.ComposerDrafts.Warning));
         LocalizedUi.Set(this,"Title",()=>(TextResources.Get("chatWindow.refresh.ownerSkinName") + ChatCompanion.DisplayName + (quick ? TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeA") : TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeB"))));
         var followBottom = history.Offset.Y + history.Viewport.Height + 80 >= history.Extent.Height;

@@ -54,6 +54,55 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if (args.Contains("--agent-task-progress"))
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "task-data")));
+        string project = Directory.CreateDirectory(Path.Combine(directory, "project")).FullName;
+        owner.Settings.AgentEnabled = true;
+        owner.Settings.AgentWorkspace = project;
+        var store = new AgentTaskStore(Path.Combine(owner.DataDirectory, "history", "agent-tasks"));
+        Complete(store.SaveAsync(new AgentTaskState { PersonaId = owner.Session.PersonaId, Workspace = project, Goal = "fixture", Status = "cancelled", ModelRequests = 2, EstimatedTotalTokens = 1234 }));
+        var window = new ChatWindow(owner, false);
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var controls = window.GetLogicalDescendants().OfType<Control>().ToArray();
+            Check(controls.OfType<TextBlock>().Any(t => t.Name == "AgentTaskStatus" && t.IsVisible && t.Text?.Contains("已停止") == true), "work chat loads the stopped task checkpoint and shows its status");
+            Check(controls.OfType<TextBlock>().Any(t => t.Name == "AgentTaskRequestCount" && t.IsVisible && t.Text?.EndsWith("2") == true), "work chat shows the primary model request count");
+            Check(controls.OfType<TextBlock>().Any(t => t.Name == "AgentTaskTokenEstimate" && t.IsVisible && t.Text?.Contains("1234") == true), "work chat shows the recorded token estimate");
+            Check(controls.OfType<Button>().Any(b => b.Name == "ContinueAgentTask" && b.IsVisible && b.IsEnabled), "the stopped task can be continued");
+            Check(!controls.OfType<Button>().Any(b => b.Name == "StopAgentTask" && b.IsVisible), "a stopped task does not show a stop action");
+
+            string pendingProject = Directory.CreateDirectory(Path.Combine(directory, "pending-project")).FullName;
+            var pending = new AgentTaskState { PersonaId = owner.Session.PersonaId, Workspace = pendingProject, Goal = "pending fixture", Status = "needs_reconciliation" };
+            var journal = new AgentRunJournal(AgentWorkspace.RunJournalPath(pendingProject));
+            journal.BeforeSave = record => { if (record.State == "completed") throw new IOException("fixture checkpoint failure"); };
+            var invocation = new AgentToolInvocation("write_file", new Dictionary<string, object> { ["path"] = "result.txt" },
+                new AgentToolExecutionContext { SessionId = "fixture", ProjectId = "pending", TaskId = pending.Id, CallId = "fixture-write" });
+            try
+            {
+                Complete(journal.ExecuteAsync(invocation, before => { before(); return Task.FromResult("written"); }));
+                throw new InvalidOperationException("Expected the fixture checkpoint failure");
+            }
+            catch (IOException error) when (error.Message == "fixture checkpoint failure") { }
+            Complete(store.SaveAsync(pending));
+            owner.Settings.AgentWorkspace = pendingProject;
+            owner.NotifyWorkChanged();
+            var continueTask = controls.OfType<Button>().Single(b => b.Name == "ContinueAgentTask");
+            var pendingNotice = controls.OfType<TextBlock>().Single(t => t.Name == "AgentTaskNotice");
+            var acknowledge = controls.OfType<Button>().Single(b => b.Name == "AcknowledgeAgentExecutions");
+            Until(() => acknowledge.IsVisible && acknowledge.IsEnabled);
+            Check(!continueTask.IsEnabled && pendingNotice.IsVisible && pendingNotice.Text?.Contains("待核对") == true, "an unverified task explains the check required before continuation");
+            acknowledge.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Until(() => continueTask.IsEnabled && !acknowledge.IsVisible);
+            Check(owner.Session.CurrentAgentTask.Status == "interrupted" && !journal.HasPending(pending.Id), "acknowledging the pending operation clears the journal and makes continuation available");
+            Console.WriteLine("Agent task progress UI: " + assertions + " passed");
+        }
+        finally { window.Close(); CloseController(owner); }
+        return;
+    }
     if (args.Contains("--file-compatibility-only"))
     {
         using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "files")));

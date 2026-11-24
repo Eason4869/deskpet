@@ -528,10 +528,11 @@ namespace Dafeiyu
             {
                 foreach (string path in paths)
                 {
-                    if (!Directory.Exists(path))
+                    string ioPath = path.Length >= 248 ? Maintenance.CachePaths.NativePath(path) : path;
+                    if (!Directory.Exists(ioPath))
                     {
                         if (!create || (RestrictToRoot && !IsWithin(path, Root))) throw new DirectoryNotFoundException();
-                        Directory.CreateDirectory(path);
+                        Directory.CreateDirectory(ioPath);
                     }
                     SafeFileHandle handle = Open(path, 0, 1, 3, 0x02200000);
                     locks.Handles.Add(handle);
@@ -553,7 +554,8 @@ namespace Dafeiyu
 
         private static SafeFileHandle Open(string path, uint access, uint sharing, uint creation, uint flags)
         {
-            SafeFileHandle handle = CreateFile(path, access, sharing, IntPtr.Zero, creation, flags, IntPtr.Zero);
+            SafeFileHandle handle = CreateFile(path.Length >= 248 ? Maintenance.CachePaths.NativePath(path) : path,
+                access, sharing, IntPtr.Zero, creation, flags, IntPtr.Zero);
             if (!handle.IsInvalid) return handle;
             int error = Marshal.GetLastWin32Error(); handle.Dispose();
             if (error == 2) throw new FileNotFoundException();

@@ -306,6 +306,12 @@ namespace Dafeiyu
         }}
         public Task<AgentJobSnapshot> StopAsync(AgentJobOwner owner,string id,AgentJobStopReason reason,CancellationToken token)
         {return StopEntryAsync(Find(owner,id),reason,token);}
+        internal Task<AgentJobSnapshot> StopForToolAsync(AgentJobOwner owner,string id,CancellationToken token,Action beforeEffect)
+        {
+            var entry=Find(owner,id);
+            beforeEffect();
+            return StopEntryAsync(entry,AgentJobStopReason.User,token);
+        }
         internal Task<AgentJobSnapshot> StopForUserAsync(string id,AgentJobStopReason reason,CancellationToken token)
         {Entry entry;lock(gate){if(!jobs.TryGetValue(id??"",out entry))throw new KeyNotFoundException("job_not_found");}return StopEntryAsync(entry,reason,token);}
         async Task<bool> CleanupAsync(Entry entry,CancellationToken token=default(CancellationToken))

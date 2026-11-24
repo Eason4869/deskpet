@@ -36,6 +36,8 @@ namespace Dafeiyu.Tests
                 Check(session.CurrentAgentTask.Id==completedTask.Id && completedTask.Workspace==project && All<TextBlock>(taskButton).Any(t=>t.Text==completedTask.Goal) && !All<Button>(chat).Any(b=>b.Name=="WorkspaceProject"),"sidebar keeps the completed task attached to its actual project");
                 pet.Settings.AgentWorkspace=project;Pump();
                 var panel=All<Expander>(chat).Single(p=>p.Name=="AgentTaskDetails");panel.IsExpanded=true;Pump();
+                Check(All<TextBlock>(panel).Any(t=>t.Name=="AgentTaskRequestCount" && t.Text.Contains("2")),"task details show the primary model request count");
+                Check(All<TextBlock>(panel).Any(t=>t.Name=="AgentTaskTokenEstimate" && t.Text.Contains("1234")),"task details label the recorded token estimate");
                 Check(File.ReadAllText(Path.Combine(project,"one.txt"))=="after","model-selected tool modifies the real fixture file");
                 Check(All<TextBlock>(panel).Any(t=>t.Text.Contains("one.txt")),"actual changed file appears in task details");
                 Check(session.CurrentAgentTask.Commands.Count==0,"removed command grants cannot execute or produce a successful command record");
@@ -92,6 +94,7 @@ namespace Dafeiyu.Tests
         {
             public readonly TaskCompletionSource<bool> Release=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public async Task<string> ChatAgentAsync(ConnectionSettings c,IList<ChatMessage> m,AgentWorkspace w,Action<string>d,Action<string>r,Action<AgentToolEvent>t,bool stream,CancellationToken token){if(m.Any(x=>x.Role=="user"&&x.Content=="第二次任务")){d("第二次完成");return "第二次完成";}
+                w.RecordModelRequest();w.RecordModelUsage(1234);w.RecordModelRequest();
                 var serializer=new JavaScriptSerializer();await w.ExecuteAsync("update_plan",serializer.Serialize(new{steps=new[]{new{text="修改文件并验证",status="in_progress"}}}),token);
                 await w.ExecuteAsync("read_file","{\"path\":\"one.txt\"}",token);await w.ExecuteAsync("apply_patch",serializer.Serialize(new{edits=new[]{new{path="one.txt",old_text="before",new_text="after"}}}),token);
                 await w.ExecuteAsync("apply_patch",serializer.Serialize(new{edits=new[]{new{path="two.txt",content="second"},new{path="three.txt",content="third"},new{path="four.txt",content="fourth"}}}),token);w.ContextProgress("compacting");await AgentAuthorizationService.AwaitCancellation(Release.Task,token);w.RecordCompaction(8123,"Fixture retained task facts");

@@ -44,7 +44,7 @@ namespace Dafeiyu.Tests
                 Check(!Encoding.UTF8.GetString(File.ReadAllBytes(Directory.GetFiles(isolatedStore.DirectoryPath,"*.history").Single())).Contains("first.txt"),"persisted file summary is encrypted on disk");
                 await SessionLifecycle(root);
             }
-            finally{Directory.Delete(root,true);}
+            finally{Directory.Delete(Environment.OSVersion.Platform==PlatformID.Win32NT?Maintenance.CachePaths.NativePath(root):root,true);}
         }
         static async Task SessionLifecycle(string root)
         {

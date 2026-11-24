@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.6-dev.1 · 开发预览
+
+- Windows 工作 Agent 按任务管理执行日志。旧日志会自动迁移，已完成记录积累后仍可启动新任务，结果未确认的操作会提示人工核对。
+- 任务正常结束、失败、取消和重启中断采用各自的状态。继续任务时保留已确认的结果。
+- 工作任务面板显示模型请求次数和已统计的 token，支持手动停止与继续。
+
 ## [1.0.5](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · 正式版
 
 - 在聊天中按范围读取文本、CSV/TSV、XLS/XLSX、DOC/DOCX、PDF 和 PPTX。表格可查看原始值、显示格式、公式和已有缓存值。旧版 DOC 和 XLS 无需安装 Office。

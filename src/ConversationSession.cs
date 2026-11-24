@@ -86,7 +86,7 @@ namespace Dafeiyu
             public ConversationLog History;public string PersonaId,ReplyId,GuidanceId,Source="text";public IList<ChatMessage> SteeringContext;
             public readonly StringBuilder Partial=new StringBuilder();public readonly Stopwatch Checkpoint=Stopwatch.StartNew();
             public readonly StringBuilder Reasoning=new StringBuilder();public readonly Stopwatch ThinkingTime=Stopwatch.StartNew();public readonly Stopwatch ProcessingTime=new Stopwatch();public List<ChatAttachment> Attachments;
-            public AgentWorkspace Workspace;public AgentTaskState ResumeTask;
+            public AgentWorkspace Workspace;public AgentTaskState ResumeTask;public bool AgentTaskFinished;
             public string RelationshipCompanionId,RelationshipEventId;public bool RelationshipWork,RelationshipSucceeded;
             public readonly List<AgentToolEvent> ToolEvents=new List<AgentToolEvent>();public bool Regenerating;
             public readonly HashSet<string> PresentedGuidance=new HashSet<string>();
@@ -116,6 +116,13 @@ namespace Dafeiyu
         {
             try
             {
+                if(kernelSession!=null&&op.KernelStarted)
+                {
+                    if(op.Outcome=="complete")kernelSession.CompleteStep(op.ReplyId);
+                    else if(op.Outcome=="cancelled" || (op.Outcome.Length==0 && op.Cancel.IsCancellationRequested))kernelSession.CancelStep(op.ReplyId);
+                    else kernelSession.FailStep(op.ReplyId);
+                    op.KernelStarted=false;
+                }
                 if(kernelStore==null || kernelSession==null)return;
                 try{if(saveEnabled() && op.Snapshot.SaveChatHistory){if(kernelReadFailed)return;kernelStore.Save(kernelSession);}else{kernelStore.Clear();kernelReadFailed=false;}kernelWarning="";}
                 catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning=TextResources.Get("conversationSession.finishOperation.kernelWarning");}
@@ -208,8 +215,8 @@ namespace Dafeiyu
             if(!String.IsNullOrWhiteSpace(kernelInputId))op.RelationshipEventId="input-"+kernelInputId;
             if(op.ResumeTask!=null){op.RelationshipCompanionId=op.ResumeTask.RelationshipCompanionId;op.RelationshipEventId=op.ResumeTask.RelationshipEventId;op.RelationshipWork=true;op.RelationshipSucceeded=op.ResumeTask.RelationshipSucceeded;}
             op.RelationshipSucceeded|=op.History.RelationshipHasSucceeded(op.RelationshipEventId);
-            try { if(!op.DeferredKernel)StartInputStep(op,text);await RequestReply(op,text,petName).ConfigureAwait(false);if(kernelSession!=null&&op.KernelStarted)kernelSession.CompleteStep(op.ReplyId); }
-            catch(OperationCanceledException) { if(kernelSession!=null&&op.KernelStarted)kernelSession.FailStep("cancelled"); SetLocalizedNotice(TextResources.Message("conversationSession.sendTextAsync.lastNotice")); throw; }
+            try { if(!op.DeferredKernel)StartInputStep(op,text);await RequestReply(op,text,petName).ConfigureAwait(false); }
+            catch(OperationCanceledException) { SetLocalizedNotice(TextResources.Message("conversationSession.sendTextAsync.lastNotice")); throw; }
             finally { FinishOperation(op); }
         }
         public void StartRecording(PetSettings settings)
@@ -348,11 +355,12 @@ namespace Dafeiyu
                     if(op.Workspace!=null && op.Partial.Length>0){content=op.Partial.ToString().Trim();if(!content.EndsWith(answer.Trim(),StringComparison.Ordinal))content+="\n\n"+answer.Trim();}
                     UpdateReply(op,content,"complete",true,true);
                 }
-                if(op.Workspace!=null){if(op.Outcome=="complete")op.Workspace.MarkRelationshipSucceeded();op.Workspace.FinishTask("complete","");}
                 if(firstRelationshipSuccess && Relationships!=null && op.Outcome=="complete" && !String.IsNullOrWhiteSpace(answer))await Relationships.Enqueue(op.RelationshipCompanionId,op.RelationshipWork?RelationshipEventType.SuccessfulWorkTask:RelationshipEventType.CompletedConversation,op.RelationshipEventId,RelationshipTime.Current()).ConfigureAwait(false);
+                if(op.Workspace!=null && op.Outcome=="complete")op.Workspace.MarkRelationshipSucceeded();
+                FinishAgentTask(op,"complete","");
             }
             catch(Exception e) {
-                if(op.Workspace!=null)op.Workspace.FinishTask(op.Workspace.NeedsReconciliation?"needs_reconciliation":token.IsCancellationRequested || e is OperationCanceledException?"cancelled":"error",e is ApiException?e.Message:TextResources.Get("conversationSession.requestReply.opWorkspaceFinishTask"));
+                FinishAgentTask(op,token.IsCancellationRequested || e is OperationCanceledException?"cancelled":"error",e is ApiException?e.Message:TextResources.Get("conversationSession.requestReply.opWorkspaceFinishTask"));
                 UpdateReply(op,op.Partial.ToString(),token.IsCancellationRequested || e is OperationCanceledException?"cancelled":"error",true);
                 if(e is ApiException)throw new ApiException(TextResources.Format("conversationSession.requestReply.template",e.Message));throw;
             }
@@ -460,6 +468,13 @@ namespace Dafeiyu
             PublishContextUsage(op,task.EstimatedContextTokens,op.Snapshot.Text.ContextWindowTokens,task.ContextInputBudget>0?task.ContextInputBudget:AgentContextPolicy.Resolve(ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit)).InputBudget,task.ContextStatus,task.ContextCompactions);
             lock(gate){if(disposed || active!=op)return;agentTasks[op.PersonaId]=task.Copy();op.History.UpdateAgentTaskSummary(task);if(task.Status!="running")Save(op.PersonaId,op.History);}
             if(taskStore!=null)taskStore.SaveAsync(task);var changed=AgentTaskChanged;if(changed!=null)changed();
+        }
+        static void FinishAgentTask(Operation op,string status,string notice)
+        {
+            var workspace=op.Workspace;
+            if(workspace==null || op.AgentTaskFinished || workspace.TaskState==null)return;
+            op.AgentTaskFinished=true;
+            workspace.FinishTask(workspace.NeedsReconciliation?"needs_reconciliation":status,notice);
         }
         public void LoadAgentTask(PetSettings settings)
         {using(Maintenance.EnterActivity()){

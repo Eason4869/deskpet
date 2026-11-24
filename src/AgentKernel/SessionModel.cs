@@ -42,6 +42,7 @@ namespace Dafeiyu
         public void StartStep(){Step++;RecoveryState="running";Append("step.started","",Step.ToString());}
         public void CompleteStep(string stepId){RecoveryState="idle";Append("step.completed","",stepId??"");}
         public void FailStep(string stepId){RecoveryState="failed";Append("step.failed","",stepId??"");}
+        internal void CancelStep(string stepId){RecoveryState="failed";Append("step.cancelled","",stepId??"");}
         public void Record(string type,string inputId,string stepId){Append(type,inputId,stepId);}
         void Append(string type,string inputId,string stepId){Events.Add(new AgentSessionEvent{Sequence=++Sequence,Type=type,InputId=inputId,StepId=stepId,CreatedUtc=DateTime.UtcNow});}
     }

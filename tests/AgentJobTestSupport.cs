@@ -128,7 +128,7 @@ namespace Dafeiyu.Tests
                 var elapsed=System.Diagnostics.Stopwatch.StartNew();
                 while(Directory.Exists(full))
                 {
-                    try{Directory.Delete(full,true);return;}
+                    try{Directory.Delete(Environment.OSVersion.Platform==PlatformID.Win32NT?Maintenance.CachePaths.NativePath(full):full,true);return;}
                     catch(IOException error)
                     {
                         int code=error.HResult&0xffff;

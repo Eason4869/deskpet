@@ -19,9 +19,11 @@ namespace Dafeiyu
     {
         readonly IAgentConversationApi api;
         public AgentTaskRunner(IAgentConversationApi api){if(api==null)throw new ArgumentNullException("api");this.api=api;}
-        public async Task<AgentRunResult> RunAsync(AgentRunRequest request,CancellationToken cancel)
-        {using(LanguageRequestScope.Enter(LanguageRequestScope.Capture()))return await RunCoreAsync(request,cancel).ConfigureAwait(false);}
-        async Task<AgentRunResult> RunCoreAsync(AgentRunRequest request,CancellationToken cancel)
+        public Task<AgentRunResult> RunAsync(AgentRunRequest request,CancellationToken cancel)
+        {return RunAsync(request,cancel,true);}
+        async Task<AgentRunResult> RunAsync(AgentRunRequest request,CancellationToken cancel,bool finishTask)
+        {using(LanguageRequestScope.Enter(LanguageRequestScope.Capture()))return await RunCoreAsync(request,cancel,finishTask).ConfigureAwait(false);}
+        async Task<AgentRunResult> RunCoreAsync(AgentRunRequest request,CancellationToken cancel,bool finishTask)
         {
             if(request==null||request.Model==null||request.Messages==null||request.Workspace==null)throw new ArgumentException(TextResources.Get("agentTaskRunner.runAsync.text"));
             var model=request.Model.Copy();var messages=request.Messages.Select(m=>m.Copy()).ToArray();var workspace=request.Workspace;var text=request.Text;var reasoning=request.Reasoning;var tool=request.Tool;bool stream=request.Stream;int count=0;
@@ -36,9 +38,10 @@ namespace Dafeiyu
             catch(Exception e){outcome=new AgentRunResult{Status="failed",Text="",Error=e is ApiException?e.Message:TextResources.Get("agentTaskRunner.runAsync.apiExceptionEMessage"),ToolCalls=count,Exception=e};}
             Interlocked.Exchange(ref closed,1);
             try{await workspace.StopChildWorkersAsync().ConfigureAwait(false);}catch(Exception e){outcome.Status="failed";outcome.Error=e is ApiException?e.Message:TextResources.Get("agentTaskRunner.runAsync.apiExceptionEMessage.alternativeA");}
-            workspace.FinishTask(workspace.NeedsReconciliation?"needs_reconciliation":outcome.Status=="completed"?"complete":outcome.Status=="cancelled"?"cancelled":"error",outcome.Error??"");return outcome;
+            if(finishTask)workspace.FinishTask(workspace.NeedsReconciliation?"needs_reconciliation":outcome.Status=="completed"?"complete":outcome.Status=="cancelled"?"cancelled":"error",outcome.Error??"");
+            return outcome;
         }
         internal static async Task<string> RunConversationAsync(IAgentConversationApi api,AgentRunRequest request,CancellationToken cancel)
-        {var result=await new AgentTaskRunner(api).RunAsync(request,cancel).ConfigureAwait(false);if(result.Status=="cancelled")throw new OperationCanceledException(cancel);if(result.Status!="completed")throw new ApiException(result.Error);return result.Text;}
+        {var result=await new AgentTaskRunner(api).RunAsync(request,cancel,false).ConfigureAwait(false);if(result.Status=="cancelled")throw new OperationCanceledException(cancel);if(result.Status!="completed")throw new ApiException(result.Error);return result.Text;}
     }
 }
