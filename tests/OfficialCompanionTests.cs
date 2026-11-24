@@ -122,13 +122,15 @@ namespace Dafeiyu.Tests
         {
             foreach(string baseline in new[]{OfficialCompanionFixture.Version,"1.0.0","0.9.0"})
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
-                var result=await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.AfterApplicationUpdate,CancellationToken.None);
-                bool newer=baseline=="0.9.0";
-                Check(fixture.Packages==(newer?1:0),"bundle baseline downloads only strictly newer compatible remote: "+baseline);
-                Check(newer?result!=null&&result.InstalledNow:result==null&&service.Installed("e-bao")==null,"bundle success never fabricates a filesystem installation: "+baseline);
-                Check(File.Exists(Path.Combine(service.Storage.Root,"last-checked-app-version.txt")),"successful bundle metadata check records upgrade marker: "+baseline);
-                await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.Cached,CancellationToken.None);
-                Check(fixture.Metadata==1&&fixture.Packages==(newer?1:0),"bundle check shares metadata TTL and managed installation reuse: "+baseline);
+                try{
+                    var result=await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.AfterApplicationUpdate,CancellationToken.None);
+                    bool newer=baseline=="0.9.0";
+                    Check(fixture.Packages==(newer?1:0),"bundle baseline downloads only strictly newer compatible remote: "+baseline);
+                    Check(newer?result!=null&&result.InstalledNow:result==null&&service.Installed("e-bao")==null,"bundle success never fabricates a filesystem installation: "+baseline);
+                    Check(File.Exists(Path.Combine(service.Storage.Root,"last-checked-app-version.txt")),"successful bundle metadata check records upgrade marker: "+baseline);
+                    await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.Cached,CancellationToken.None);
+                    Check(fixture.Metadata==1&&fixture.Packages==(newer?1:0),"bundle check shares metadata TTL and managed installation reuse: "+baseline);
+                }finally{service.ShutdownAsync().GetAwaiter().GetResult();}
             }
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
                 fixture.Offline=true;

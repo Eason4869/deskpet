@@ -229,7 +229,11 @@ namespace Dafeiyu
             // Every caller holds gate while starting/registering work. Shutdown
             // closes that admission under the same gate before taking its snapshot.
             workers.Add(task);
-            task.ContinueWith(t=>{var ignored=t.Exception;lock(gate)workers.Remove(t);},CancellationToken.None,TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);
+            task.ContinueWith(t=>{
+                var ignored=t.Exception;
+                // Admission closes before the asynchronous drain takes its snapshot.
+                lock(gate)if(!stopping||disposed||!t.IsFaulted)workers.Remove(t);
+            },CancellationToken.None,TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);
         }
         Task<T> StartWorker<T>(Func<Task<T>> start,CancellationToken cancel)
         {lock(gate){cancel.ThrowIfCancellationRequested();Alive();var task=Task.Run(start,cancel);Observe(task);return task;}}
@@ -361,7 +365,7 @@ namespace Dafeiyu
             // finishes before disposal; queued commits fail the stopping check.
             lock(publicationGate){
                 lifetime.Cancel();
-                lock(gate){disposed=true;leases=installedLeases.Values.ToArray();installedLeases.Clear();accepted=workers.ToArray();}
+                lock(gate){disposed=true;leases=installedLeases.Values.ToArray();installedLeases.Clear();accepted=workers.ToArray();workers.Clear();}
                 foreach(var lease in leases)lease.Dispose();
             }
             var all=Task.WhenAll(accepted);

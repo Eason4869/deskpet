@@ -183,7 +183,15 @@ internal static class OfficialCompanionUiChecks
         using(var entered=new ManualResetEventSlim())using(var release=new ManualResetEventSlim()){
             service.UtcNow=()=>{entered.Set();release.Wait();throw new InvalidOperationException("controlled maintenance fault");};
             Task work=service.ScheduleMaintenance();Task? drain=null;
-            try{Until(()=>entered.IsSet);drain=service.ShutdownAsync();Check(!drain.IsCompleted,"shutdown awaits accepted maintenance worker");}
+            var publicationGate=typeof(OfficialCompanionDownloads).GetField("publicationGate",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(service)!;
+            try{
+                Until(()=>entered.IsSet);
+                lock(publicationGate){
+                    var observed=work.ContinueWith(_=>{},CancellationToken.None,TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);
+                    drain=service.ShutdownAsync();Check(!drain.IsCompleted,"shutdown awaits accepted maintenance worker");
+                    release.Set();Complete(observed);
+                }
+            }
             finally{release.Set();}
             bool fault=false;try{Complete(drain!);}catch(InvalidOperationException error) when(error.Message=="controlled maintenance fault"){fault=true;}
             Check(fault&&work.IsFaulted,"real worker fault is preserved by drain");
