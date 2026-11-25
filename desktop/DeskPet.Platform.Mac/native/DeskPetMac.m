@@ -265,6 +265,7 @@ void dp_wave_stop(void *handle) {
 }
 
 double dp_idle_seconds(void) { return CGEventSourceSecondsSinceLastEventType(kCGEventSourceStateCombinedSessionState, kCGAnyInputEventType); }
+int dp_prefers_reduced_motion(void) { return NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion ? 1 : 0; }
 
 static uint64_t DPWorkspaceLifecycleRevision;
 static uint64_t DPSystemPowerGeneration;

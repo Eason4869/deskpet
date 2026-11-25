@@ -12,6 +12,8 @@ internal static class DesktopTheme
     private static readonly SolidColorBrush caret = new(Color.Parse("#203754"));
     internal static IBrush Caret => caret;
     internal static bool IsDark => Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+    internal static string Mode { get; private set; } = "system";
+    internal static event Action? ModeChanged;
     internal static IBrush Surface => Brush("#FFFFFF");
     // Same explicit card layer as WPF, retained across live theme switches.
     internal static SolidColorBrush CardSurface => Brush("#FFFFFF", "#2B3545");
@@ -31,9 +33,12 @@ internal static class DesktopTheme
     {
         var app = Application.Current;
         if (app == null) return;
+        string previous = Mode;
+        Mode = ThemeColors.Normalize(mode);
         if (!installed) { app.ActualThemeVariantChanged += (_, _) => Refresh(); installed = true; }
-        app.RequestedThemeVariant = ThemeColors.Normalize(mode) switch { "light" => ThemeVariant.Light, "dark" => ThemeVariant.Dark, _ => ThemeVariant.Default };
+        app.RequestedThemeVariant = Mode switch { "light" => ThemeVariant.Light, "dark" => ThemeVariant.Dark, _ => ThemeVariant.Default };
         Refresh();
+        if (previous != Mode) ModeChanged?.Invoke();
     }
     private static void Refresh()
     {

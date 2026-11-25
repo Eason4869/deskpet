@@ -54,6 +54,55 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if (args.Contains("--theme-reveal"))
+    {
+        using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "theme-data")));
+        var window = new ChatWindow(owner, false);
+        try
+        {
+            owner.SetThemeMode("light");
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var button = window.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "AppThemeMode");
+            Check(button.IsEffectivelyVisible && button.Focusable, "Desktop main window has one persistent, keyboard-accessible theme button");
+            var shape = new LiquidThemeShape(880, 730, 820, 42);
+            var first = Geometry.Parse(shape.PathAt(.14));
+            var middle = Geometry.Parse(shape.PathAt(.62));
+            Check(first.FillContains(new Point(820, 44)) && !first.FillContains(new Point(10, 728)),
+                "Avalonia draws the liquid at the trigger");
+            Check(middle.FillContains(new Point(440, 728)) && !middle.FillContains(new Point(440, 20)),
+                "Avalonia reveals the new theme from the bottom");
+            foreach (var progress in Enumerable.Range(0, 101)) Geometry.Parse(shape.PathAt(progress / 100.0));
+            var draft = window.GetLogicalDescendants().OfType<TextBox>().Single(b => b.Name == "ChatDraft");
+            draft.Text = "Preserve draft";
+            bool Overlay() => window.GetVisualDescendants().OfType<Control>().Any(c => c.Name == "LiquidThemeOverlay");
+            void Switch() => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var store = new SettingsStore(Path.Combine(owner.DataDirectory, "settings.json"));
+            Switch();
+            bool reducedMotion = DeskPet.Platform.Mac.MacServices.PrefersReducedMotion;
+            if (!reducedMotion)
+            {
+                Check(Overlay() && store.Load().ThemeMode == "light", "Desktop retains the stored mode while the snapshot is active");
+                Switch();
+                Check(DesktopTheme.Mode == "dark", "Desktop coalesces another click during the same reveal");
+                Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
+            }
+            Check(store.Load().ThemeMode == "dark" && draft.Text == "Preserve draft" && !Overlay(),
+                "Desktop persists dark once and preserves the live draft");
+            Switch();
+            Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
+            Check(store.Load().ThemeMode == "system", "Desktop follows the system after dark");
+            Switch();
+            window.Width += 30;
+            window.UpdateLayout();
+            Until(() => !Overlay());
+            Check(store.Load().ThemeMode == "light" && draft.Text == "Preserve draft",
+                "Desktop resize settles the selected mode and preserves the draft");
+        }
+        finally { window.Close(); CloseController(owner); }
+        Console.WriteLine("Theme reveal: " + assertions + " passed");
+        return;
+    }
     if (args.Contains("--agent-task-progress"))
     {
         if (!OperatingSystem.IsWindows()) return;

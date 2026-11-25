@@ -218,6 +218,14 @@ internal sealed partial class DesktopController : IDisposable
     {
         using(DataMaintenance.EnterActivity()){var draft=Settings.Copy();draft.WebSearch=search.Copy();store.Save(draft);Settings.WebSearch=search.Copy();Notify();}
     }
+    internal void SetThemeMode(string mode)
+    {
+        mode = ThemeColors.Normalize(mode);
+        bool changed = Settings.ThemeMode != mode;
+        Settings.ThemeMode = mode;
+        if (DesktopTheme.Mode != mode) DesktopTheme.Apply(mode);
+        if (changed) Save();
+    }
     public void Save() { Observation.Invalidate();if(DataMaintenance.IsMaintenanceActive||observationSaving){deferredSettingsSave=true;return;}store.Save(Settings);deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
     internal async Task<string> FlushDeferredSettingsAsync()
     {

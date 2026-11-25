@@ -28,7 +28,7 @@ internal sealed class ThemeModePicker : UserControl
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var mode in new[] { "system", "light", "dark" })
         {
-            var title = mode == "system" ? TextResources.Get("themeModePicker.themeModePicker.titleModeMode") : mode == "light" ? TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeA") : TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeB");
+            var title = ThemeSwitch.Label(mode);
             var button = new Button { Name = "ThemeChoice" + mode, Content = Preview(mode), Width = 84, Height = 64, Padding = new Thickness(4), Background = Brushes.Transparent, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(10) };
             button.Classes.Add("theme-choice");
             ToolTip.SetTip(button, title); Avalonia.Automation.AutomationProperties.SetName(button, title);
@@ -39,7 +39,10 @@ internal sealed class ThemeModePicker : UserControl
         layout.SizeChanged+=(_,_)=>Reflow();Reflow();
         Content = new Border { CornerRadius = new CornerRadius(16), Background = DesktopTheme.Brush("#FDFEFF"), BorderBrush = DesktopTheme.Brush("#DCE5F4"), BorderThickness = new Thickness(1), Padding = new Thickness(14, 8), Child = layout };
         Value = initial;
+        AttachedToVisualTree += (_, _) => { RefreshMode(); DesktopTheme.ModeChanged += RefreshMode; };
+        DetachedFromVisualTree += (_, _) => DesktopTheme.ModeChanged -= RefreshMode;
     }
+    private void RefreshMode() => Value = DesktopTheme.Mode;
     private static Control Preview(string mode)
     {
         var grid = new Grid { Width = 72, Height = 52, Clip = new RectangleGeometry(new Rect(0, 0, 72, 52), 6, 6) };

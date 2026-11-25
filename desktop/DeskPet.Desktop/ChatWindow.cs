@@ -171,7 +171,36 @@ internal sealed partial class ChatWindow : Window
             scheduledTasksNav.Name = "ScheduledTasksNavigation";
             nav.Children.Add(scheduledTasksNav);
         }
-        nav.Margin = new Thickness(16, 8, 16, 0); DockPanel.SetDock(nav, Dock.Top); shell.Children.Add(nav); shell.Children.Add(pageHost); Content = shell; ApplyRoute();
+        if (quick)
+        {
+            nav.Margin = new Thickness(16, 8, 16, 0);
+            DockPanel.SetDock(nav, Dock.Top);
+            shell.Children.Add(nav);
+            shell.Children.Add(pageHost);
+            Content = shell;
+        }
+        else
+        {
+            var themeButton = new Button
+            {
+                Name = "AppThemeMode", Width = 34, Height = 34, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0),
+                HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
+                Background = Brushes.Transparent, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(8)
+            };
+            var top = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(16, 8, 16, 0) };
+            top.Children.Add(nav);
+            Grid.SetColumn(themeButton, 1);
+            top.Children.Add(themeButton);
+            DockPanel.SetDock(top, Dock.Top);
+            shell.Background = DesktopTheme.Surface;
+            shell.Children.Add(top);
+            shell.Children.Add(pageHost);
+            var themeHost = new Grid { ClipToBounds = true };
+            themeHost.Children.Add(shell);
+            Content = themeHost;
+            _ = new LiquidThemeReveal(this, themeHost, shell, themeButton, owner.SetThemeMode, LiquidThemeShape.DefaultDuration);
+        }
+        ApplyRoute();
         models.SelectionChanged += (_, _) =>
         {
             if (models.SelectedItem is not ModelChoice item || EffectiveSettings().ActiveTextProviderId == item.Provider && EffectiveSettings().Text.Model == item.Model) return;

@@ -214,7 +214,7 @@ internal sealed class SettingsWindow : Window
     private Control General()
     {
         var s=owner.Settings;
-        var theme=new ThemeModePicker(s.ThemeMode);theme.Changed+=mode=>{s.ThemeMode=mode;DesktopTheme.Apply(mode);owner.Save();};
+        var theme=new ThemeModePicker(s.ThemeMode);theme.Changed+=owner.SetThemeMode;
         var language=LocalizedUi.AsyncButton(()=>TextResources.Get("menus.language"),async()=>{await new LanguagePickerWindow(s.UiLanguage,owner.SetUiLanguage).ShowDialog(this);},owner.Error);language.Name="SettingsLanguage";
         var general=SettingsVisual.Group(()=>TextResources.Get("settingsLayout.appearanceGroup"),SettingsVisual.Text(()=>TextResources.Get("settingsLayout.instantSave"),12,true),theme,language);
         var imageMotion=LocalizedUi.Check(()=>TextResources.Get("settingsWindow.behavior.check.alternativeI"),s.ImageGenerationMotionEnabled,v=>{s.ImageGenerationMotionEnabled=v;owner.Save();});imageMotion.Name="ImageGenerationMotionEnabled";

@@ -22,6 +22,7 @@ int dp_wave_status(void *handle);
 void dp_wave_volume(void *handle, float volume);
 void dp_wave_stop(void *handle);
 double dp_idle_seconds(void);
+int dp_prefers_reduced_motion(void);
 int dp_session_interactive(void);
 uint64_t dp_session_lifecycle_revision(void);
 uint64_t dp_system_power_generation(void);

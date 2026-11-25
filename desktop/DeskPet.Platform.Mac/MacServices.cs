@@ -11,6 +11,15 @@ public struct MacDisplay { public double X, Y, Width, Height, WorkX, WorkY, Work
 public static class MacServices
 {
     public static bool IsSupported => OperatingSystem.IsMacOSVersionAtLeast(14);
+    public static bool PrefersReducedMotion
+    {
+        get
+        {
+            if (!IsSupported) return false;
+            try { return Native.PrefersReducedMotion() != 0; }
+            catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException) { return true; }
+        }
+    }
     internal static void EnsureMac() { if (!IsSupported) throw new PlatformNotSupportedException(TextResources.Get("macServices.ensureMac.text")); }
     private static string DirectoryPath(string variable, params string[] parts)
     {
