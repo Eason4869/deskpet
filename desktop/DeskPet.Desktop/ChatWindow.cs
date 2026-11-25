@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -22,6 +23,7 @@ internal sealed partial class ChatWindow : Window
     private readonly StackPanel messages = Ui.Column();
     private readonly StackPanel queue = Ui.Column();
     private readonly StackPanel questions = Ui.Column();
+    private readonly ScrollViewer questionPrompts;
     private readonly ScrollViewer history;
     private readonly ComboBox models = new() { MinWidth = 180 };
     private readonly Dictionary<string, string> queuedEdits = new();
@@ -89,13 +91,14 @@ internal sealed partial class ChatWindow : Window
         profileButton.Click+=(_,_)=>profileMenu.Open(profileButton);
         LocalizedUi.Automation(profileButton,()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeK")));
         questions.Name = "AgentQuestions";
-        var header = Ui.Column(Ui.Row(profileButton, partnerName, LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text")), owner.ShowSettings), LocalizedUi.Button(()=>(quick ? TextResources.Get("chatWindow.chatWindow.text.alternativeA") : TextResources.Get("chatWindow.chatWindow.text.alternativeB")), () => {if(ProactiveBinding!=null)owner.ExpandProactive(ProactiveBinding);else owner.ShowChat(!quick);})), status, questions);
+        var header = Ui.Column(Ui.Row(profileButton, partnerName, LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text")), owner.ShowSettings), LocalizedUi.Button(()=>(quick ? TextResources.Get("chatWindow.chatWindow.text.alternativeA") : TextResources.Get("chatWindow.chatWindow.text.alternativeB")), () => {if(ProactiveBinding!=null)owner.ExpandProactive(ProactiveBinding);else owner.ShowChat(!quick);})), status);
         if (!quick && ProactiveBinding == null)
         {
             header.Children.Add(CreateWorkBindingActions());
             header.Children.Add(CreateAgentTaskProgress());
         }
-        DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
+        header.ClipToBounds = true;
+        DockPanel.SetDock(header, Dock.Top);
         primary = Ui.Button("≋", () => { if (!string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0) Send(); else if (BoundSession.IsBusy) owner.Run(StopBoundAsync); else owner.ShowLive(); });
         primary.Name = "PrimaryChatAction"; primary.Width = primary.Height = 32; primary.Padding = new Thickness(0); primary.HorizontalContentAlignment = HorizontalAlignment.Center; primary.VerticalContentAlignment = VerticalAlignment.Center; primary.CornerRadius = new CornerRadius(16); primary.Background = DesktopTheme.Brush("#357FF5"); primary.Foreground = Avalonia.Media.Brushes.White;
         addAttachment = Ui.Button("+", OpenAttachmentMenu); addAttachment.Name = "AddAttachment"; addAttachment.Width = addAttachment.Height = 32; addAttachment.Padding = new Thickness(0); addAttachment.HorizontalContentAlignment = HorizontalAlignment.Center; addAttachment.VerticalContentAlignment = VerticalAlignment.Center; LocalizedUi.Tooltip(addAttachment,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip")));
@@ -132,9 +135,22 @@ internal sealed partial class ChatWindow : Window
         modelRow.Children.Add(models); Grid.SetColumn(imageModelButton, 1); modelRow.Children.Add(imageModelButton);
         Grid.SetColumn(modelRow, 2); toolbar.Children.Add(modelRow);
         var actions = Ui.Row(dictate, primary); Grid.SetColumn(actions, 3); toolbar.Children.Add(actions);
-        var composer = new Border { Name = "ComposerSurface", Background = DesktopTheme.Surface, CornerRadius = new CornerRadius(22), BorderBrush = DesktopTheme.Brush("#E3E7ED"), BorderThickness = new Thickness(1), Padding = new Thickness(8), Child = Ui.Column(attachmentChips, draft, toolbar) };
+        ComposerSurface = new Border { Name = "ComposerSurface", Background = DesktopTheme.Surface, CornerRadius = new CornerRadius(22), BorderBrush = DesktopTheme.Brush("#E3E7ED"), BorderThickness = new Thickness(1), Padding = new Thickness(8), Child = Ui.Column(attachmentChips, draft, toolbar) };
+        questionPrompts = new ScrollViewer
+        {
+            Name = "AgentQuestionScroll",
+            Content = questions,
+            IsVisible = false,
+            MaxHeight = 240,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        SizeChanged += (_, change) => questionPrompts.MaxHeight = Math.Min(240, change.NewSize.Height / 3);
+        var composerArea = new StackPanel { Spacing = 8, Children = { questionPrompts, ComposerSurface } };
         draft.TextChanged += (_, _) => RefreshAction();
-        DockPanel.SetDock(composer, Dock.Bottom); root.Children.Add(composer);
+        // Measure the bottom area first so a tall header cannot push the composer out of view.
+        DockPanel.SetDock(composerArea, Dock.Bottom); root.Children.Add(composerArea);
+        root.Children.Add(header);
         if (!quick)
         {
             resumeQueue=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeD")),()=>Try(BoundQueue.Resume));holdQueue=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeE")),()=>Try(BoundQueue.Hold));
@@ -169,6 +185,7 @@ internal sealed partial class ChatWindow : Window
         history.SizeChanged += (_, _) => ResizeBubbles();
     }
     internal string CurrentPage => routes[routeIndex];
+    internal Border ComposerSurface { get; }
     internal string QuestionSessionId => ProactiveBinding?.Id??BoundSession.KernelSession?.SessionId ?? BoundSession.PersonaId;
     internal ImageWorkspacePage Images => imageWorkspace;
     internal void ShowImageTask(string id) { ShowImages(); imageWorkspace.ShowTasks(id); }
@@ -540,7 +557,11 @@ internal sealed partial class ChatWindow : Window
         var currentSession = QuestionSessionId;
         var pending = owner.Questions.Requests.Where(q => q.SessionId == currentSession).ToList();
         var signature = string.Join("|", pending.Select(q => q.SessionId + "/" + q.TaskId + "/" + q.CallId));
-        if (signature == questionSignature) return; questionSignature = signature; questions.Children.Clear(); questions.IsVisible = pending.Count > 0;
+        if (signature == questionSignature) return;
+        questionSignature = signature;
+        questions.Children.Clear();
+        questionPrompts.Offset = default;
+        questionPrompts.IsVisible = pending.Count > 0;
         foreach (var question in pending)
         {
             void Submit(AgentQuestionAnswer answer) { if (!owner.Questions.Submit(question.SessionId, question.TaskId, question.CallId, answer)) owner.Error(new InvalidOperationException(TextResources.Get("chatWindow.refreshQuestions.ownerError"))); }

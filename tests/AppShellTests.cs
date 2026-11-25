@@ -18,6 +18,26 @@ namespace Dafeiyu.Tests
         static IEnumerable<T> All<T>(DependencyObject root) where T:DependencyObject {if(root==null)yield break;if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(VisualTreeHelper.GetChild(root,i)))yield return item;}
         static Button Button(DependencyObject root,string name){return All<Button>(root).Single(b=>b.Name==name);}
         static void Click(Button b){b.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));}
+        static void CheckQuestionPlacement(ChatWindow chat)
+        {
+            var prompts=All<AgentQuestionSurface>(chat).Single();
+            var inputFrame=All<Border>(chat).Single(b=>b.Name=="ComposerSurface");
+            var originalHeight=prompts.MinHeight;
+            var originalVisibility=prompts.Visibility;
+            try
+            {
+                prompts.MinHeight=48;
+                prompts.Visibility=Visibility.Visible;
+                chat.UpdateLayout();
+                var top=prompts.PointToScreen(new Point(0,0));
+                var right=prompts.PointToScreen(new Point(prompts.ActualWidth,prompts.ActualHeight));
+                var inputTop=inputFrame.PointToScreen(new Point(0,0));
+                var inputRight=inputFrame.PointToScreen(new Point(inputFrame.ActualWidth,0));
+                Check(Math.Abs(top.X-inputTop.X)<=1&&Math.Abs(right.X-inputRight.X)<=1
+                    &&right.Y<=inputTop.Y&&inputTop.Y-right.Y<70,"question cards sit immediately above the matching composer frame");
+            }
+            finally { prompts.MinHeight=originalHeight;prompts.Visibility=originalVisibility; }
+        }
         static string SessionNotice(ChatWindow window){return ((ConversationSession)typeof(ChatWindow).GetField("session",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(window)).LastNotice;}
         static void Save(FrameworkElement w,string name){w.UpdateLayout();var bmp=new RenderTargetBitmap((int)Math.Ceiling(w.ActualWidth),(int)Math.Ceiling(w.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(w);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(Path.Combine("work","permissions",name)))png.Save(f);}
         static BitmapSource VisualSnapshot(FrameworkElement view)
@@ -175,6 +195,7 @@ namespace Dafeiyu.Tests
             pet=new PetWindow(null,cfg,store,null);SendPowerMode(Microsoft.Win32.PowerModes.Suspend);pet.ShowChat();await Task.Delay(120);var chat=app.Windows.OfType<ChatWindow>().Single(w=>w.IsVisible);Check(chat.Width>=Math.Min(1200,SystemParameters.WorkArea.Width-36),"default unified window uses a wide layout scaled to the screen");chat.Width=1320;chat.Height=880;await Task.Delay(100);
             Check(All<AgentWorkspaceNavigation>(chat).Single().IsVisible,"opening a full conversation defaults to an expanded sidebar even after the previous window hid it");
             Check(chat.WindowStyle==WindowStyle.None,"main window uses client-drawn chrome without a system title bar");
+            CheckQuestionPlacement(chat);
             var rail=All<Border>(chat).Single(b=>b.Name=="AppIconRail");Check(rail.IsVisible&&Button(chat,"ShellHome").IsVisible&&Button(chat,"ShellSettings").IsVisible&&Button(chat,"ShellAvatar").IsVisible,"home settings and avatar share the persistent left icon rail");
             Click(Button(chat,"ShellAvatar"));await Task.Delay(60);
             var profile=Button(chat,"ShellAvatar").ContextMenu;

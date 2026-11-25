@@ -32,8 +32,21 @@ namespace Dafeiyu
         string signature="",editingId,lastDictationNotice="";TextBox editor;bool resumeAfterEdit,closed,subscribed;int editRevision;
         PetSettings WorkSettings {get{return pet.ConversationSettings(session);}}
         internal Func<Action> PrepareSubmission;internal Action Submitted;
+        readonly Grid inputSurface=new Grid();
         FrameworkElement projectHeader;
-        internal void SetProjectHeader(FrameworkElement header){if(projectHeader!=null)Children.Remove(projectHeader);projectHeader=header;if(header!=null)Children.Insert(Children.IndexOf(normalSurface),header);}
+        AgentQuestionSurface questionSurface;
+        internal void SetProjectHeader(FrameworkElement header){if(projectHeader!=null)Children.Remove(projectHeader);projectHeader=header;if(header!=null)Children.Insert(Children.IndexOf(inputSurface),header);}
+        internal void MountQuestionSurface(AgentQuestionSurface surface)
+        {
+            questionSurface=surface;
+            Children.Insert(Children.IndexOf(projectHeader??inputSurface),surface);
+            host.SizeChanged+=UpdateQuestionHeight;
+            UpdateQuestionHeight(host,null);
+        }
+        void UpdateQuestionHeight(object sender, SizeChangedEventArgs args)
+        {
+            if(host.ActualHeight>0)questionSurface.MaxHeight=Math.Min(340,host.ActualHeight*.45);
+        }
         void SetPlanMode(bool enabled){pet.SetConversationPlanMode(session,enabled);RefreshAction();}
         // "/" and "@" palettes share one popup and are filtered as you type.
         sealed class TriggerItem{public string Title{get;set;}public string Hint,Icon,Group;public Action Action;}
@@ -96,13 +109,13 @@ namespace Dafeiyu
             else{leading.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});leading.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});Grid.SetColumn(modePicker,1);leading.Children.Add(modePicker);Grid.SetColumn(modelControls,2);leading.Children.Add(modelControls);}
             modelPicker.HorizontalAlignment=HorizontalAlignment.Right;modelPicker.VerticalAlignment=VerticalAlignment.Center;modelPicker.Margin=new Thickness(0,0,2,0);modelPicker.RenderTransform=new TranslateTransform(0,4);
             record.Padding=new Thickness(5);primary.Padding=new Thickness(0);options.Padding=new Thickness(1);
-            normalSurface=ChatUi.Composer(input,leading,controls,new TextBlock{Visibility=Visibility.Collapsed},compact,attachmentArea);if(conversationOnly)LocalizedUi.Set(ChatUi.GetComposerPlaceholder(input),"Text",()=>(TextResources.Get("conversationComposer.conversationComposer.chatUiGetComposerPlaceholder")));Children.Add(normalSurface);
+            normalSurface=ChatUi.Composer(input,leading,controls,new TextBlock{Visibility=Visibility.Collapsed},compact,attachmentArea);if(conversationOnly)LocalizedUi.Set(ChatUi.GetComposerPlaceholder(input),"Text",()=>(TextResources.Get("conversationComposer.conversationComposer.chatUiGetComposerPlaceholder")));inputSurface.Children.Add(normalSurface);Children.Add(inputSurface);
             var recordingBody=new StackPanel();var recordingLabel=LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.conversationComposer.text")),12,Ui.Muted);recordingLabel.MinHeight=48;recordingLabel.Padding=new Thickness(4,6,4,6);recordingBody.Children.Add(recordingLabel);var recordingControls=new DockPanel{Margin=new Thickness(2,8,2,0)};
             stopDictation=UiIcons.Button("stop-solid",()=>(TextResources.Get("conversationComposer.conversationComposer.uiIcons.alternativeB")));stopDictation.Name="StopDictation";stopDictation.Width=32;stopDictation.Height=32;stopDictation.MinHeight=32;stopDictation.Content=UiIcons.Image("stop-solid",Ui.Brush("#202329"));stopDictation.Margin=new Thickness(0,0,5,0);stopDictation.Click+=async delegate{await FinishDictation(false);};
             finishDictation=ChatUi.Action("send",()=>(TextResources.Get("conversationComposer.conversationComposer.chatUiAction.alternativeA")));finishDictation.Name="FinishDictation";finishDictation.Width=finishDictation.Height=finishDictation.MinHeight=32;finishDictation.Background=ThemeManager.ActionSurface;finishDictation.BorderBrush=finishDictation.Background;finishDictation.Content=UiIcons.Image("send",Brushes.White);finishDictation.Click+=async delegate{await FinishDictation(true);};DockPanel.SetDock(finishDictation,Dock.Right);recordingControls.Children.Add(finishDictation);
             DockPanel.SetDock(stopDictation,Dock.Right);recordingControls.Children.Add(stopDictation);
             waveform=new DictationWaveform{Height=32};recordingControls.Children.Add(waveform);recordingBody.Children.Add(recordingControls);
-            recordingSurface=new Border{Child=recordingBody,Background=ThemeManager.Surface,BorderBrush=Ui.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(22),Padding=new Thickness(8),Visibility=Visibility.Collapsed};Children.Add(recordingSurface);
+            recordingSurface=new Border{Child=recordingBody,Background=ThemeManager.Surface,BorderBrush=Ui.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(22),Padding=new Thickness(8),Visibility=Visibility.Collapsed};inputSurface.Children.Add(recordingSurface);
             var footer=new Grid{Name="ComposerFooter",Margin=new Thickness(3,3,3,0)};footer.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});footer.ColumnDefinitions.Add(new ColumnDefinition());
             status.Margin=new Thickness(0);status.MinHeight=0;status.MaxHeight=28;status.TextWrapping=TextWrapping.NoWrap;status.TextTrimming=TextTrimming.CharacterEllipsis;status.VerticalAlignment=VerticalAlignment.Center;footer.Children.Add(status);
             status.SetBinding(TextBlock.ToolTipProperty,new System.Windows.Data.Binding("Text"){Source=status});
@@ -161,7 +174,7 @@ namespace Dafeiyu
         void BindApprovals()
         {
             if(approvals!=null)approvals.Dispose();
-            var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r),host);
+            var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r),host,inputSurface);
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
@@ -561,6 +574,7 @@ namespace Dafeiyu
         internal void Detach()
         {
             if(closed)return;closed=true;if(attachmentRead!=null)attachmentRead.Cancel();input.TextChanged-=InputChanged;session.InputDraftChanged-=RestoreDraft;meter.Stop();reorder.Cancel();CloseTrigger();DetachContextPreview();
+            if(questionSurface!=null)host.SizeChanged-=UpdateQuestionHeight;
             if(predictionSuggestions!=null)predictionSuggestions.Dispose();
             if(changeStatus!=null)changeStatus.Dispose();
             if(approvals!=null)approvals.Dispose();

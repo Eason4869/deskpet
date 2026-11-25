@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Web.Script.Serialization;
 using System.Collections.Generic;
@@ -16,11 +17,12 @@ namespace Dafeiyu
         static readonly List<AgentApprovalSurface> presenters=new List<AgentApprovalSurface>();
         static readonly Dictionary<AgentApprovalController.Pending,AgentApprovalSurface> claims=new Dictionary<AgentApprovalController.Pending,AgentApprovalSurface>();
         readonly AgentApprovalController controller;readonly Func<AgentApprovalRequest,bool> accepts;readonly Window operationHost;
+        readonly FrameworkElement inputAnchor;
         AgentApprovalController.Pending shown;Window dialog;bool disposed,suppressClose;
         internal Window Presentation {get{return dialog;}}
-        internal AgentApprovalSurface(AgentApprovalController controller,Func<AgentApprovalRequest,bool> accepts,Window operationHost)
+        internal AgentApprovalSurface(AgentApprovalController controller,Func<AgentApprovalRequest,bool> accepts,Window operationHost,FrameworkElement inputAnchor=null)
         {
-            this.controller=controller;this.accepts=accepts;this.operationHost=operationHost;
+            this.controller=controller;this.accepts=accepts;this.operationHost=operationHost;this.inputAnchor=inputAnchor;
             operationHost.IsVisibleChanged+=HostVisibilityChanged;operationHost.Closed+=HostClosed;presenters.Add(this);
             if(controller!=null)controller.Changed+=Refresh;Refresh();
         }
@@ -43,12 +45,55 @@ namespace Dafeiyu
             var source=PresentationSource.FromVisual(operationHost);double scale=source==null?1:source.CompositionTarget.TransformToDevice.M11;
             var area=DesktopInterop.WorkArea(new System.Windows.Interop.WindowInteropHelper(operationHost).Handle);double available=Math.Max(1,area.Height/scale-24),availableWidth=Math.Max(1,area.Width/scale-24);
             window.MinWidth=Math.Min(300,availableWidth);window.Width=Math.Min(560,availableWidth);window.MaxWidth=availableWidth;window.MaxHeight=available;
-            var content=Card(pending,Math.Max(1,available-110));DialogUi.Apply(window,new AdornerDecorator{Child=content});window.WindowStartupLocation=WindowStartupLocation.CenterOwner;
+            var content=Card(pending,Math.Max(1,available-110));DialogUi.Apply(window,new AdornerDecorator{Child=content});
+            window.WindowStartupLocation=WindowStartupLocation.CenterOwner;
+            if(AlignToInput(window))
+            {
+                window.WindowStartupLocation=WindowStartupLocation.Manual;
+                window.Opacity=0;
+            }
+            EventHandler align=delegate{AlignToInput(window);};
+            if(inputAnchor!=null)
+            {
+                inputAnchor.LayoutUpdated+=align;
+                operationHost.LocationChanged+=align;
+                window.SizeChanged+=delegate{AlignToInput(window);};
+            }
             window.Closed+=delegate{
+                if(inputAnchor!=null){inputAnchor.LayoutUpdated-=align;operationHost.LocationChanged-=align;}
                 if(!suppressClose&&!pending.Result.Task.IsCompleted)pending.Decide(false);
                 if(ReferenceEquals(dialog,window)){dialog=null;shown=null;claims.Remove(pending);}RefreshPresenters();
             };
-            window.Loaded+=delegate{var reject=FindReject(content);if(reject!=null)reject.Focus();};window.Show();
+            window.Loaded+=delegate{AlignToInput(window);window.Opacity=1;var reject=FindReject(content);if(reject!=null)reject.Focus();};window.Show();
+        }
+        bool AlignToInput(Window window)
+        {
+            if(inputAnchor==null||!inputAnchor.IsVisible||inputAnchor.ActualWidth<=0)return false;
+            var source=PresentationSource.FromVisual(inputAnchor);
+            if(source==null||source.CompositionTarget==null)return false;
+
+            var scale=source.CompositionTarget.TransformToDevice;
+            var left=inputAnchor.PointToScreen(new Point(0,0));
+            var right=inputAnchor.PointToScreen(new Point(inputAnchor.ActualWidth,0));
+            var area=DesktopInterop.WorkArea(new Point((left.X+right.X)/2,left.Y));
+            var bottom=Math.Min(area.Bottom,inputAnchor.PointToScreen(new Point(0,-8)).Y);
+            var ownerHandle=new WindowInteropHelper(operationHost).Handle;
+            var top=Math.Max(area.Top,DesktopInterop.Bounds(ownerHandle).Top);
+
+            var width=Math.Min(inputAnchor.ActualWidth,area.Width/scale.M11);
+            var height=Math.Max(96,(bottom-top)/scale.M22);
+            window.MinWidth=0;
+            window.MaxWidth=area.Width/scale.M11;
+            if(Math.Abs(window.Width-width)>.1)window.Width=width;
+            if(Math.Abs(window.MaxHeight-height)>.1||Double.IsInfinity(window.MaxHeight))window.MaxHeight=height;
+
+            var handle=new WindowInteropHelper(window).Handle;
+            if(handle==IntPtr.Zero)return true;
+            var bounds=DesktopInterop.Bounds(handle);
+            var x=Math.Max(area.Left,Math.Min(left.X,area.Right-bounds.Width));
+            var y=Math.Max(area.Top,bottom-bounds.Height);
+            if(Math.Abs(bounds.Left-x)>.5||Math.Abs(bounds.Top-y)>.5)DesktopInterop.Move(handle,new Point(x,y));
+            return true;
         }
         static Button FindReject(DependencyObject root){if(root is Button&&((Button)root).Name=="RejectAgentOperation")return(Button)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++){var found=FindReject(VisualTreeHelper.GetChild(root,i));if(found!=null)return found;}return null;}
         static void RefreshPresenters(){var app=Application.Current;if(app!=null&&!app.Dispatcher.HasShutdownStarted)app.Dispatcher.BeginInvoke(new Action(delegate{foreach(var presenter in presenters.ToArray())presenter.Refresh();}));}
