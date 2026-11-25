@@ -90,7 +90,7 @@ On Windows, left-clicking an HTTP/HTTPS link in a conversation, including a sour
 
 ### Tools belonging to the current conversation
 
-Open file previews, a browser, PowerShell terminals, changes and temporary side chats on the right. Tabs, content, selection, hidden state and layout are retained separately for each main conversation and restored when switching back **within the current window**. Closing a tab releases its instance; closing the window releases its tools. This does not promise persistence across app restarts.
+Open file previews, a browser, PowerShell terminals, changes and temporary side chats on the right. Tabs, content, selection, hidden state and layout are retained separately for each main conversation and restored when switching back **within the current window**. Closing a file, browser, terminal, or changes tab releases that tool. Closing the window releases all its tools.
 
 File cards preview HTML, Markdown and source, and support opening, revealing, copying paths and saving copies. **Open with** lists Windows applications applicable to the file and offers the system application picker. External HTML resources are off by default. The embedded browser currently has no download support. Manual terminals retain their opening project and sandbox settings; closing a terminal tab ends its process tree.
 
@@ -110,7 +110,9 @@ Open a temporary side chat from the main composer's **`/` menu**, window menu or
 
 After the first completed reply, the side chat's configured model generates a short title for the tab and work summary. An excerpt of the first question appears while the title is generated.
 
-When a valid project is bound and the model supports tools, side chat can inspect that project through read-only tools. It cannot edit files or execute commands. Its model and project settings are captured when opened. Its independent history is not saved to conversation storage; closing its tab cancels its own request. Use it to clarify a term, check an implementation or discuss another approach.
+Closing a side-chat tab cancels its own requests. Reopen it from the owning conversation's **Work summary** to resume with its title, messages, and unsent draft. Side chats stay in the current window until you close the main conversation or window.
+
+When a valid project is bound and the model supports tools, side chat can inspect that project through read-only tools. It cannot edit files or execute commands. Its model and project settings are captured when opened. Use it to clarify a term, check an implementation or discuss another approach.
 
 ## Work permissions and local data
 

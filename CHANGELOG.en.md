@@ -17,6 +17,7 @@
 ### Work and connections
 
 - The Windows work summary groups Git changes, plans, goals, and subagents. Completed subagents stay available, with details in the right pane. Approval prompts and questions appear above the composer.
+- Closing a Windows side-chat tab stops its pending requests. Reopen it from the owning conversation's work summary to keep its title, messages, and unsent draft.
 - In Windows Work conversations, use `+` or `@` to set a goal or start a plan. Confirm to leave plan mode and execute the selected plan.
 - On Windows, connect through your existing GitHub CLI login or open device authorization from DeskPet. Fine-grained personal access tokens remain available. With workspace approvals, the agent can create repositories, commit selected files, push branches, and open pull requests. New repositories default to private.
 - The Windows Plugins page adds read-only Gmail access. One-click authorization depends on DeskPet's Google OAuth configuration and approval.

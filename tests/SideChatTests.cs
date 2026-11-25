@@ -104,6 +104,23 @@ namespace Dafeiyu.Tests
                     titlePane.Dispose();
                     Check(await Task.WhenAny(titleWait.TitleCancelled.Task,Task.Delay(3000))==titleWait.TitleCancelled.Task,"closing a side chat cancels its pending title request");
                 }
+                var retainedApi=new FakeApi{BlockTitle=true};
+                using(var retained=new SideChatPane(pet,host,cfg,"Retained chat",retainedApi,allowProjectRead:false))
+                using(var tabs=new PreviewWorkspace(()=>{},()=>{},closeSideChat:chat=>chat.CancelPendingRequests()))
+                {
+                    tabs.AddPage("Retained chat","chat",retained);
+                    await retained.SendAsync("first retained turn");
+                    retainedApi.Block=true;
+                    Task pendingReply=retained.SendAsync("cancelled retained turn");
+                    tabs.Close(retained);
+                    try{await pendingReply;}catch(OperationCanceledException){}
+                    Check(retainedApi.Cancelled&&!retained.Session.IsBusy&&!retainedApi.Disposed,"closing a retained tab cancels its reply and leaves its transport available");
+                    Check(await Task.WhenAny(retainedApi.TitleCancelled.Task,Task.Delay(3000))==retainedApi.TitleCancelled.Task&&retained.SummaryTitle=="first retained turn","closing a retained tab cancels pending title generation and keeps its current title");
+                    tabs.AddPage("Retained chat","chat",retained);
+                    retainedApi.Block=retainedApi.BlockTitle=false;
+                    await retained.SendAsync("resumed retained turn");
+                    Check(retainedApi.Requests.Last().Any(message=>message.Content=="first retained turn")&&retained.Session.History.Messages.Any(message=>message.Content.Contains("临时回复")&&message.Content.Contains("resumed retained turn")),"the retained side chat can continue with its existing history");
+                }
                 preview.Dispose();((IDisposable)first).Dispose();((IDisposable)second).Dispose();
                 Check(apiA.Disposed&&apiB.Disposed&&DiskSnapshot(root)==disk,"closing is idempotent and creates no history, project or other files");
                 Check(pet.Conversation.ExportHistory()==main,"main history remains unchanged after all temporary panes close");

@@ -86,6 +86,109 @@ namespace Dafeiyu.Tests
             }
             Console.WriteLine("Subagent header tests: "+checks+" passed");
         }
+        static async Task<Popup> OpenSideChatSummary(ChatWindow window)
+        {
+            All<Button>(window).Single(button=>button.Name=="ToggleWorkspaceSummary").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(80);
+            var popup=(Popup)Field(window,"transientSummary");
+            Check(popup!=null&&popup.IsOpen,"the work summary opens in the narrow window");
+            return popup;
+        }
+        static Button[] SideChatRows(DependencyObject summary)
+        {return All<Button>(summary).Where(button=>button.Name=="OpenSummarySideChat").ToArray();}
+        static async Task<bool> SideChatReleased(SideChatPane chat)
+        {
+            try{await chat.SendAsync("closed workspace");return false;}
+            catch(ObjectDisposedException){return true;}
+        }
+        static void DisableClipboardQueries(MarkdownEditor editor)
+        {
+            // WPF refreshes Paste eligibility on focus changes. The tab fixture needs no desktop clipboard.
+            CommandManager.AddPreviewCanExecuteHandler(editor,delegate(object sender,CanExecuteRoutedEventArgs command){
+                if(command.Command==ApplicationCommands.Paste){command.CanExecute=false;command.Handled=true;}
+            });
+        }
+        static async Task RunSideChatReopen()
+        {
+            string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","sidebar-side-chat-"+Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            var settings=new PetSettings{AgentEnabled=true,AgentWorkspace=root,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,ShowPredictedMessages=false,OnboardingState="completed"};
+            foreach(string hotkey in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[hotkey]="";
+            pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"data","settings.json")),null);
+            var project=new ProjectDefinition{Id="side-chat-fixture",Name="Side chat fixture",Workspace=root};
+            var first=pet.Workspaces.CreateWorkspace(project,new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="First workspace",Mode="work"});
+            var second=pet.Workspaces.CreateWorkspace(project,new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="Second workspace",Mode="work"});
+            var window=new ChatWindow(pet,first){Width=950};
+            DisableClipboardQueries((MarkdownEditor)Field(window,"input"));
+            window.Show();
+            await Task.Delay(100);
+            window.OpenSideChat();
+            window.UpdateLayout();
+            var area=(PreviewWorkspace)Field(window,"filePreview");
+            var chat=(SideChatPane)area.Selected;
+            var editor=All<MarkdownEditor>(chat).Single(input=>input.Name=="SideChatInput");
+            DisableClipboardQueries(editor);
+            chat.Session.AddLiveTurn(chat.Session.PersonaId,"Original side chat","Original reply");
+            editor.Text="Unsent draft";
+            All<Button>(window).Single(button=>button.Name=="ClosePreviewTab").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(area.Pages<SideChatPane>().Length==0,"closing the tab removes the side chat from the preview area");
+
+            var popup=await OpenSideChatSummary(window);
+            var rows=SideChatRows(popup.Child);
+            Check(rows.Length==1&&Object.Equals(rows[0].ToolTip,"Original side chat"),"the summary retains the closed side chat with its title");
+            rows[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            window.UpdateLayout();
+            Check(!popup.IsOpen&&ReferenceEquals(area.Selected,chat)&&chat.IsVisible,"the summary reopens the same side chat in the narrow tab layout");
+            Check(chat.Session.History.Messages.Any(message=>message.Content=="Original reply")&&All<MarkdownEditor>(chat).Single(input=>input.Name=="SideChatInput").Text=="Unsent draft","the reopened side chat retains its reply and draft");
+
+            window.OpenSideChat();
+            var sibling=(SideChatPane)area.Selected;
+            DisableClipboardQueries(All<MarkdownEditor>(sibling).Single());
+            sibling.Session.AddLiveTurn(sibling.Session.PersonaId,"Sibling side chat","Sibling reply");
+            area.Close(chat);
+            window.SwitchWorkspace(second);
+            await Task.Delay(100);
+            popup=await OpenSideChatSummary(window);
+            Check(SideChatRows(popup.Child).Length==0,"another main conversation cannot see the first conversation's side chats");
+            rows[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(Field(window,"filePreview")==null,"a stale work summary row cannot reopen a side chat from another conversation");
+            popup.IsOpen=false;
+            window.SwitchWorkspace(first);
+            await Task.Delay(100);
+            popup=await OpenSideChatSummary(window);
+            rows=SideChatRows(popup.Child);
+            Check(rows.Select(row=>row.ToolTip).SequenceEqual(new object[]{"Original side chat","Sibling side chat"}),"returning to the owner lists closed and open side chats in creation order");
+            rows[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            popup=await OpenSideChatSummary(window);
+            SideChatRows(popup.Child)[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(ReferenceEquals(area.Selected,chat)&&area.Pages<SideChatPane>().Length==2,"selecting an already open side chat does not duplicate it");
+
+            window.MinWidth=1550;window.Width=1550;
+            await Task.Delay(100);
+            Check(!area.HasConversation,"the wider window uses split tool tabs");
+            area.Close(chat);area.Close(sibling);
+            Check(Field(window,"filePreview")==null,"closing the last split tab releases the empty preview area");
+            await Task.Delay(100);
+            var inspector=All<Border>(window).Single(border=>border.Name=="AgentWorkspaceInspector");
+            rows=SideChatRows(inspector);
+            Check(inspector.IsVisible&&rows.Length==2,"the split workspace summary lists the closed side chats");
+            rows[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var recreated=(PreviewWorkspace)Field(window,"filePreview");
+            Check(!ReferenceEquals(recreated,area)&&ReferenceEquals(recreated.Selected,chat),"the summary recreates the split preview area with the original side chat");
+            recreated.Close(chat);
+            window.SwitchWorkspace(second);
+            await pet.Workspaces.CloseWorkspaceAsync(first.Id);
+            await Task.Delay(100);
+            Check(await SideChatReleased(chat)&&await SideChatReleased(sibling),"closing the owning conversation releases its closed side chats");
+            window.OpenSideChat();
+            var activeArea=(PreviewWorkspace)Field(window,"filePreview");
+            var remaining=(SideChatPane)activeArea.Selected;
+            DisableClipboardQueries(All<MarkdownEditor>(remaining).Single());
+            activeArea.Close(remaining);
+            window.Close();
+            Check(await SideChatReleased(remaining),"closing the window releases its closed side chats");
+            Console.WriteLine("Side chat reopen tests: "+checks+" passed");
+        }
         static async Task Run()
         {
             string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","sidebar-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);WriteRepository(root);string file=Path.Combine(root,"README.md");File.WriteAllText(file,"# 测试预览\n\n侧栏支持拖动与独立标签。");var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=root,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,ShowPredictedMessages=false,OnboardingState="completed"};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"data","settings.json")),null);
@@ -239,8 +342,9 @@ namespace Dafeiyu.Tests
             temporary=(SummaryPreview)popup.Child;
             Check(!All<Button>(temporary).Any(button=>button.Name=="OpenWorkspaceGoal"&&button.IsVisible),
                 "clearing existing content hides that specific workspace category");
+            area.Close(existingSideChat);
             All<Button>(temporary).Single(b=>b.Name=="OpenSummarySideChat").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Check(!popup.IsOpen&&ReferenceEquals(existingSideChat,area.Selected)&&area.Pages<SideChatPane>().Length==1,"summary returns to the existing side chat without duplicating it");
+            Check(!popup.IsOpen&&ReferenceEquals(existingSideChat,area.Selected)&&area.Pages<SideChatPane>().Length==1,"summary reopens the closed side chat without duplicating it");
             toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(80);
             temporary=(SummaryPreview)((Popup)Field(full,"transientSummary")).Child;
             All<Button>(temporary).Single(b=>b.Name=="OpenWorkSummarySource"&&Object.Equals(b.ToolTip,"来源1.txt")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -254,6 +358,6 @@ namespace Dafeiyu.Tests
             Check(project.GitHubRepositoryLink=="example/override"&&pet.ProjectStore.Load().Projects.Single(p=>p.Id==project.Id).GitHubRepositoryLink=="example/override","a linked GitHub repository is stored with the named project");
             definition.Name=new string('长',70)+" 标题";full.RefreshAppearance();full.MinWidth=normalMinWidth;full.Width=950;await Task.Delay(100);CheckWidth(full,950);All<Button>(full).Single(b=>b.Name=="BackToConversation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(100);Check(title.Text==definition.Name&&title.ActualWidth>0&&title.ActualWidth<600,"long conversation title remains bounded in compact header");definition.Name="检查侧栏布局与交互";full.RefreshAppearance();full.MinWidth=2300;full.Width=2300;await Task.Delay(100);CheckWidth(full,2300);All<Thumb>(full).Single(t=>t.Name=="PreviewDivider").RaiseEvent(new DragDeltaEventArgs(shell.ColumnDefinitions[6].ActualWidth-640,0){RoutedEvent=Thumb.DragDeltaEvent});await Task.Delay(100);Capture(full,"workspace-sidebar-final.png");full.OpenBlankTab();await Task.Delay(120);Capture(full,"workspace-new-tab.png");var broken=new BrokenView();area.AddPage("清理失败夹具","file",broken);area.Close(broken);Check(workspace.Session.LastNotice.Contains("清理"),"failed tab cleanup reports a notice without escaping into global exception");area.AddPage("再次失败","file",new BrokenView());var released=new ReleasedView();area.AddPage("释放夹具","file",released);full.MinWidth=normalMinWidth;full.Close();Check(released.Released,"window close continues releasing sibling tabs after one cleanup fails");Console.WriteLine("Sidebar workspace tests: "+checks+" passed");
         }
-        [STAThread]public static int Main(string[] args){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.DispatcherUnhandledException+=delegate(object sender,System.Windows.Threading.DispatcherUnhandledExceptionEventArgs error){Console.Error.WriteLine(error.Exception.GetType().FullName+" "+error.Exception.Message);Console.Error.WriteLine(error.Exception.StackTrace);error.Handled=true;app.Shutdown(1);};app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--subagent-header-only"))await RunSubagentHeader();else await Run();result=0;}catch(Exception e){Console.Error.WriteLine(e.GetType().FullName+" "+e.Message);Console.Error.WriteLine(e.StackTrace);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));return app.Run()==0?result:1;}
+        [STAThread]public static int Main(string[] args){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.DispatcherUnhandledException+=delegate(object sender,System.Windows.Threading.DispatcherUnhandledExceptionEventArgs error){Console.Error.WriteLine(error.Exception.GetType().FullName+" "+error.Exception.Message);Console.Error.WriteLine(error.Exception.StackTrace);error.Handled=true;app.Shutdown(1);};app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--subagent-header-only"))await RunSubagentHeader();else if(args.Contains("--side-chat-reopen-only"))await RunSideChatReopen();else await Run();result=0;}catch(Exception e){Console.Error.WriteLine(e.GetType().FullName+" "+e.Message);Console.Error.WriteLine(e.StackTrace);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));return app.Run()==0?result:1;}
     }
 }

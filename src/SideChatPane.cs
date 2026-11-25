@@ -37,9 +37,10 @@ namespace Dafeiyu
         readonly Button send=LocalizedUi.Button(()=>(TextResources.Get("sideChatPane.send.text")),true),stop=LocalizedUi.Button(()=>(TextResources.Get("sideChatPane.send.text.alternativeA")));
         readonly ScrollViewer scroll;
         readonly MessageUpdatePump updates;
-        readonly CancellationTokenSource titleLifetime = new CancellationTokenSource();
         readonly TextBlock title;
-        bool disposed,titleGenerating;
+        CancellationTokenSource titleRequest;
+        int requestRevision;
+        bool disposed;
         string firstQuestion="",generatedTitle="",attemptedTitleTurn;
         internal ConversationSession Session{get;private set;}
         internal event Action SummaryChanged;
@@ -75,8 +76,9 @@ namespace Dafeiyu
         internal async Task SendAsync(string text)
         {
             if(disposed)throw new ObjectDisposedException("SideChatPane");
+            int revision=requestRevision;
             await Session.SendTextAsync(text,snapshot,companionName,steeringContext:parent.SnapshotPublicContext());
-            GenerateTitle();
+            if(revision==requestRevision)GenerateTitle();
         }
 
         string TitleText(){return SummaryTitle.Length==0?TextResources.Get("sideChatPane.sideChatPane.text"):SummaryTitle;}
@@ -84,23 +86,23 @@ namespace Dafeiyu
 
         async void GenerateTitle()
         {
-            if(disposed||titleGenerating||generatedTitle.Length!=0)return;
+            if(disposed||titleRequest!=null||generatedTitle.Length!=0)return;
             var reply=Session.History.Messages.LastOrDefault(item=>item.Role=="assistant"&&item.Status=="complete"&&!String.IsNullOrWhiteSpace(item.Content));
             if(reply==null||reply.TurnId==attemptedTitleTurn)return;
-            attemptedTitleTurn=reply.TurnId;titleGenerating=true;
-            try
+            attemptedTitleTurn=reply.TurnId;
+            using(var cancel=new CancellationTokenSource(TimeSpan.FromSeconds(30)))
             {
-                using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(titleLifetime.Token))
+                titleRequest=cancel;
+                try
                 {
-                    cancel.CancelAfter(TimeSpan.FromSeconds(30));
                     string result=await Session.GenerateTitleForTurnAsync(snapshot,cancel.Token,reply.TurnId);
                     if(disposed||cancel.IsCancellationRequested||String.IsNullOrWhiteSpace(result))return;
                     generatedTitle=result;LocalizedUi.Set(title,"Text",TitleText);NotifySummaryChanged();
                 }
+                catch(OperationCanceledException){}
+                catch(Exception error){System.Diagnostics.Trace.WriteLine("Side chat title: "+error.GetType().Name);}
+                finally{if(ReferenceEquals(titleRequest,cancel))titleRequest=null;}
             }
-            catch(OperationCanceledException){}
-            catch(Exception error){System.Diagnostics.Trace.WriteLine("Side chat title: "+error.GetType().Name);}
-            finally{titleGenerating=false;}
         }
         async Task SendDraftAsync()
         {
@@ -137,13 +139,18 @@ namespace Dafeiyu
         void ShowError(Exception error){if(disposed)return;LocalizedUi.Set(status,"Text",()=>(error is OperationCanceledException?TextResources.Get("sideChatPane.showError.invalidOperationExceptionErrorMessage"):error is ApiException||error is InvalidOperationException?error.Message:TextResources.Get("sideChatPane.showError.invalidOperationExceptionErrorMessage.alternativeA")));}
         void HostClosed(object sender,EventArgs args){Dispose();}
         static async void ObserveStop(Task task){try{await task.ConfigureAwait(false);}catch(Exception error){System.Diagnostics.Trace.WriteLine("Temporary chat shutdown: "+error.GetType().Name);}}
+        internal void CancelPendingRequests()
+        {
+            requestRevision++;
+            var cancel=titleRequest;titleRequest=null;
+            // Signal cancellation without waiting for continuations on the dispatcher.
+            try{if(cancel!=null)cancel.Cancel();}
+            finally{ObserveStop(Session.StopAsync());}
+        }
         public void Dispose()
         {
             if(disposed)return;disposed=true;host.Closed-=HostClosed;Session.MessageAdded-=MessageAdded;Session.StateChanged-=StateChanged;updates.Dispose();
-            // Cancel synchronously, but never wait for a network continuation on
-            // the dispatcher that the request may need in order to finish.
-            try{titleLifetime.Cancel();}
-            finally{titleLifetime.Dispose();try{ObserveStop(Session.StopAsync());}finally{Session.Dispose();}}
+            try{CancelPendingRequests();}finally{Session.Dispose();}
         }
     }
 }

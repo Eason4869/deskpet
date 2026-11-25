@@ -50,7 +50,8 @@ namespace Dafeiyu
             if (overviews.Count == 0) return;
             ReadWorkSummaryRepository();
             if (summarySources == null) summarySources = WorkSummarySource.FromHistory(session.History.Messages);
-            var chats = filePreview == null ? new SideChatPane[0] : filePreview.Pages<SideChatPane>();
+            ConversationPreviewState state;
+            var chats = conversationPreviews.TryGetValue(session, out state) ? state.SideChats.ToArray() : new SideChatPane[0];
             var changes = AgentChangeSummaryData.FromTask(task);
             var workers = session.Subagents;
             foreach (var overview in overviews) overview.Refresh(changes, chats, summarySources, workers, plan, goal);
@@ -58,11 +59,11 @@ namespace Dafeiyu
 
         void OpenSummarySideChat(SideChatPane chat)
         {
+            ConversationPreviewState state;
+            if (closed || (workspace != null && workspace.IsDisposed) || !conversationPreviews.TryGetValue(session, out state) || !state.SideChats.Contains(chat)) return;
             CloseTransientSummary();
-            if (filePreview == null || !filePreview.SelectPage(chat)) return;
-            previewVisible = true;
-            tabsHidden = resumeConversation = false;
-            RefreshWorkspaceLayout();
+            EnsurePreviewWorkspace();
+            ShowSideChat(chat);
         }
 
         void OpenWorkSummarySource(WorkSummarySource source)
