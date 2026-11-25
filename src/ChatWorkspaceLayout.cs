@@ -77,6 +77,19 @@ namespace Dafeiyu
         readonly AgentTaskPanel panel;
         internal ChatWindow.WorkSummaryOverview Overview {get;private set;}
         internal SummaryPreview(AgentTaskPanel panel,ChatWindow.WorkSummaryOverview overview,Action open){this.panel=panel;Overview=overview;Name="TransientSummary";Margin=new Thickness(8);Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=20,ShadowDepth=3,Opacity=.10,Color=Colors.Black};Background=ThemeManager.Surface;BorderBrush=Ui.Line;BorderThickness=new Thickness(1);CornerRadius=new CornerRadius(14);Padding=new Thickness(5);Focusable=true;var body=new StackPanel();var header=new DockPanel{Margin=new Thickness(12,8,8,8)};if(open!=null){var tab=UiIcons.Button("expand",()=>(TextResources.Get("chatWorkspaceLayout.summaryPreview.uiIcons")));tab.Name="OpenSummaryTab";tab.Click+=delegate{open();};DockPanel.SetDock(tab,Dock.Right);header.Children.Add(tab);}var title=LocalizedUi.Text(()=>(TextResources.Get("chatWorkspaceLayout.summaryPreview.text")),15,AgentUi.Ink);title.FontWeight=FontWeights.SemiBold;header.Children.Add(title);body.Children.Add(header);body.Children.Add(overview);body.Children.Add(panel);Child=Ui.Scroll(body);}
+        protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+        {
+            base.OnPreviewMouseWheel(e);
+            var scroll=(ScrollViewer)Child;
+            if(e.Handled||e.Delta==0||scroll.ScrollableHeight<=0)return;
+
+            int lines=System.Windows.Forms.SystemInformation.MouseWheelScrollLines;
+            if(lines==0)return;
+            double distance=lines<0?scroll.ViewportHeight:lines*16.0;
+            scroll.ScrollToVerticalOffset(scroll.VerticalOffset-e.Delta/120.0*distance);
+            e.Handled=true;
+        }
+
         public void Dispose(){panel.Dispose();}
     }
 }
