@@ -95,7 +95,32 @@ internal static class WorkBindingUiChecks
             Check(first.BoundSession.ExportHistory().Contains("second reply")&&!first.BoundSession.ExportHistory().Contains("bound reply"),"export resolves the active work history");
             first.BoundSession.Clear();Dispatcher.UIThread.RunJobs();Check(first.BoundSession.History.Messages.Count==0&&second.BoundSession.History.Messages.Count==2,"clear affects only the bound history and refreshes its view");
             var workSettings=owner.WorkBindings.ProjectSettings(other.Id);Check(workSettings.AgentWorkspace==first.EffectiveSettings().AgentWorkspace,"work settings resolve the bound project");
-            Check(owner.WorkBindings.TryChangeProject(other.Id,value=>value.Goal="second goal")&&first.EffectiveSettings().AgentGoal=="second goal"&&second.EffectiveSettings().AgentGoal!="second goal"&&owner.Settings.AgentGoal!="second goal","project settings update only workspaces in that project");
+            const string updatedGoal = "second goal";
+            const int updatedContextLimit = 65536;
+            var otherProjectGoalBefore = project.Goal;
+            var unaffectedSettingsBefore = second.EffectiveSettings();
+            var globalSettingsBefore = owner.Settings.Copy();
+            Check(owner.WorkBindings.TryChangeProject(other.Id, value =>
+            {
+                value.Goal = updatedGoal;
+                value.ContextTokenLimit = updatedContextLimit;
+            }), "the bound project settings update succeeds");
+            var savedProjects = new ProjectCatalogStore(Path.Combine(directory, "projects.json")).Load().Projects;
+            Check(savedProjects.Single(value => value.Id == other.Id).Goal == updatedGoal &&
+                savedProjects.Single(value => value.Id == project.Id).Goal == otherProjectGoalBefore,
+                "the goal persists only for the updated project");
+            var updatedSettings = first.EffectiveSettings();
+            var unaffectedSettings = second.EffectiveSettings();
+            Check(updatedSettings.AgentContextTokenLimit == updatedContextLimit &&
+                unaffectedSettings.AgentContextTokenLimit == unaffectedSettingsBefore.AgentContextTokenLimit &&
+                unaffectedSettings.AgentGoal == unaffectedSettingsBefore.AgentGoal &&
+                owner.Settings.AgentContextTokenLimit == globalSettingsBefore.AgentContextTokenLimit &&
+                owner.Settings.AgentGoal == globalSettingsBefore.AgentGoal,
+                "project settings update only workspaces in that project");
+            Check(OperatingSystem.IsWindows()
+                ? updatedSettings.AgentGoal == updatedGoal
+                : !updatedSettings.AgentEnabled && updatedSettings.AgentGoal.Length == 0,
+                "the effective goal is available only with local agent support");
             Complete(first.BindWorkAsync(project.Id,conversation.Id));Check(first.GetLogicalDescendants().OfType<Border>().Any(control=>control.Name=="AttachmentCard"),"returning to a work binding restores only its attachment buffer");
             string catalogPath=Path.Combine(directory,"projects.json");var independentStore=new ProjectCatalogStore(catalogPath);var ordinaryCatalog=independentStore.Load();
             ordinaryCatalog.UnassignedConversations.Add(new ConversationDefinition{Id="ordinary-added-by-other-host",Name="ordinary",Mode="chat",PetId=owner.Skin.Id,SectionId=ProjectCatalogStore.DefaultChatSectionId});independentStore.Save(ordinaryCatalog);
