@@ -18,14 +18,22 @@ namespace Dafeiyu
 
         internal static TimeSpan Duration(string motion, TimeSpan liquidDuration)
         {
-            if (motion == Refraction) return TimeSpan.FromMilliseconds(820);
-            if (motion == Zipper) return TimeSpan.FromMilliseconds(1350);
+            if (motion == Refraction) return TimeSpan.FromMilliseconds(1450);
+            if (motion == Zipper) return TimeSpan.FromMilliseconds(1850);
             return liquidDuration;
         }
 
-        internal static bool IsLiquid(string motion)
+        internal static void SoundStages(string motion, out double onset, out double travel, out double end)
         {
-            return motion == Flow || motion == Ripple;
+            onset = LiquidThemeShape.ImpactProgress;
+            travel = LiquidThemeShape.FlowProgress;
+            end = 1;
+            switch (motion)
+            {
+                case Ripple: onset = .18; travel = .34; break;
+                case Refraction: onset = .12; travel = .28; break;
+                case Zipper: onset = .10; travel = .19; end = .85; break;
+            }
         }
 
         internal static string Caption()

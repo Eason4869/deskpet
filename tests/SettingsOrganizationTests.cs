@@ -17,6 +17,34 @@ namespace Dafeiyu.Tests
         static void Pump(){Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background,new Action(delegate{}));}
         static T Named<T>(DependencyObject root,string name)where T:FrameworkElement{return All<T>(root).Single(e=>e.Name==name);}
         static void Capture(Window window,string name){window.UpdateLayout();var view=(FrameworkElement)window.Content;var png=new PngBitmapEncoder();var bitmap=new RenderTargetBitmap((int)view.ActualWidth,(int)view.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(view);png.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,name+".png")))png.Save(stream);}
+        static double Right(FrameworkElement element,FrameworkElement host){return element.TranslatePoint(new Point(element.ActualWidth,0),host).X;}
+        static void CheckDetailedLayout(SettingsPage page,Window host)
+        {
+            foreach(int route in new[]{0,1,6,2,7,3,4})
+            {
+                page.SelectNavigation(route);Pump();
+                var active=(FrameworkElement)Named<ContentControl>(page,"SettingsContentHost").Content;
+                var body=All<ScrollViewer>(active).First(element=>element.IsVisible);
+                var header=All<SettingsPageHeader>(active).FirstOrDefault(element=>element.IsVisible);
+                double left=body.TranslatePoint(new Point(),active).X;
+                Check(body.ActualWidth>0&&active.ActualWidth-body.ActualWidth>=48&&Math.Abs(left+body.ActualWidth/2-active.ActualWidth/2)<2,
+                    "settings body is narrower and centered on route "+route);
+                if(header!=null)Check(header.ActualWidth>body.ActualWidth,"settings header retains its wider layout on route "+route);
+            }
+            page.RestoreNavigation(3,0,null);Pump();
+            var language=Named<Button>(page,"GeneralLanguage");var motion=Named<ComboBox>(page,"ThemeTransitionEffect");var volume=Named<Slider>(page,"ThemeTransitionSoundVolume");
+            var sound=Named<CheckBox>(page,"ThemeTransitionSoundEnabled");var track=(FrameworkElement)sound.Template.FindName("track",sound);
+            Check(Math.Abs(Right(motion,page)-Right(language,page))<2&&Math.Abs(Right(volume,page)-Right(language,page))<2,"theme motion and volume align with the language control");
+            Check(track.TranslatePoint(new Point(),sound).X>sound.ActualWidth/2,"theme sound keeps its switch at the trailing edge");
+            Capture(host,"settings-general-wide");
+            host.Width=560;Pump();
+            var picker=Named<ThemeModePicker>(page,"ThemeModePicker");
+            Check(All<Button>(picker).Where(button=>button.Name.StartsWith("ThemeChoice",StringComparison.Ordinal)).All(button=>
+                button.TranslatePoint(new Point(),picker).X>=0&&Right(button,picker)<=picker.ActualWidth+1),"all theme choices fit in compact settings");
+            Check(Math.Abs(Right(motion,page)-Right(language,page))<2&&Math.Abs(Right(volume,page)-Right(language,page))<2,"theme control edges stay aligned in compact settings");
+            Capture(host,"settings-general-narrow");
+            host.Width=1100;Pump();
+        }
         [STAThread] public static int Main()
         {
             TextResources.ConfigureStartupLanguage("zh_CN");var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;Window host=null;SettingsPage page=null;
@@ -26,6 +54,7 @@ namespace Dafeiyu.Tests
                 var navigation=Named<ListBox>(page,"SettingsNavigation");var actual=navigation.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).ToArray();
                 Check(actual.SequenceEqual(new[]{"伙伴","模型配置","对话与输入","工作与权限","工具与连接","通用"}),"six settings categories have the approved labels and order");
                 Check(Named<Button>(page,"SettingsAboutNavigation").IsVisible,"about and updates has a permanent footer entry");
+                CheckDetailedLayout(page,host);
                 page.RestoreNavigation(6,0,null);Pump();Check(new[]{"ConversationDefaultsTab","ConversationInputTab","ConversationDisplayTab"}.All(n=>Named<Button>(page,n).IsVisible),"conversation settings offer three real content tabs");page.RestoreNavigation(6,1,null);Pump();var shortcut=Named<ComboBox>(page,"SendShortcut");int choice=shortcut.SelectedIndex==0?1:0;shortcut.SelectedIndex=choice;
                 page.SelectNavigation(2);Pump();Check(!All<ComboBox>(page).Any(c=>c.Name=="SendShortcut"&&c.IsVisible),"work and permissions does not contain global input preferences");
                 page.SelectNavigation(6);Pump();Check(Named<ComboBox>(page,"SendShortcut").SelectedIndex==choice&&page.HasUnsavedEdits,"navigation preserves the unsaved conversation draft");Capture(host,"settings-conversation-layout");
@@ -37,7 +66,14 @@ namespace Dafeiyu.Tests
                 search.Clear();Named<Button>(page,"SettingsAboutNavigation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(page.IsOnAboutPage,"footer about entry preserves the existing about route");
                 host.Width=640;page.SelectNavigation(7);Pump();Capture(host,"settings-tools-narrow");Check(Named<CheckBox>(page,"WebSearchEnabled").ActualWidth>0,"tools settings remain usable in a narrow window");
                 pet.ShowSettings();Pump();var main=app.Windows.OfType<ChatWindow>().Single(w=>w.IsVisible);main.Width=1280;main.Height=850;var integrated=All<SettingsPage>(main).Single();integrated.RestoreNavigation(6,1,null);Pump();
-                Check(new[]{"ShellHome","ShellImages","ShellUsage","ShellMcp","ShellSettings"}.All(n=>Named<Button>(main,n).IsVisible),"the full application keeps every original primary navigation icon");Capture(main,"settings-full-window");Named<Button>(main,"ShellMcp").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(All<PluginsPage>(main).Any(p=>p.IsVisible),"skills and MCP remain available from the primary plugins icon");
+                Check(new[]{"ShellHome","ShellImages","ShellUsage","ShellMcp","ShellSettings"}.All(n=>Named<Button>(main,n).IsVisible),"the full application keeps every original primary navigation icon");Capture(main,"settings-full-window");
+                main.Width=main.MinWidth;integrated.RestoreNavigation(3,0,null);Pump();
+                var appearance=(FrameworkElement)Named<ContentControl>(integrated,"SettingsContentHost").Content;
+                var viewport=All<ScrollViewer>(appearance).First(element=>element.IsVisible);
+                var choices=new[]{"system","light","dark"}.Select(mode=>Named<Button>(appearance,"ThemeChoice"+mode));
+                Check(choices.All(option=>option.IsVisible&&option.Focusable&&option.TranslatePoint(new Point(),viewport).X>=0&&Right(option,viewport)<=viewport.ActualWidth+1),"theme choices fit at the embedded settings window minimum");
+                Capture(main,"settings-embedded-narrow");
+                main.Width=1280;Named<Button>(main,"ShellMcp").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(All<PluginsPage>(main).Any(p=>p.IsVisible),"skills and MCP remain available from the primary plugins icon");
                 Console.WriteLine("Settings organization tests: "+checks+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL "+error);return 1;}finally{if(page!=null)page.Dispose();if(host!=null)host.Close();if(pet!=null)pet.Close();app.Shutdown();}
         }

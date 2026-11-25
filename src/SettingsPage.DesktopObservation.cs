@@ -25,7 +25,7 @@ namespace Dafeiyu
             observationDraftEnabled=pet.Settings.DesktopObservationEnabled;observationExcludedDraft=new List<string>(pet.Settings.DesktopObservationExcludedApps);
             observationGroup=new StackPanel { Name="DesktopObservationGroup" };
             observationGroup.Children.Add(Heading(()=>TextResources.Get("desktopObservation.settings.title")));
-            observationToggle=LocalizedUi.Toggle(()=>TextResources.Get("desktopObservation.settings.enabled"),observationDraftEnabled,async value=>{if(refreshingObservationEnabled)return;observationDraftEnabled=value;await SaveObservationEnabledAsync(value);});
+            observationToggle=SettingsSurface.Toggle(()=>TextResources.Get("desktopObservation.settings.enabled"),observationDraftEnabled,async value=>{if(refreshingObservationEnabled)return;observationDraftEnabled=value;await SaveObservationEnabledAsync(value);});
             observationToggle.Name="DesktopObservationEnabled";observationGroup.Children.Add(observationToggle);
             observationGroup.Children.Add(LocalizedUi.Text(()=>TextResources.Get("desktopObservation.settings.help"),12,Ui.Muted));
             observationScope=new ComboBox{Name="DesktopObservationScope",MinHeight=36,HorizontalContentAlignment=HorizontalAlignment.Stretch};

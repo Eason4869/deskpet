@@ -61,7 +61,13 @@ namespace Dafeiyu.Tests
         static bool HasOverlay(Window window){return All<FrameworkElement>(window).Any(e=>e.Name=="LiquidThemeOverlay");}
         static void PumpReveal(string effect=ThemeTransitionMotion.Flow)
         {Pump((int)ThemeTransitionMotion.Duration(effect,LiquidThemeShape.DefaultDuration).TotalMilliseconds+210);}
-        static void Preview(ChatWindow chat,string effect,bool manualOnly)
+        static void CompleteReveal(Window window)
+        {
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            while (HasOverlay(window) && started.ElapsedMilliseconds < 7500) Pump(65);
+            if (HasOverlay(window)) throw new TimeoutException("Theme overlay did not finish for " + ThemeManager.Mode);
+        }
+        static void Preview(ChatWindow chat,string effect,bool manualOnly,bool settingsPicker)
         {
             chat.Title="DeskPet Liquid Theme Preview";
             chat.WindowState=WindowState.Normal;
@@ -70,9 +76,20 @@ namespace Dafeiyu.Tests
             chat.Left=50;
             chat.Top=42;
             chat.Activate();
+            if (settingsPicker) All<SettingsPage>(chat).Single().SelectNavigation(3);
             chat.UpdateLayout();
             Console.WriteLine("PREVIEW_WINDOW="+new System.Windows.Interop.WindowInteropHelper(chat).Handle.ToInt64());
             Pump(920);
+            if (settingsPicker)
+            {
+                var picker = All<ThemeModePicker>(chat).Single();
+                Click(picker.Origin("dark"));
+                PumpReveal(effect);
+                Click(picker.Origin("light"));
+                PumpReveal(effect);
+                Pump(850);
+                return;
+            }
             var button=All<Button>(chat).Single(b=>b.Name=="AppThemeMode");
             Click(button);
             PumpReveal(effect);
@@ -105,8 +122,9 @@ namespace Dafeiyu.Tests
                     if(effectArg!=null)preview.ThemeTransitionEffect=effectArg.Substring("--effect=".Length);
                     foreach(var key in preview.Hotkeys.Keys.ToArray())preview.Hotkeys[key]="";
                     pet=new PetWindow(null,preview,new SettingsStore(Path.Combine(previewRoot,"settings.json")),null);
-                    pet.ShowChat();
-                    Preview(app.Windows.OfType<ChatWindow>().Single(window=>window.IsVisible),preview.ThemeTransitionEffect,args.Contains("--manual-only"));
+                    bool settingsPicker=args.Contains("--settings-picker");
+                    if (settingsPicker) pet.ShowSettings(); else pet.ShowChat();
+                    Preview(app.Windows.OfType<ChatWindow>().Single(window=>window.IsVisible),preview.ThemeTransitionEffect,args.Contains("--manual-only"),settingsPicker);
                     return 0;
                 }
                 CheckLiquidGeometry();
@@ -143,38 +161,44 @@ namespace Dafeiyu.Tests
                 var generic=Ui.Card(Ui.Field());Check(Contrast(Painted(generic.Background),Painted(((TextBox)generic.Child).Background))>=1.2,"dark input fields separate from their containing cards");
                 var agentCard=AgentUi.Card(Ui.Text("工作卡片"));Check(Contrast(Painted(agentCard.Background),Painted(ThemeManager.Surface))>=1.18,"shared work cards visibly separate from the dark page");
                 Check(All<CheckBox>(main).Where(c=>c.IsVisible).All(c=>c.Foreground==Ui.Ink),"general switches use theme text instead of default black");Capture(main,"settings-dark.png");
-                All<Button>(picker).Single(b=>b.Name=="ThemeChoicelight").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(ink.Color.R<100,"switch to light updates existing brushes");Capture(main,"settings-light.png");
-                All<Button>(picker).Single(b=>b.Name=="ThemeChoicedark").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(ink.Color.R>160,"switch to dark updates existing brushes");
-                Check((string)property.GetValue(store.Load(),null)=="dark","theme selection saves immediately");
+                var lightChoice=picker.Origin("light");var darkChoice=picker.Origin("dark");
+                Click(lightChoice);
+                Check(ink.Color.R<100&&HasOverlay(main)==SystemParameters.ClientAreaAnimation,"settings choice reveals the light palette from its preview card");
+                if(SystemParameters.ClientAreaAnimation)Check(store.Load().ThemeMode=="dark","settings selection keeps the stored mode while its snapshot is active");
+                CompleteReveal(main);Capture(main,"settings-light.png");
+                Click(darkChoice);
+                Check(ink.Color.R>160&&HasOverlay(main)==SystemParameters.ClientAreaAnimation,"settings choice also reveals the dark palette");
+                CompleteReveal(main);
+                Check(store.Load().ThemeMode=="dark"&&!HasOverlay(main),"settings selection persists the resulting mode and releases its snapshot");
                 var titleTheme=All<Button>(main).Single(b=>b.Name=="AppThemeMode");
-                Click(All<Button>(picker).Single(b=>b.Name=="ThemeChoicelight"));Pump();
+                Click(lightChoice);CompleteReveal(main);
                 Click(titleTheme);
                 if(SystemParameters.ClientAreaAnimation)
                 {
                     Check(HasOverlay(main)&&store.Load().ThemeMode=="light","transition retains the previous stored mode while the reveal is active");
                     Click(titleTheme);
                     Check(ThemeManager.Mode=="dark","repeat click coalesces into the current reveal");
-                    PumpReveal();
+                    CompleteReveal(main);
                 }
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&picker.Value=="dark","title switch saves the mode, updates settings and removes the layer");
-                Click(titleTheme);PumpReveal();
+                Click(titleTheme);CompleteReveal(main);
                 Check(store.Load().ThemeMode=="system"&&picker.Value=="system","title button reaches follow-system mode");
                 foreach(bool systemDark in new[]{!ThemeManager.IsDark,ThemeManager.IsDark})
                 {
                     ThemeManager.SetSystemTheme(systemDark);
                     Check(ThemeManager.IsDark==systemDark&&HasOverlay(main)==SystemParameters.ClientAreaAnimation,
                         "changing system appearance plays the same reveal when motion is allowed");
-                    PumpReveal();
+                    CompleteReveal(main);
                     Check(!HasOverlay(main)&&store.Load().ThemeMode=="system","system reveal clears without changing the saved preference");
                 }
-                Click(titleTheme);PumpReveal();
+                Click(titleTheme);CompleteReveal(main);
                 Check(store.Load().ThemeMode=="light"&&picker.Value=="light","title button cycles back to light");
                 Click(titleTheme);
                 main.Width-=8;main.UpdateLayout();Pump();
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark","resizing settles the requested theme and clears the layer");
                 motion.SelectedValue=ThemeTransitionMotion.Off;
                 Check(store.Load().ThemeTransitionEffect=="off","changing the motion dropdown immediately persists Off");
-                Click(All<Button>(picker).Single(b=>b.Name=="ThemeChoicelight"));Pump();
+                Click(lightChoice);Pump();
                 Click(titleTheme);
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&store.Load().ThemeTransitionEffect=="off",
                     "Off takes effect immediately and survives reload");
@@ -184,12 +208,12 @@ namespace Dafeiyu.Tests
                 foreach(string effect in new[]{ThemeTransitionMotion.Ripple,ThemeTransitionMotion.Refraction,ThemeTransitionMotion.Zipper})
                 {
                     motion.SelectedValue=effect;
-                    Click(All<Button>(picker).Single(b=>b.Name=="ThemeChoicelight"));Pump();
+                    pet.SetThemeMode("light");Pump();
                     Click(titleTheme);
                     Check(HasOverlay(main)==SystemParameters.ClientAreaAnimation,effect+" uses the native reveal when motion is allowed");
-                    PumpReveal(effect);
+                    CompleteReveal(main);
                     Check(!HasOverlay(main)&&store.Load().ThemeTransitionEffect==effect&&store.Load().ThemeMode=="dark",
-                        effect+" selection and completed palette survive reload");
+                        effect+" selection and completed palette survive reload ("+store.Load().ThemeMode+", "+store.Load().ThemeTransitionEffect+")");
                 }
                 var settingsPage=All<SettingsPage>(main).Single();settingsPage.SelectNavigation(4);Pump();var about=All<AboutPanel>(main).Single();
                 var updateCard=All<Border>(about).Single(b=>b.Background is LinearGradientBrush&&All<Button>(b).Any(c=>c.Name=="CheckUpdates"));

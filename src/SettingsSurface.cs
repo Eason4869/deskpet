@@ -9,7 +9,17 @@ namespace Dafeiyu
     internal static class SettingsSurface
     {
         internal const double GroupSpacing=36;
+        internal const double BodyWidth=720;
         static ControlTemplate expanderTemplate;
+        internal static ScrollViewer Scroll(UIElement body,double horizontalInset=0)
+        {
+            var scroll=Ui.Scroll(body);
+            scroll.MaxWidth=BodyWidth;
+            scroll.Margin=new Thickness(horizontalInset,0,horizontalInset,0);
+            return scroll;
+        }
+        internal static CheckBox Toggle(Func<string> label,bool value,Action<bool> changed)
+        {return LocalizedUi.With(Ui.Toggle(label(),value,changed,true),"Content",label);}
         internal static void StyleExpander(Expander expander)
         {
             if(expanderTemplate==null)expanderTemplate=(ControlTemplate)ThemeManager.Parse(@"

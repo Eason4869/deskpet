@@ -4,15 +4,25 @@ namespace Dafeiyu
 {
     internal sealed class ThemeRevealPaths
     {
-        internal const double RefractionOffsetX = 4;
-        internal const double RefractionOffsetY = -3;
+        internal const double RefractionOffsetX = 5.6;
+        internal const double RefractionOffsetY = -4.2;
+        internal static readonly double[] RefractionOpacities = { .11, .19, .26, .39, .52 };
+        internal const uint ZipperLining = 0x99303948;
+        internal const uint ZipperRim = 0xbae4eff6;
+        internal const uint ZipperTeeth = 0xeaaab9c8;
+        internal const uint ZipperPullLight = 0xfff4f8ff;
+        internal const uint ZipperPullMiddle = 0xffa0afbe;
+        internal const uint ZipperPullDark = 0xff53677d;
+        internal static readonly ZipperPart[] ZipperParts = { ZipperPart.Lining, ZipperPart.Rim, ZipperPart.Teeth, ZipperPart.Pull };
         internal readonly Action<double, ILiquidThemeOutline> Reveal;
-        internal readonly Action<double, ILiquidThemeOutline> Refraction;
+        internal readonly RefractionThemeShape Refraction;
+        internal readonly ZipperThemeShape Zipper;
 
-        ThemeRevealPaths(Action<double, ILiquidThemeOutline> reveal, Action<double, ILiquidThemeOutline> refraction = null)
+        ThemeRevealPaths(Action<double, ILiquidThemeOutline> reveal, RefractionThemeShape refraction = null, ZipperThemeShape zipper = null)
         {
             Reveal = reveal;
             Refraction = refraction;
+            Zipper = zipper;
         }
 
         internal static ThemeRevealPaths Create(string effect, double width, double height, double originX, double originY)
@@ -23,9 +33,10 @@ namespace Dafeiyu
                     return new ThemeRevealPaths(new RippleThemeShape(width, height, originX, originY).WriteOutline);
                 case ThemeTransitionMotion.Refraction:
                     var shape = new RefractionThemeShape(width, height, originX, originY);
-                    return new ThemeRevealPaths(shape.WriteOutline, shape.WriteRefraction);
+                    return new ThemeRevealPaths(shape.WriteOutline, refraction: shape);
                 case ThemeTransitionMotion.Zipper:
-                    return new ThemeRevealPaths(new ZipperThemeShape(width, height, originX, originY).WriteOutline);
+                    var zipper = new ZipperThemeShape(width, height, originX, originY);
+                    return new ThemeRevealPaths(zipper.WriteOutline, zipper: zipper);
                 default:
                     return new ThemeRevealPaths(new LiquidThemeShape(width, height, originX, originY).WriteOutline);
             }

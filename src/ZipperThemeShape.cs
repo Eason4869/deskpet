@@ -2,9 +2,12 @@ using System;
 
 namespace Dafeiyu
 {
+    internal enum ZipperPart { Lining, Rim, Teeth, Pull }
+
     internal sealed class ZipperThemeShape
     {
-        internal const double OpeningProgress = .42;
+        internal const double OpeningProgress = .10;
+        internal const double PullExitProgress = .82;
         readonly double width, height, originX, originY, scale;
 
         internal ZipperThemeShape(double width, double height, double originX, double originY)
@@ -18,83 +21,164 @@ namespace Dafeiyu
 
         internal void WriteOutline(double progress, ILiquidThemeOutline outline)
         {
-            double time = Math.Max(0, Math.Min(1, progress));
-            if (time == 0) return;
+            if (progress <= 0) return;
+            var frame = At(progress);
+            outline.MoveTo(frame.Left.Top, frame.Top);
+            outline.LineTo(frame.Right.Top, frame.Top);
+            Edge(outline, frame, frame.Right, 0, false);
+            outline.LineTo(frame.Left.Bottom, frame.Bottom);
+            Edge(outline, frame, frame.Left, 0, true);
+            outline.Close();
+        }
 
-            double bleed = 2 * scale;
-            double floor = height + bleed;
-            double seamHalf = 1.4 * scale;
-            if (time <= OpeningProgress)
+        internal void WritePart(double progress, ZipperPart part, ILiquidThemeOutline outline)
+        {
+            if (progress <= 0 || progress >= 1) return;
+            var frame = At(progress);
+            switch (part)
             {
-                double front = originY + (floor + 8 * scale - originY) * Smooth(time / OpeningProgress);
-                double growth = Smooth((front - originY) / (12 * scale));
-                double half = seamHalf * growth;
-                double end = Math.Min(front, floor);
-                outline.MoveTo(originX - half, originY);
-                outline.LineTo(originX + half, originY);
-                outline.LineTo(originX + half, end);
-                outline.LineTo(originX - half, end);
-                outline.Close();
-                if (front - 7 * scale * growth < height)
-                    Pull(outline, front, scale * growth);
-                return;
+                case ZipperPart.Lining:
+                    double lip = (2.5 + 8 * frame.Open) * scale;
+                    Lining(outline, frame, frame.Left, -lip);
+                    Lining(outline, frame, frame.Right, lip);
+                    break;
+                case ZipperPart.Rim:
+                    Lining(outline, frame, frame.Left, -1.4 * scale);
+                    Lining(outline, frame, frame.Right, 1.4 * scale);
+                    break;
+                case ZipperPart.Teeth:
+                    Teeth(outline, frame, progress);
+                    break;
+                case ZipperPart.Pull:
+                    if (frame.Pull - 14 * scale < height) Pull(outline, frame.Pull, scale * Smooth(progress / .067));
+                    break;
             }
+        }
 
-            double spread = (time - OpeningProgress) / (1 - OpeningProgress);
-            double opening = Smooth(spread);
-            double peakBend = 4 * opening * (1 - opening);
-            double leftTravel = originX - seamHalf + bleed;
-            double rightTravel = width - originX - seamHalf + bleed;
-            double left = originX - seamHalf - leftTravel * opening;
-            double right = originX + seamHalf + rightTravel * opening;
-            double leftBend = Math.Min(.29 * leftTravel, 63 * scale) * peakBend;
-            double rightBend = Math.Min(.29 * rightTravel, 54 * scale) * peakBend;
-            double top = originY - (originY + bleed) * Smooth(spread / .46);
-            double span = floor - top;
+        internal static double HardwareOpacity(double progress)
+        {
+            return Smooth(progress / .065) * (1 - Smooth((progress - .88) / .12));
+        }
 
-            outline.MoveTo(left + leftBend * .31, top);
-            outline.LineTo(right - rightBend * .26, top);
-            outline.CurveTo(right - rightBend * .08, top + span * .18,
-                right + rightBend * .56, top + span * .33, right + rightBend * .24, top + span * .54);
-            outline.CurveTo(right - rightBend * .12, top + span * .77,
-                right - rightBend * .46, top + span * .9, right - rightBend * .16, floor);
-            outline.LineTo(left + leftBend * .24, floor);
-            outline.CurveTo(left + leftBend * .5, top + span * .86,
-                left - leftBend * .07, top + span * .7, left - leftBend * .27, top + span * .5);
-            outline.CurveTo(left - leftBend * .55, top + span * .27,
-                left + leftBend * .18, top + span * .13, left + leftBend * .31, top);
+        Frame At(double progress)
+        {
+            double tip = originY + (height + 25 * scale - originY) *
+                Smooth((progress - .022) / (PullExitProgress - .022));
+            double growth = Smooth(progress / .09);
+            double opening = Smooth((progress - OpeningProgress) / (1 - OpeningProgress));
+            double clearance = Smooth((progress - .72) / .28);
+            double top = originY - (originY + 3 * scale) * Smooth((progress - .075) / .34);
+            double bottom = Math.Min(height + 3 * scale, tip + 2 * scale * growth);
+            return new Frame(top, bottom, tip, opening,
+                Side(-1, originX, growth, opening, clearance),
+                Side(1, width - originX, growth, opening, clearance));
+        }
+
+        Curve Side(int direction, double distance, double growth, double opening, double clearance)
+        {
+            double seam = 2.35 * scale * growth;
+            double travel = Math.Max(0, distance + 3 * scale - seam) * opening;
+            double curl = Math.Min(35 * scale, travel * .30) * (1 - clearance);
+            double top = seam + travel;
+            double bottom = seam + travel * clearance;
+            return new Curve(
+                originX + direction * top,
+                originX + direction * (top + curl * .65),
+                originX + direction * (bottom + (top - bottom) * .20 + curl * .12),
+                originX + direction * bottom);
+        }
+
+        static void Edge(ILiquidThemeOutline outline, Frame frame, Curve curve, double offset, bool reverse)
+        {
+            double step = (frame.Bottom - frame.Top) / 3;
+            if (reverse)
+                outline.CurveTo(curve.Second + offset, frame.Bottom - step, curve.First + offset,
+                    frame.Top + step, curve.Top + offset, frame.Top);
+            else
+                outline.CurveTo(curve.First + offset, frame.Top + step, curve.Second + offset,
+                    frame.Bottom - step, curve.Bottom + offset, frame.Bottom);
+        }
+
+        static void Lining(ILiquidThemeOutline outline, Frame frame, Curve curve, double lip)
+        {
+            if (lip > 0)
+            {
+                outline.MoveTo(curve.Top, frame.Top);
+                Edge(outline, frame, curve, 0, false);
+                outline.LineTo(curve.Bottom + lip, frame.Bottom);
+                Edge(outline, frame, curve, lip, true);
+            }
+            else
+            {
+                outline.MoveTo(curve.Top + lip, frame.Top);
+                Edge(outline, frame, curve, lip, false);
+                outline.LineTo(curve.Bottom, frame.Bottom);
+                Edge(outline, frame, curve, 0, true);
+            }
+            outline.Close();
+        }
+
+        void Teeth(ILiquidThemeOutline outline, Frame frame, double progress)
+        {
+            double pitch = Math.Max(8.5 * scale, height / 90);
+            double seamEnd = originY + (height - originY) * Smooth(progress / .24);
+            double openEnd = Math.Min(height, frame.Pull - 8 * scale);
+            double first = frame.Top + pitch / 2;
+            for (double y = first; y < openEnd; y += pitch)
+            {
+                double t = (y - frame.Top) / (frame.Bottom - frame.Top);
+                Tooth(outline, frame.Left.At(t) - 3.5 * scale, y, 1);
+                Tooth(outline, frame.Right.At(t) + 3.5 * scale, y + pitch * .22, -1);
+            }
+            int firstClosed = Math.Max(0, (int)Math.Ceiling((frame.Pull + 9 * scale - originY) / (pitch * .6)));
+            for (int i = firstClosed; originY + i * pitch * .6 < seamEnd; i++)
+            {
+                int direction = i % 2 == 0 ? 1 : -1;
+                Tooth(outline, originX - direction * 3.45 * scale, originY + i * pitch * .6, direction);
+            }
+        }
+
+        void Tooth(ILiquidThemeOutline outline, double x, double y, int direction)
+        {
+            double half = 3.6 * scale;
+            double edge = 1.65 * scale;
+            double lead = direction * half;
+            double bevel = direction * 1.45 * scale;
+            outline.MoveTo(x - lead, y - edge);
+            outline.LineTo(x + lead - bevel, y - edge);
+            outline.LineTo(x + lead, y + edge * .15);
+            outline.LineTo(x + lead - bevel, y + edge);
+            outline.LineTo(x - lead, y + edge);
             outline.Close();
         }
 
         void Pull(ILiquidThemeOutline outline, double y, double unit)
         {
             double x = originX;
-            outline.MoveTo(x - 1.65 * unit, y - 7 * unit);
-            outline.LineTo(x + 1.65 * unit, y - 7 * unit);
-            outline.CurveTo(x + 2.05 * unit, y - 4.5 * unit, x + 5 * unit, y - 4.6 * unit,
-                x + 5 * unit, y - 1.3 * unit);
-            outline.LineTo(x + 5 * unit, y + 2.8 * unit);
-            outline.CurveTo(x + 5 * unit, y + 4.85 * unit, x + 3.8 * unit, y + 5.9 * unit,
-                x + 2.25 * unit, y + 5.9 * unit);
-            outline.LineTo(x - 2.25 * unit, y + 5.9 * unit);
-            outline.CurveTo(x - 3.8 * unit, y + 5.9 * unit, x - 5 * unit, y + 4.85 * unit,
-                x - 5 * unit, y + 2.8 * unit);
-            outline.LineTo(x - 5 * unit, y - 1.3 * unit);
-            outline.CurveTo(x - 5 * unit, y - 4.6 * unit, x - 2.05 * unit, y - 4.5 * unit,
-                x - 1.65 * unit, y - 7 * unit);
+            outline.MoveTo(x - 3 * unit, y - 10 * unit);
+            outline.LineTo(x + 3 * unit, y - 10 * unit);
+            outline.CurveTo(x + 4 * unit, y - 7 * unit, x + 8 * unit, y - 7 * unit, x + 8 * unit, y - 3 * unit);
+            outline.LineTo(x + 6 * unit, y + 4 * unit);
+            outline.CurveTo(x + 4 * unit, y + 6 * unit, x - 4 * unit, y + 6 * unit, x - 6 * unit, y + 4 * unit);
+            outline.LineTo(x - 8 * unit, y - 3 * unit);
+            outline.CurveTo(x - 8 * unit, y - 7 * unit, x - 4 * unit, y - 7 * unit, x - 3 * unit, y - 10 * unit);
             outline.Close();
 
-            // Reverse the hole contour so it stays open in the native nonzero clip.
-            double hole = y + 2.45 * unit;
-            outline.MoveTo(x - 2 * unit, hole);
-            outline.CurveTo(x - 2 * unit, hole + .85 * unit, x - .95 * unit, hole + 1.4 * unit,
-                x, hole + 1.4 * unit);
-            outline.CurveTo(x + .95 * unit, hole + 1.4 * unit, x + 2 * unit, hole + .85 * unit,
-                x + 2 * unit, hole);
-            outline.CurveTo(x + 2 * unit, hole - .85 * unit, x + .95 * unit, hole - 1.4 * unit,
-                x, hole - 1.4 * unit);
-            outline.CurveTo(x - .95 * unit, hole - 1.4 * unit, x - 2 * unit, hole - .85 * unit,
-                x - 2 * unit, hole);
+            double ringCenter = y + 13 * unit;
+            Oval(outline, x, ringCenter, 8 * unit, 10 * unit, false);
+            // A reversed inner contour leaves a see-through ring on both native renderers.
+            Oval(outline, x, ringCenter + .6 * unit, 4.55 * unit, 6.6 * unit, true);
+        }
+
+        static void Oval(ILiquidThemeOutline outline, double x, double y, double rx, double ry, bool reverse)
+        {
+            if (reverse) ry = -ry;
+            double kx = rx * .5523, ky = ry * .5523;
+            outline.MoveTo(x - rx, y);
+            outline.CurveTo(x - rx, y - ky, x - kx, y - ry, x, y - ry);
+            outline.CurveTo(x + kx, y - ry, x + rx, y - ky, x + rx, y);
+            outline.CurveTo(x + rx, y + ky, x + kx, y + ry, x, y + ry);
+            outline.CurveTo(x - kx, y + ry, x - rx, y + ky, x - rx, y);
             outline.Close();
         }
 
@@ -102,6 +186,41 @@ namespace Dafeiyu
         {
             double t = Math.Max(0, Math.Min(1, value));
             return t * t * (3 - 2 * t);
+        }
+
+        struct Curve
+        {
+            internal readonly double Top, First, Second, Bottom;
+
+            internal Curve(double top, double first, double second, double bottom)
+            {
+                Top = top;
+                First = first;
+                Second = second;
+                Bottom = bottom;
+            }
+
+            internal double At(double t)
+            {
+                double back = 1 - t;
+                return back * back * (back * Top + 3 * t * First) + t * t * (3 * back * Second + t * Bottom);
+            }
+        }
+
+        struct Frame
+        {
+            internal readonly double Top, Bottom, Pull, Open;
+            internal readonly Curve Left, Right;
+
+            internal Frame(double top, double bottom, double pull, double open, Curve left, Curve right)
+            {
+                Top = top;
+                Bottom = bottom;
+                Pull = pull;
+                Open = open;
+                Left = left;
+                Right = right;
+            }
         }
     }
 }

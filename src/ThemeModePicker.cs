@@ -11,6 +11,7 @@ namespace Dafeiyu
         readonly Dictionary<string,Button> choices=new Dictionary<string,Button>();
         string value;
         internal event Action<string> Changed;
+        internal Button Origin(string mode) { return choices[ThemeColors.Normalize(mode)]; }
         internal string Value
         {
             get{return value;}
@@ -27,8 +28,8 @@ namespace Dafeiyu
         internal ThemeModePicker(string initial)
         {
             Name="ThemeModePicker";
-            var layout=new Grid();layout.ColumnDefinitions.Add(new ColumnDefinition());layout.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
-            var label=LocalizedUi.InlineText(()=>(TextResources.Get("themeModePicker.themeModePicker.inlineText")),13);label.FontWeight=FontWeights.SemiBold;layout.Children.Add(label);
+            var layout=new Grid();layout.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});layout.ColumnDefinitions.Add(new ColumnDefinition());
+            var label=LocalizedUi.InlineText(()=>(TextResources.Get("themeModePicker.themeModePicker.inlineText")),13);label.FontWeight=FontWeights.SemiBold;label.Margin=new Thickness(0,0,8,0);layout.Children.Add(label);
             var row=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
             foreach(string mode in new[]{"system","light","dark"})
             {
@@ -39,9 +40,10 @@ namespace Dafeiyu
                 border.AppendChild(new FrameworkElementFactory(typeof(ContentPresenter)));var template=new ControlTemplate(typeof(Button)){VisualTree=border};
                 var focus=new Trigger{Property=UIElement.IsKeyboardFocusedProperty,Value=true};focus.Setters.Add(new Setter(Border.BackgroundProperty,Ui.Pale,"ThemeChoiceFrame"));template.Triggers.Add(focus);button.Template=template;
                 System.Windows.Automation.AutomationProperties.SetName(button,title);
-                button.Click+=delegate{Value=selected;if(Changed!=null)Changed(selected);};choices.Add(mode,button);row.Children.Add(button);
+                button.Click+=delegate{if(Changed!=null)Changed(selected);RefreshMode();};choices.Add(mode,button);row.Children.Add(button);
             }
-            Grid.SetColumn(row,1);layout.Children.Add(row);
+            var previews=new Viewbox{Child=row,Stretch=Stretch.Uniform,StretchDirection=StretchDirection.DownOnly,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Center};
+            Grid.SetColumn(previews,1);layout.Children.Add(previews);
             Content=new Border{CornerRadius=new CornerRadius(16),Background=ThemeManager.Brush("#FDFEFF","#2B3545"),BorderBrush=ThemeManager.CardBorder,BorderThickness=new Thickness(1),Padding=new Thickness(14,8,10,8),Child=layout};
             Value=initial;
             Loaded+=delegate{RefreshMode();ThemeManager.ModeChanged+=RefreshMode;};

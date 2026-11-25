@@ -98,9 +98,24 @@ internal static class SettingsLazyChecks
             var aboutButton=Named<Button>(window,"SettingsAboutAndUpdates");var guideButton=Named<Button>(window,"SettingsGuide");
             Check(guideButton.TranslatePoint(default,window)!.Value.X>aboutButton.TranslatePoint(default,window)!.Value.X,"about and the real configuration guide sit side by side beneath main navigation");
             var captures=Path.GetFullPath(Path.Combine("work","settings-layout-native",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(captures);
-            foreach(var theme in new[]{"light","dark"})foreach(var width in new[]{570,960})foreach(var section in new[]{"partner","companion-behavior","greetings","text","conversation","work","tools","channels","behavior"}){
+            foreach(var theme in new[]{"light","dark"})foreach(var width in new[]{570,960})foreach(var section in new[]{"partner","companion-behavior","greetings","text","image","asr","speech","live","conversation","work","tools","channels","behavior","storage"}){
                 DesktopTheme.Apply(theme);window.Width=width;window.SelectSection(section);Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var frame=window.CaptureRenderedFrame();frame!.Save(Path.Combine(captures,section+"-"+theme+"-"+width+".png"),new PngBitmapEncoderOptions());
+                var body=window.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(view=>view.Name=="SettingsScrollBody");
+                Check(body?.Content is Border bodyContent&&bodyContent.Bounds.Width<=680&&bodyContent.Bounds.Width<=body.Bounds.Width,
+                    "settings page uses the shared responsive scroll body "+section+" "+theme+" "+width);
+                if(section=="behavior"){
+                    double Right(Control control)=>control.TranslatePoint(new Point(control.Bounds.Width,0),window)!.Value.X;
+                    var language=Named<Button>(window,"SettingsLanguage");
+                    var effect=Named<ComboBox>(window,"ThemeTransitionEffect");
+                    var volume=Named<Slider>(window,"ThemeTransitionSoundVolume");
+                    var themeSound=Named<CheckBox>(window,"ThemeTransitionSoundEnabled");
+                    var imageMotion=Named<CheckBox>(window,"ImageGenerationMotionEnabled");
+                    Check(Math.Abs(Right(effect)-Right(language))<1&&Math.Abs(Right(volume)-Right(language))<1,
+                        "language, animation and volume controls share a right edge "+theme+" "+width);
+                    Check(themeSound.Content==null&&imageMotion.Content==null&&Math.Abs(Right(themeSound)-Right(language))<1&&Math.Abs(Right(imageMotion)-Right(language))<1,
+                        "theme sound and image animation retain named toggles on the right "+theme+" "+width);
+                }
                 if(section=="work"){
                     var directoryInput=Named<TextBox>(window,"AgentWorkspaceInput");var right=directoryInput.TranslatePoint(new Point(directoryInput.Bounds.Width,0),window);
                     Check(right.HasValue&&right.Value.X<=window.Bounds.Width,"long workspace directory remains inside the settings viewport "+theme+" "+width);

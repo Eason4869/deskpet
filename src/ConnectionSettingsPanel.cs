@@ -48,11 +48,11 @@ namespace Dafeiyu
         void CreateSpeechEditor()
         {
             synthesis=new TextProviderEditor(pet.Settings,"speech");
-            cloud=LocalizedUi.Toggle(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.toggle")),pet.Settings.UseCloudVoice,v=>SetCloud(v));cloud.Name="UseCloudVoice";synthesis.Options.Children.Add(cloud);
+            cloud=SettingsSurface.Toggle(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.toggle")),pet.Settings.UseCloudVoice,v=>SetCloud(v));cloud.Name="UseCloudVoice";synthesis.Options.Children.Add(cloud);
             voice=VoiceField(pet.Settings.VoiceName,"SpeechVoice");LocalizedUi.Label(synthesis.Extras,()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text")),voice);synthesis.Extras.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeA")),11,Ui.Muted));SetCloud(pet.Settings.UseCloudVoice);
             speechAdvice=Ui.Text("",11,Ui.Muted);speechAdvice.Name="SpeechCharacterRecommendation";synthesis.Extras.Children.Add(speechAdvice);
             var sound=new StackPanel{Margin=new Thickness(0,16,0,0)};
-            sound.Children.Add(Ui.ReplySpeechToggle(pet));
+            sound.Children.Add(Ui.ReplySpeechToggle(pet,true));
             volumeLabel=LocalizedUi.Text(()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.template",pet.Settings.Volume)),12,Ui.Blue);sound.Children.Add(volumeLabel);
             volume=new Slider{Name="VoiceVolume",Minimum=0,Maximum=100,TickFrequency=5,IsSnapToTickEnabled=true,Value=pet.Settings.Volume,Margin=new Thickness(0,8,0,12)};
             bool draggingVolume=false;
@@ -85,7 +85,7 @@ namespace Dafeiyu
         public void ShowSection(int index)
         {
             EnsureSection(index);
-            if(sectionScrolls[index]==null)sectionScrolls[index]=Ui.Scroll(sections[index]);
+            if(sectionScrolls[index]==null)sectionScrolls[index]=SettingsSurface.Scroll(sections[index]);
             if(!ReferenceEquals(page.Content,sectionScrolls[index]))page.Content=sectionScrolls[index];
         }
         internal void DisposeImageGeneration(){if(images!=null)images.Dispose();}
@@ -261,7 +261,7 @@ namespace Dafeiyu
                 key=new PasswordBox{Name=prefix+"Key",Password=settings.ApiKey,MinHeight=38,Padding=new Thickness(10,7,10,7),BorderBrush=Ui.Line,Background=ThemeManager.FieldSurface};
                 protocol=LocalizedUi.Options(new ComboBox{Name=prefix+"Protocol",ItemsSource=kind=="text" ? new[]{"OpenAI Chat Completions","Anthropic Messages"} : kind=="live" ? new[]{"Gemini Live WebSocket"} : new[]{TextResources.Get("connectionSettingsPanel.connectionEditor.itemsSourceKindKind"),"OpenAI Audio","MiMo Chat Audio"},MinHeight=38,Padding=new Thickness(8)},()=>(kind=="text" ? new[]{"OpenAI Chat Completions","Anthropic Messages"} : kind=="live" ? new[]{"Gemini Live WebSocket"} : new[]{TextResources.Get("connectionSettingsPanel.connectionEditor.itemsSourceKindKind"),"OpenAI Audio","MiMo Chat Audio"}));
                 protocol.SelectedIndex=kind=="text" ? (settings.Protocol=="anthropic"?1:0) : kind=="live"?0:settings.Protocol=="mimo"?2:settings.Protocol=="openai"?1:0;
-                proxy=LocalizedUi.Toggle(()=>(TextResources.Get("connectionSettingsPanel.connectionEditor.toggle")),settings.UseProxy,v=>{});proxy.Name=prefix+"Proxy";
+                proxy=SettingsSurface.Toggle(()=>(TextResources.Get("connectionSettingsPanel.connectionEditor.toggle")),settings.UseProxy,v=>{});proxy.Name=prefix+"Proxy";
                 proxyAddress=Ui.Field(ProxyConfiguration.Normalize(settings.ProxyAddress));proxyAddress.Name=prefix+"ProxyAddress";
                 SettingsConstructionTrace.Mark("connection.fields.ready");
                 var presets=new ComboBox{Name=prefix+"Preset",ItemsSource=ServicePresets.For(kind),SelectedIndex=0,MinHeight=38,Padding=new Thickness(8)};
@@ -271,7 +271,7 @@ namespace Dafeiyu
                 key.PasswordChanged+=delegate {keyOrigin=address.Text;};
                 address.TextChanged+=delegate {if(key.Password.Length>0 && !ServicePresets.SameOrigin(keyOrigin,address.Text)){key.Clear();LocalizedUi.Set(hint,"Text",()=>(TextResources.Get("connectionSettingsPanel.connectionEditor.hint")));}};
                 presets.SelectionChanged+=delegate {var preset=presets.SelectedItem as ServicePreset;if(preset==null)return;if(FactorySelected!=null)FactorySelected(preset.Url.Length==0?"custom":ProviderIdentity.Brand(preset.Url));if(preset.Url.Length==0){if(Changed!=null)Changed();return;}applyingPreset=true;if(!ServicePresets.SameOrigin(address.Text,preset.Url))key.Clear();address.Text=preset.Url;model.Text=preset.Model;protocol.SelectedIndex=kind=="text"?(preset.Protocol=="anthropic"?1:0):kind=="live"?0:preset.Protocol=="mimo"?2:1;LocalizedUi.Set(hint,"Text",()=>(preset.Note.Length==0 ? TextResources.Get("connectionSettingsPanel.connectionEditor.lengthPresetNote") : preset.Note));applyingPreset=false;if(Changed!=null)Changed();};
-                streamReplies=LocalizedUi.Toggle(()=>(TextResources.Get("connectionSettingsPanel.connectionEditor.toggle.alternativeA")),settings.StreamReplies,v=>{});streamReplies.Name=prefix+"StreamReplies";
+                streamReplies=SettingsSurface.Toggle(()=>(TextResources.Get("connectionSettingsPanel.connectionEditor.toggle.alternativeA")),settings.StreamReplies,v=>{});streamReplies.Name=prefix+"StreamReplies";
                 Children.Add(Pair(()=> (TextResources.Get("connectionSettingsPanel.connectionEditor.pair")),presets,()=> (TextResources.Get("connectionSettingsPanel.connectionEditor.pair.alternativeA")),protocol));
                 LocalizedUi.Label(this,()=>(kind=="live"?TextResources.Get("connectionSettingsPanel.connectionEditor.text.alternativeF"):TextResources.Get("connectionSettingsPanel.connectionEditor.text.alternativeG")),address);
                 if(kind=="text"){LocalizedUi.Label(this,()=>(TextResources.Get("connectionSettingsPanel.connectionEditor.text.alternativeH")),new SecretField(key));model.Visibility=Visibility.Collapsed;Children.Add(model);}else Children.Add(Pair(()=> (TextResources.Get("connectionSettingsPanel.connectionEditor.pair.alternativeB")),new SecretField(key),()=> (TextResources.Get("connectionSettingsPanel.connectionEditor.pair.alternativeC")),model));

@@ -21,7 +21,7 @@ internal sealed class LiquidThemeReveal : IDisposable
     private readonly Window window;
     private readonly Grid host;
     private readonly Control content;
-    private readonly Button button;
+    private readonly Button? button;
     private readonly Action<string> commit;
     private readonly Func<bool> reducedMotion;
     private readonly TimeSpan duration;
@@ -33,12 +33,13 @@ internal sealed class LiquidThemeReveal : IDisposable
     private TimeSpan activeDuration;
     private string activeEffect = ThemeTransitionMotion.Flow;
     private string? targetMode;
+    private Control? settingsOrigin;
     private bool targetDark;
     private bool saveOnFinish;
     private bool systemAppearancePrepared;
     private int generation;
 
-    internal LiquidThemeReveal(Window window, Grid host, Control content, Button button,
+    internal LiquidThemeReveal(Window window, Grid host, Control content, Button? button,
         Action<string> commit, TimeSpan duration, Func<string> motion, Func<bool>? reducedMotion = null,
         BeginLiquidThemeSound? beginSound = null)
     {
@@ -51,8 +52,11 @@ internal sealed class LiquidThemeReveal : IDisposable
         this.motion = motion;
         this.reducedMotion = reducedMotion ?? (() => MacServices.PrefersReducedMotion);
         sound = new LiquidThemeSoundBinding(beginSound);
-        button.Click += Switch;
-        button.GettingFocus += PreservePointerFocus;
+        if (button != null)
+        {
+            button.Click += Switch;
+            button.GettingFocus += PreservePointerFocus;
+        }
         host.SizeChanged += Interrupt;
         window.ScalingChanged += Interrupt;
         window.Deactivated += Interrupt;
@@ -73,6 +77,7 @@ internal sealed class LiquidThemeReveal : IDisposable
 
     private void RefreshIcon()
     {
+        if (button == null) return;
         button.Content = new Viewbox
         {
             Width = 18, Height = 18, IsHitTestVisible = false,
@@ -94,24 +99,26 @@ internal sealed class LiquidThemeReveal : IDisposable
         LocalizedUi.Automation(button, Caption);
     }
 
-    private void Switch(object? sender, RoutedEventArgs args)
+    private void Switch(object? sender, RoutedEventArgs args) => ChangeTheme(ThemeSwitch.Next(DesktopTheme.Mode), button!);
+
+    internal void ChangeTheme(string next, Control origin)
     {
-        if (targetMode != null) return;
+        if (targetMode != null || next == DesktopTheme.Mode) return;
+        if (origin != button) settingsOrigin = origin;
         sound.Cancel();
-        string next = ThemeSwitch.Next(DesktopTheme.Mode);
         bool wasDark = DesktopTheme.IsDark;
         bool reduceMotion = reducedMotion();
         string effect = motion();
         bool couldChangePalette = next == "system" || (next == "dark") != wasDark;
         if (systemAppearancePrepared) Finish();
-        if (couldChangePalette && !reduceMotion) Prepare(effect);
+        if (couldChangePalette && !reduceMotion) Prepare(effect, origin);
         DesktopTheme.Apply(next);
         if (DesktopTheme.IsDark != wasDark && StartPrepared(next, true)) return;
 
         ClearLayer();
         commit(next);
-        if (wasDark != DesktopTheme.IsDark) sound.Start(DesktopTheme.IsDark, duration, true);
-        if (wasDark == DesktopTheme.IsDark && !reduceMotion && effect != ThemeTransitionMotion.Off) AnimateIcon();
+        if (wasDark != DesktopTheme.IsDark) sound.Start(DesktopTheme.IsDark, duration, true, effect);
+        if (origin == button && wasDark == DesktopTheme.IsDark && !reduceMotion && effect != ThemeTransitionMotion.Off) AnimateIcon();
     }
 
     // Keep this window's theme resources on the old variant until the old snapshot has been taken.
@@ -129,7 +136,7 @@ internal sealed class LiquidThemeReveal : IDisposable
     {
         Finish();
         if (reducedMotion()) return;
-        Prepare(motion());
+        Prepare(motion(), button ?? settingsOrigin);
         systemAppearancePrepared = layer != null;
     }
 
@@ -140,19 +147,22 @@ internal sealed class LiquidThemeReveal : IDisposable
         if (DesktopTheme.Mode != "system" || !StartPrepared("system", false)) ClearLayer();
     }
 
-    private void Prepare(string effect)
+    private void Prepare(string effect, Control? anchor)
     {
         if (effect == ThemeTransitionMotion.Off || duration <= TimeSpan.Zero || !content.IsEffectivelyVisible || window.WindowState == WindowState.Minimized ||
             content.Bounds.Width < 1 || content.Bounds.Height < 1 ||
             content.GetVisualDescendants().Any(v => v.IsEffectivelyVisible &&
                 (v is NativeControlHost || v is Popup { IsOpen: true }))) return;
-        double originY = effect == ThemeTransitionMotion.Flow ? button.Bounds.Height - 2 : button.Bounds.Height / 2;
-        var origin = button.TranslatePoint(new Point(button.Bounds.Width / 2, originY), content);
-        if (!origin.HasValue) return;
+        var origin = new Point(Math.Max(0, content.Bounds.Width - 42), 22);
+        if (anchor is { IsEffectivelyVisible: true })
+        {
+            double originY = effect == ThemeTransitionMotion.Flow ? anchor.Bounds.Height - 2 : anchor.Bounds.Height / 2;
+            origin = anchor.TranslatePoint(new Point(anchor.Bounds.Width / 2, originY), content) ?? origin;
+        }
         var before = Capture();
         if (before == null) return;
-        paths = ThemeRevealPaths.Create(effect, content.Bounds.Width, content.Bounds.Height, origin.Value.X, origin.Value.Y);
-        layer = new SnapshotLayer(before, content.Bounds.Size, paths.Refraction != null);
+        paths = ThemeRevealPaths.Create(effect, content.Bounds.Width, content.Bounds.Height, origin.X, origin.Y);
+        layer = new SnapshotLayer(before, content.Bounds.Size, paths);
         activeDuration = ThemeTransitionMotion.Duration(effect, duration);
         activeEffect = effect;
         host.Children.Add(layer);
@@ -173,7 +183,7 @@ internal sealed class LiquidThemeReveal : IDisposable
         targetDark = DesktopTheme.IsDark;
         saveOnFinish = persist;
         clock.Restart();
-        if (persist) sound.Start(targetDark, activeDuration, !ThemeTransitionMotion.IsLiquid(activeEffect));
+        if (persist) sound.Start(targetDark, activeDuration, false, activeEffect);
         int current = ++generation;
         Action<TimeSpan>? frame = null;
         frame = _ =>
@@ -186,7 +196,7 @@ internal sealed class LiquidThemeReveal : IDisposable
 
     private void AnimateIcon()
     {
-        if (button.Content is not Control icon) return;
+        if (button?.Content is not Control icon) return;
         var scale = new ScaleTransform(.84, .84);
         icon.RenderTransform = scale;
         scale.Transitions = new Transitions
@@ -196,7 +206,7 @@ internal sealed class LiquidThemeReveal : IDisposable
         };
         window.RequestAnimationFrame(_ =>
         {
-            if (!ReferenceEquals(button.Content, icon) || !window.IsVisible) return;
+            if (!ReferenceEquals(button?.Content, icon) || !window.IsVisible) return;
             scale.ScaleX = scale.ScaleY = 1;
         });
     }
@@ -236,8 +246,7 @@ internal sealed class LiquidThemeReveal : IDisposable
 
         try
         {
-            layer!.SetClip(ClipAt(paths!.Reveal, progress));
-            if (paths.Refraction != null) layer.SetRefractionClip(ClipAt(paths.Refraction, progress));
+            layer!.SetFrame(paths!, progress);
             sound.Advance(progress);
             return true;
         }
@@ -265,7 +274,7 @@ internal sealed class LiquidThemeReveal : IDisposable
     }
     private void OnPointerPressed(object? sender, PointerPressedEventArgs args)
     {
-        if (!button.IsPointerOver) Finish();
+        if (button?.IsPointerOver != true) Finish();
     }
     private void PreservePointerFocus(object? sender, FocusChangingEventArgs args)
     {
@@ -274,7 +283,7 @@ internal sealed class LiquidThemeReveal : IDisposable
     }
     private void OnKeyDown(object? sender, KeyEventArgs args)
     {
-        if (!button.IsKeyboardFocusWithin || args.Key is not (Key.Space or Key.Enter)) Finish();
+        if (button?.IsKeyboardFocusWithin != true || args.Key is not (Key.Space or Key.Enter)) Finish();
     }
     private void Interrupt(object? sender, EventArgs args) => Finish();
     private void WindowChanged(object? sender, AvaloniaPropertyChangedEventArgs args)
@@ -315,8 +324,11 @@ internal sealed class LiquidThemeReveal : IDisposable
     public void Dispose()
     {
         Finish();
-        button.Click -= Switch;
-        button.GettingFocus -= PreservePointerFocus;
+        if (button != null)
+        {
+            button.Click -= Switch;
+            button.GettingFocus -= PreservePointerFocus;
+        }
         host.SizeChanged -= Interrupt;
         window.ScalingChanged -= Interrupt;
         window.Deactivated -= Interrupt;
@@ -343,16 +355,17 @@ internal sealed class LiquidThemeReveal : IDisposable
     {
         private readonly RenderTargetBitmap before;
         private readonly Rect viewport;
-        private readonly bool refract;
+        private readonly SnapshotImage[]? refractionImages;
+        private readonly ZipperDecoration? zipper;
         private RenderTargetBitmap? after;
         private SnapshotImage? revealedImage;
-        private SnapshotImage? refractionImage;
 
-        internal SnapshotLayer(RenderTargetBitmap before, Size size, bool refract)
+        internal SnapshotLayer(RenderTargetBitmap before, Size size, ThemeRevealPaths paths)
         {
             this.before = before;
             viewport = new Rect(size);
-            this.refract = refract;
+            if (paths.Refraction != null) refractionImages = new SnapshotImage[ThemeRevealPaths.RefractionOpacities.Length];
+            if (paths.Zipper != null) zipper = new ZipperDecoration();
             Name = "LiquidThemeOverlay";
             IsHitTestVisible = false;
             Focusable = false;
@@ -360,14 +373,23 @@ internal sealed class LiquidThemeReveal : IDisposable
             Children.Add(new SnapshotImage(before, viewport));
         }
 
-        internal void SetClip(Geometry clip)
+        internal void SetFrame(ThemeRevealPaths paths, double progress)
         {
-            if (revealedImage != null) revealedImage.Clip = clip;
-        }
-
-        internal void SetRefractionClip(Geometry clip)
-        {
-            if (refractionImage != null) refractionImage.Clip = clip;
+            if (revealedImage != null) revealedImage.Clip = ClipAt(paths.Reveal, progress);
+            if (refractionImages != null)
+            {
+                for (int i = 0; i < refractionImages.Length; i++)
+                {
+                    var band = new StreamGeometry();
+                    using (var context = band.Open())
+                    {
+                        context.SetFillRule(FillRule.NonZero);
+                        paths.Refraction!.WriteRefraction(progress, i, new ClipOutline(context));
+                    }
+                    refractionImages[i].Clip = band;
+                }
+            }
+            zipper?.SetFrame(paths.Zipper!, progress);
         }
 
         internal bool SetAfter(RenderTargetBitmap bitmap)
@@ -376,12 +398,17 @@ internal sealed class LiquidThemeReveal : IDisposable
             after = bitmap;
             revealedImage = new SnapshotImage(bitmap, viewport) { Clip = new StreamGeometry() };
             Children.Add(revealedImage);
-            if (refract)
+            if (refractionImages != null)
             {
                 var shifted = new Rect(ThemeRevealPaths.RefractionOffsetX, ThemeRevealPaths.RefractionOffsetY, viewport.Width, viewport.Height);
-                refractionImage = new SnapshotImage(bitmap, shifted) { Clip = new StreamGeometry() };
-                Children.Add(refractionImage);
+                for (int i = 0; i < refractionImages.Length; i++)
+                {
+                    var band = new SnapshotImage(bitmap, shifted) { Clip = new StreamGeometry(), Opacity = ThemeRevealPaths.RefractionOpacities[i] };
+                    refractionImages[i] = band;
+                    Children.Add(band);
+                }
             }
+            if (zipper != null) Children.Add(zipper);
             return true;
         }
 
@@ -390,11 +417,57 @@ internal sealed class LiquidThemeReveal : IDisposable
             public override void Render(DrawingContext context) => context.DrawImage(bitmap, rect);
         }
 
+        private sealed class ZipperDecoration : Control
+        {
+            private static readonly IBrush[] Brushes =
+            {
+                new SolidColorBrush(ColorOf(ThemeRevealPaths.ZipperLining)),
+                new SolidColorBrush(ColorOf(ThemeRevealPaths.ZipperRim)),
+                new SolidColorBrush(ColorOf(ThemeRevealPaths.ZipperTeeth)),
+                new LinearGradientBrush
+                {
+                    StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                    EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                    GradientStops = new GradientStops
+                    {
+                        new(ColorOf(ThemeRevealPaths.ZipperPullLight), 0),
+                        new(ColorOf(ThemeRevealPaths.ZipperPullMiddle), .53),
+                        new(ColorOf(ThemeRevealPaths.ZipperPullDark), 1)
+                    }
+                }
+            };
+            private readonly Geometry?[] parts = new Geometry?[ThemeRevealPaths.ZipperParts.Length];
+
+            internal void SetFrame(ZipperThemeShape shape, double progress)
+            {
+                Opacity = ZipperThemeShape.HardwareOpacity(progress);
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    var part = new StreamGeometry();
+                    using (var context = part.Open())
+                    {
+                        context.SetFillRule(FillRule.NonZero);
+                        shape.WritePart(progress, ThemeRevealPaths.ZipperParts[i], new ClipOutline(context));
+                    }
+                    parts[i] = part;
+                }
+                InvalidateVisual();
+            }
+
+            public override void Render(DrawingContext context)
+            {
+                for (int i = 0; i < parts.Length; i++)
+                    if (parts[i] is Geometry part) context.DrawGeometry(Brushes[i], null, part);
+            }
+
+            private static Color ColorOf(uint value) => Color.FromArgb((byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value);
+        }
+
         public void Dispose()
         {
             Children.Clear();
             revealedImage = null;
-            refractionImage = null;
+            if (refractionImages != null) Array.Clear(refractionImages);
             before.Dispose();
             after?.Dispose();
             after = null;

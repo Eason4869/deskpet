@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 
 namespace Dafeiyu
@@ -8,13 +9,21 @@ namespace Dafeiyu
     public sealed class SettingsWindow : Window
     {
         public SettingsPage Page {get;private set;}
+        internal LiquidThemeReveal ThemeReveal { get; private set; }
         public SettingsWindow(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");
             LocalizedUi.Window(this,()=>(TextResources.Get("settingsWindow.settingsWindow.window")),960,790);
             MinWidth=Math.Min(820,Math.Max(320,SystemParameters.WorkArea.Width-36));
             MinHeight=Math.Min(600,Math.Max(320,SystemParameters.WorkArea.Height-36));
-            Background=GlassSurface.Background();Icon=Ui.ApplicationIcon();Page=new SettingsPage(companion);Content=Page;
+            Background=GlassSurface.Background();Icon=Ui.ApplicationIcon();Page=new SettingsPage(companion);
+            var surface = new Grid { Background = ThemeManager.Surface };
+            surface.Children.Add(Page);
+            var host = new Grid { ClipToBounds = true };
+            host.Children.Add(surface);
+            Content = host;
+            ThemeReveal = new LiquidThemeReveal(this, host, surface, null, companion.SetThemeMode,
+                LiquidThemeShape.DefaultDuration, () => companion.Settings.ThemeTransitionEffect, companion.PlayThemeSound);
             Closed+=delegate {Page.Dispose();};
             Loaded+=delegate {if(WindowState==WindowState.Normal)DesktopInterop.PlaceBeside(new WindowInteropHelper(this).Handle,new WindowInteropHelper(companion).Handle);};
         }

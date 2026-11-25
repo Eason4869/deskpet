@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization.Json;
 using System.Text;
@@ -55,7 +56,7 @@ namespace Dafeiyu.Tests
                 }
                 finally{Directory.Delete(root,true);}
                 Check(typeof(PetSettings).Assembly.GetType("Dafeiyu.NotificationSoundPlayer")!=null&&typeof(PetSettings).Assembly.GetType("Dafeiyu.NotificationCue")!=null,"shared notification sound service exists");
-                ThemePreferences();ThemePlayback();ThemeInterruption();DelayedDevice();DeferredTail();
+                ThemePreferences();ThemePlayback();ThemeMotionProfiles();ThemeInterruption();DelayedDevice();DeferredTail();
                 Resources();Policy(enabled);Lifecycle(enabled);QuietLifecycle();SerializedRestart();
                 Console.WriteLine("Notification sound tests: "+checks+" passed");return 0;
             }
@@ -124,6 +125,41 @@ namespace Dafeiyu.Tests
                 sound.Complete();
                 Until(()=>output.Plays==4&&output.Interrupts>0,"normal completion stops the flow and plays one finish");
                 Until(()=>output.Disposals==1,"the finish tail releases the shared device");
+            }
+        }
+
+        static void ThemeMotionProfiles()
+        {
+            var profiles = new System.Collections.Generic.List<byte[]>();
+            foreach (string motion in ThemeTransitionMotion.Choices.Where(effect => effect != ThemeTransitionMotion.Off))
+            {
+                double onset, travel, end;
+                ThemeTransitionMotion.SoundStages(motion, out onset, out travel, out end);
+                Check(0 < onset && onset < travel && travel < end && end <= 1, motion + " has ordered visual sound stages");
+                var duration = TimeSpan.FromMilliseconds(800);
+                var light = LiquidThemeAudio.Render(LiquidThemeCue.Flow, false, duration, motion);
+                var dark = LiquidThemeAudio.Render(LiquidThemeCue.Flow, true, duration, motion);
+                Check(light.Length == 76800 && light.Any(sample => sample != 0) && !light.SequenceEqual(dark),
+                    motion + " generates bounded, audible direction-specific PCM");
+                Check(profiles.All(other => !light.SequenceEqual(other)), motion + " has its own travel sound");
+                profiles.Add(light);
+                if (motion == ThemeTransitionMotion.Flow) continue;
+
+                var settings = new PetSettings { ThemeTransitionSoundEnabled = true };
+                var output = new FakeOutput();
+                using (var player = new NotificationSoundPlayer(() => settings, () => output))
+                {
+                    var sound = player.TryPlayTheme(false, TimeSpan.FromSeconds(4), false, motion);
+                    if (sound == null) throw new Exception(motion + " transition sound was not admitted");
+                    Until(() => output.Plays == 1, motion + " plays one opening cue");
+                    sound.Advance(onset);
+                    Until(() => output.Plays == 2, motion + " starts its contact cue at its own visual phase");
+                    sound.Advance(travel);
+                    Until(() => output.Plays == 3, motion + " keeps its movement sound in sync");
+                    sound.Cancel();
+                    sound.Complete();
+                    Until(() => output.Disposals == 1 && output.Plays == 3, motion + " cancellation suppresses its finish cue");
+                }
             }
         }
 
@@ -234,19 +270,22 @@ namespace Dafeiyu.Tests
         static void WriteThemeWavs(string output)
         {
             Directory.CreateDirectory(output);
-            foreach(bool dark in new[]{true,false})
+            foreach (string motion in ThemeTransitionMotion.Choices.Where(effect => effect != ThemeTransitionMotion.Off))
+            foreach (bool dark in new[] { true, false })
             {
                 int rate=LiquidThemeAudio.SampleRate;
-                var duration=LiquidThemeShape.DefaultDuration;
+                var duration=ThemeTransitionMotion.Duration(motion, LiquidThemeShape.DefaultDuration);
+                double onset, travel, end;
+                ThemeTransitionMotion.SoundStages(motion, out onset, out travel, out end);
                 int frames=(int)(rate*duration.TotalSeconds);
-                var outro=LiquidThemeAudio.Render(LiquidThemeCue.Finish,dark,TimeSpan.Zero);
+                var outro=LiquidThemeAudio.Render(LiquidThemeCue.Finish,dark,TimeSpan.Zero,motion);
                 var samples=new short[frames+outro.Length/2];
-                Mix(samples,0,LiquidThemeAudio.Render(LiquidThemeCue.Drop,dark,TimeSpan.Zero));
-                Mix(samples,(int)(frames*LiquidThemeShape.ImpactProgress),LiquidThemeAudio.Render(LiquidThemeCue.Splash,dark,TimeSpan.Zero));
-                Mix(samples,(int)(frames*LiquidThemeShape.FlowProgress),LiquidThemeAudio.Render(LiquidThemeCue.Flow,dark,
-                    TimeSpan.FromSeconds(duration.TotalSeconds*(1-LiquidThemeShape.FlowProgress))));
+                Mix(samples,0,LiquidThemeAudio.Render(LiquidThemeCue.Drop,dark,TimeSpan.Zero,motion),(int)(frames*onset));
+                Mix(samples,(int)(frames*onset),LiquidThemeAudio.Render(LiquidThemeCue.Splash,dark,TimeSpan.Zero,motion),(int)(frames*(travel-onset)));
+                Mix(samples,(int)(frames*travel),LiquidThemeAudio.Render(LiquidThemeCue.Flow,dark,
+                    TimeSpan.FromSeconds(duration.TotalSeconds*(end-travel)),motion));
                 Mix(samples,frames,outro);
-                string file=Path.Combine(output,dark?"DeskPet-Liquid-Light-to-Dark.wav":"DeskPet-Liquid-Dark-to-Light.wav");
+                string file=Path.Combine(output,"DeskPet-"+motion+"-"+(dark?"Light-to-Dark":"Dark-to-Light")+".wav");
                 using(var writer=new BinaryWriter(File.Create(file)))
                 {
                     writer.Write(Encoding.ASCII.GetBytes("RIFF"));writer.Write(36+samples.Length*2);
@@ -259,10 +298,16 @@ namespace Dafeiyu.Tests
             }
         }
 
-        static void Mix(short[] target,int offset,byte[] pcm)
+        static void Mix(short[] target,int offset,byte[] pcm,int limit=int.MaxValue)
         {
-            for(int i=0;i<pcm.Length/2&&offset+i<target.Length;i++)
-                target[offset+i]+=(short)(pcm[i*2]|pcm[i*2+1]<<8);
+            int frames=Math.Min(Math.Min(pcm.Length/2,limit),target.Length-offset);
+            int fade=frames<pcm.Length/2?Math.Min(frames,LiquidThemeAudio.SampleRate/100):0;
+            for(int i=0;i<frames;i++)
+            {
+                var sample=(short)(pcm[i*2]|pcm[i*2+1]<<8);
+                if(i>=frames-fade)sample=(short)(sample*(frames-i-1)/fade);
+                target[offset+i]+=sample;
+            }
         }
 
         static void Resources()

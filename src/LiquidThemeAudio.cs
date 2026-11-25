@@ -11,10 +11,12 @@ namespace Dafeiyu
         const double MaxFlowSeconds = 2;
         const double Tau = 2 * Math.PI;
 
-        internal static byte[] Render(LiquidThemeCue cue, bool dark, TimeSpan flowDuration)
+        internal static byte[] Render(LiquidThemeCue cue, bool dark, TimeSpan flowDuration, string motion = ThemeTransitionMotion.Flow)
         {
             double[] mix;
-            switch (cue)
+            if (motion == ThemeTransitionMotion.Ripple || motion == ThemeTransitionMotion.Refraction || motion == ThemeTransitionMotion.Zipper)
+                mix = MotionCue(cue, dark, flowDuration, motion);
+            else switch (cue)
             {
                 case LiquidThemeCue.Drop:
                     mix = new double[280 * FramesPerMillisecond];
@@ -34,12 +36,10 @@ namespace Dafeiyu
                     AddBubble(mix, dark, 84, 278, 98, 11, .014);
                     break;
                 case LiquidThemeCue.Flow:
-                    int frameCount = (int)Math.Round(SampleRate * Math.Max(0, Math.Min(MaxFlowSeconds, flowDuration.TotalSeconds)),
-                        MidpointRounding.AwayFromZero);
-                    if (frameCount == 0) return new byte[0];
-                    mix = new double[frameCount];
+                    mix = new double[TravelFrames(flowDuration)];
                     AddTexture(mix, dark, 0xde6c373fu, .169, 0);
                     AddFlowBubbles(mix, dark);
+                    AddSurfaceSpray(mix, dark);
                     break;
                 case LiquidThemeCue.Finish:
                     mix = new double[135 * FramesPerMillisecond];
@@ -68,6 +68,107 @@ namespace Dafeiyu
                 pcm[frame * 2 + 1] = (byte)((sample >> 8) & 0xff);
             }
             return pcm;
+        }
+
+        static int TravelFrames(TimeSpan duration)
+        {
+            return (int)Math.Round(SampleRate * Math.Max(0, Math.Min(MaxFlowSeconds, duration.TotalSeconds)), MidpointRounding.AwayFromZero);
+        }
+
+        static double[] MotionCue(LiquidThemeCue cue, bool dark, TimeSpan duration, string motion)
+        {
+            int frames = cue == LiquidThemeCue.Flow ? TravelFrames(duration) :
+                (cue == LiquidThemeCue.Splash ? 196 : cue == LiquidThemeCue.Drop ? 150 : 145) * FramesPerMillisecond;
+            var mix = new double[frames];
+            if (motion == ThemeTransitionMotion.Ripple)
+            {
+                if (cue == LiquidThemeCue.Flow)
+                {
+                    AddTexture(mix, dark, 0xb653ad71u, .045, 0);
+                    for (int i = 0; i < 4; i++)
+                        AddBubble(mix, dark, (int)(duration.TotalMilliseconds * i * .23), 270 + i * 42, -43, 31, .045 - i * .006);
+                }
+                else
+                {
+                    double pitch = cue == LiquidThemeCue.Splash ? 255 : 330;
+                    AddBubble(mix, dark, 6, pitch, -74, 25, .062);
+                    AddBubble(mix, dark, 52, pitch * 1.37, -53, 22, .041);
+                    AddTexture(mix, dark, 0x115ac787u, .055, 47);
+                }
+            }
+            else if (motion == ThemeTransitionMotion.Refraction)
+            {
+                AddAirSweep(mix, dark, 0x85ab3177u, cue == LiquidThemeCue.Flow ? .105 : .071);
+                if (cue != LiquidThemeCue.Flow)
+                {
+                    AddBubble(mix, dark, 5, cue == LiquidThemeCue.Splash ? 527 : 432, 61, 19, .041);
+                    AddBubble(mix, dark, 45, 654, -100, 18, .020);
+                }
+            }
+            else
+            {
+                uint seed = 0xa63d531bu;
+                if (cue == LiquidThemeCue.Flow)
+                {
+                    AddAirSweep(mix, dark, 0xd36e17b1u, .067);
+                    for (int offset = 0; offset * FramesPerMillisecond < mix.Length;)
+                    {
+                        AddNoisePulse(mix, dark, ref seed, offset, 17, .124 + .049 * NextNoise(ref seed), 2100);
+                        offset += 27 + (int)(7 * NextNoise(ref seed));
+                    }
+                }
+                else
+                {
+                    AddNoisePulse(mix, dark, ref seed, 6, 31, .20, 1550);
+                    AddNoisePulse(mix, dark, ref seed, 33, 20, .097, 2150);
+                    AddBubble(mix, dark, 5, cue == LiquidThemeCue.Finish ? 266 : 372, -78, 16, .042);
+                }
+            }
+            return mix;
+        }
+
+        static void AddAirSweep(double[] mix, bool dark, uint seed, double gain)
+        {
+            double lower = FilterCoefficient(dark ? 300 : 490);
+            double start = FilterCoefficient(dark ? 730 : 1050);
+            double range = FilterCoefficient(dark ? 1910 : 3100) - start;
+            double low = 0, band = 0;
+            for (int i = 0; i < mix.Length; i++)
+            {
+                double position = (i + .5) / mix.Length;
+                double envelope = Math.Sin(Math.PI * position);
+                double noise = NextNoise(ref seed);
+                low += (noise - low) * lower;
+                band += (noise - band) * (start + range * envelope);
+                mix[i] += (band - low) * gain * envelope;
+            }
+        }
+
+        static void AddSurfaceSpray(double[] mix, bool dark)
+        {
+            uint seed = 0xc7eb713fu;
+            for (int offset = 20; offset * FramesPerMillisecond < mix.Length;)
+            {
+                AddNoisePulse(mix, dark, ref seed, offset, 48, .102 + .032 * NextNoise(ref seed), 3500);
+                offset += 95 + (int)(34 * NextNoise(ref seed));
+            }
+        }
+
+        static void AddNoisePulse(double[] mix, bool dark, ref uint seed, int offset, int milliseconds, double gain, double cutoff)
+        {
+            int start = offset * FramesPerMillisecond;
+            int length = Math.Min(mix.Length - start, milliseconds * FramesPerMillisecond);
+            double filter = FilterCoefficient(cutoff * (dark ? .63 : 1));
+            double decay = Decay(milliseconds * .28);
+            double value = 0;
+            for (int i = 0; i < length; i++)
+            {
+                value += (NextNoise(ref seed) - value) * filter;
+                double attack = Smooth(i / (2.0 * FramesPerMillisecond));
+                double release = Smooth((length - 1 - i) / (4.0 * FramesPerMillisecond));
+                mix[start + i] += value * gain * attack * release;
+                gain *= decay;
+            }
         }
 
         // Separate the body of the water from the finer spray with one-pole filters.

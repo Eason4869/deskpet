@@ -11,6 +11,7 @@ internal sealed class ThemeModePicker : UserControl
     private readonly Dictionary<string, Button> choices = new();
     private string value = "system";
     internal event Action<string>? Changed;
+    internal Button Origin(string mode) => choices[ThemeColors.Normalize(mode)];
     internal string Value
     {
         get => value;
@@ -32,7 +33,7 @@ internal sealed class ThemeModePicker : UserControl
             var button = new Button { Name = "ThemeChoice" + mode, Content = Preview(mode), Width = 84, Height = 64, Padding = new Thickness(4), Background = Brushes.Transparent, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(10) };
             button.Classes.Add("theme-choice");
             ToolTip.SetTip(button, title); Avalonia.Automation.AutomationProperties.SetName(button, title);
-            button.Click += (_, _) => { Value = mode; Changed?.Invoke(mode); }; choices.Add(mode, button); row.Children.Add(button);
+            button.Click += (_, _) => { Changed?.Invoke(mode); RefreshMode(); }; choices.Add(mode, button); row.Children.Add(button);
         }
         Grid.SetColumn(row, 1); layout.Children.Add(row);
         void Reflow(){bool narrow=layout.Bounds.Width<420;Grid.SetColumn(row,narrow?0:1);Grid.SetRow(row,narrow?1:0);Grid.SetColumnSpan(row,narrow?2:1);row.Margin=new Thickness(0,narrow?12:0,0,0);}

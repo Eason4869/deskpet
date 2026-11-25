@@ -194,7 +194,34 @@ namespace Dafeiyu
             outline.LineTo(right, bottom);
             outline.LineTo(left, bottom);
             outline.Close();
+            SurfaceSpray(outline, time, bottom, depth, amplitude, wavelength, radius, rim, rippleStrength, rippleDistance);
             return surface;
+        }
+
+        void SurfaceSpray(ILiquidThemeOutline outline, double time, double bottom, double depth, double amplitude,
+            double wavelength, double radius, double rim, double rippleStrength, double rippleDistance)
+        {
+            double activity = Smooth((time - .33) / .14) * (1 - Smooth((time - .88) / .12));
+            if (activity <= 0) return;
+            for (int i = 0; i < 10; i++)
+            {
+                double cycle = (time - .34) / (.116 + (i % 4) * .014) + i * .171;
+                double flight = cycle - Math.Floor(cycle);
+                double direction = i % 2 == 0 ? -1 : 1;
+                double reach = 18 + (i * 17 % 71);
+                double lift = (15 + (i * 13 % 29)) * activity;
+                double x = originX + direction * scale * (5 + reach * flight);
+                if (i >= 6)
+                {
+                    x = width * ((i - 6 + .5) / 4) + direction * scale * (8 + 23 * flight);
+                    lift *= .60;
+                }
+                double surface = Wave(x, time, bottom, depth, amplitude, wavelength, radius, rim, rippleStrength, rippleDistance);
+                double y = surface - scale * 4 * lift * flight * (1 - flight);
+                double drop = (1.25 + (i * 7 % 13) * .115) * scale * activity *
+                    Smooth(flight / .15) * (1 - Smooth((flight - .66) / .34));
+                if (drop > .15) Oval(outline, x, y, drop, drop * (1.42 - .43 * flight));
+            }
         }
 
         double Wave(double x, double time, double bottom, double depth, double amplitude, double wavelength,
@@ -207,7 +234,14 @@ namespace Dafeiyu
             double wave = amplitude * (Math.Sin(phase - time * 12) + .28 * Math.Sin(phase * 2 + time * 16));
             double offset = (distance / scale - rippleDistance) / 26;
             double ripple = rippleStrength * Math.Sin(offset * 4) * Math.Exp(-offset * offset);
-            return bottom - wetness * Math.Max(0, depth - wave - ripple);
+            double jet = 0;
+            if (distance < 50 * scale)
+            {
+                double contact = distance / (16 * scale);
+                jet = scale * (21 + 6 * Math.Sin(time * 46)) * Smooth((time - ImpactProgress) / .12) *
+                    (1 - Smooth((time - .9) / .10)) * Math.Exp(-contact * contact);
+            }
+            return bottom - wetness * Math.Max(0, depth - wave - ripple + jet);
         }
 
         static double Clamp(double value) { return Math.Max(0, Math.Min(1, value)); }

@@ -64,10 +64,15 @@ internal static class HolidayWardrobeLayoutChecks
             double unsplitWidth = partner.Bounds.Width;
             var ticket = owner.Holidays.TryBeginHover(0)!;
             var playback = new HolidayPlayback(); playback.Start(ticket); playback.MarkFirstFrameRendered(); owner.Holidays.MarkHoverFirstFrame(ticket);
-            for (int i = 0; i < 8; i++) playback.Advance(.25);
+            for (int i = 0; i < ticket.Clip.FrameCount; i++) playback.Advance(1 / ticket.Clip.Fps);
             Check(owner.Holidays.CompleteHover(ticket), "valid complete hover discovers wardrobe while settings stays open");
             Dispatcher.UIThread.RunJobs();
             Check(panel.IsVisible && Math.Abs(partner.Bounds.Width - wardrobe.Bounds.Width) < 1 && partner.Bounds.Width < unsplitWidth * .65, "discovery splits selector area into equal-width dropdowns live");
+            var enabled = panel.GetLogicalDescendants().OfType<CheckBox>().Distinct().Single(check => check.Name == "HolidayOutfitsEnabled");
+            double Right(Control control) => control.TranslatePoint(new Point(control.Bounds.Width, 0), window)!.Value.X;
+            Check(enabled.Content == null && Math.Abs(Right(enabled) - Right(wardrobe)) < 1 &&
+                Avalonia.Automation.AutomationProperties.GetName(enabled) == TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content"),
+                "wardrobe switch has a localized accessible name and aligns to the selector's right edge");
             Check(prompt.Text == "未保存的人格草稿，解锁衣柜时应当保留。", "live discovery preserves unsaved persona form");
             Check(wardrobe.Items.Count == 2 && wardrobe.Items[0]!.ToString() == "默认", "wardrobe contains default plus current character's owned outfit");
             foreach (var option in wardrobe.Items)

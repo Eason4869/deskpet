@@ -27,16 +27,22 @@ namespace Dafeiyu
 
         internal void WriteOutline(double progress, ILiquidThemeOutline outline)
         {
-            WriteSweep(progress, outline, false);
+            WriteSweep(progress, outline, -1);
         }
 
         internal void WriteRefraction(double progress, ILiquidThemeOutline outline)
         {
-            WriteSweep(progress, outline, true);
+            WriteRefraction(progress, 0, outline);
         }
 
-        void WriteSweep(double progress, ILiquidThemeOutline outline, bool band)
+        internal void WriteRefraction(double progress, int bandIndex, ILiquidThemeOutline outline)
         {
+            WriteSweep(progress, outline, bandIndex);
+        }
+
+        void WriteSweep(double progress, ILiquidThemeOutline outline, int bandIndex)
+        {
+            bool band = bandIndex >= 0;
             if (!(progress > 0) || (band && progress >= 1)) return;
             double open = Smooth(progress / .095);
             double spread = Smooth((progress - .025) / .39);
@@ -44,14 +50,16 @@ namespace Dafeiyu
             double end = StartSide * open + (maxSide - StartSide) * spread;
             double front = StartFront * open + (far - StartFront) * Smooth((progress - .04) / .96);
             double bow = 13 * Smooth(progress / .24);
+            double inset = band ? 1.45 * bandIndex * open : 0;
+            double leading = front - inset;
 
-            double leadingStart = front + Depth(start, bow);
+            double leadingStart = leading + Depth(start, bow);
             outline.MoveTo(X(leadingStart, start), Y(leadingStart, start));
-            WriteEdge(outline, front, start, end, bow);
+            WriteEdge(outline, leading, start, end, bow);
             if (band)
             {
                 // The curved trailing edge has the same profile, offset into the revealed theme.
-                double trailing = front - BandWidth * open;
+                double trailing = front - BandWidth * open + inset;
                 double trailingEnd = trailing + Depth(end, bow);
                 outline.LineTo(X(trailingEnd, end), Y(trailingEnd, end));
                 WriteEdge(outline, trailing, end, start, bow);

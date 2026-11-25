@@ -44,6 +44,8 @@ if(args.Contains("--notification-sounds")){if(Dafeiyu.Tests.NotificationSoundTes
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
+bool ThemeOverlay(Window window) => window.GetVisualDescendants().OfType<Control>().Any(c => c.Name == "LiquidThemeOverlay");
+void CompleteThemeReveal(Window window) => Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !ThemeOverlay(window); });
 void Complete(Task task) { Until(() => task.IsCompleted); task.GetAwaiter().GetResult(); }
 void CloseController(DesktopController owner){owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}
 T Result<T>(Task<T> task) { Complete(task); return task.GetAwaiter().GetResult(); }
@@ -81,7 +83,7 @@ try
             button.Focus(NavigationMethod.Tab);
             Check(button.IsFocused, "Tab navigation can focus the theme button");
             draft.Focus();
-            bool Overlay() => window.GetVisualDescendants().OfType<Control>().Any(c => c.Name == "LiquidThemeOverlay");
+            bool Overlay() => ThemeOverlay(window);
             void Switch() => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var store = new SettingsStore(Path.Combine(owner.DataDirectory, "settings.json"));
             Switch();
@@ -128,6 +130,24 @@ try
                 Check(store.Load().ThemeMode == "dark" && store.Load().ThemeTransitionEffect == effect,
                     $"Desktop {effect} remembers its choice and preserves the resulting theme");
             }
+            var settings = new SettingsWindow(owner);
+            try
+            {
+                settings.Show();
+                settings.SelectSection("behavior");
+                Dispatcher.UIThread.RunJobs();
+                var picker = settings.GetLogicalDescendants().OfType<ThemeModePicker>().Distinct().Single();
+                owner.Settings.ThemeTransitionEffect = ThemeTransitionMotion.Flow;
+                foreach (var mode in new[] { "light", "dark" })
+                {
+                    picker.Origin(mode).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Check(DesktopTheme.Mode == mode && ThemeOverlay(settings) == !reducedMotion,
+                        $"Setting preview reveals {mode} from its own window");
+                    CompleteThemeReveal(settings);
+                    Check(store.Load().ThemeMode == mode, $"Setting preview commits {mode} after its reveal");
+                }
+            }
+            finally { settings.Close(); }
         }
         finally { window.Close(); CloseController(owner); }
         Console.WriteLine("Theme reveal: " + assertions + " passed");
@@ -729,7 +749,11 @@ try
     var initialTheme = controller.Settings.ThemeMode;
     partnerSettings.SelectSection("behavior"); Dispatcher.UIThread.RunJobs();
     var themePicker = partnerSettings.GetLogicalDescendants().OfType<ThemeModePicker>().Distinct().Single();
-    void ChooseTheme(string mode) => themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "ThemeChoice" + mode).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    void ChooseTheme(string mode)
+    {
+        themePicker.Origin(mode).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        CompleteThemeReveal(partnerSettings);
+    }
     Check(themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Count() == 3, "desktop settings expose three theme preview cards");
     ChooseTheme("dark"); Dispatcher.UIThread.RunJobs();
     Check(Application.Current!.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark && controller.Settings.ThemeMode == "dark", "desktop theme selection applies dark immediately");

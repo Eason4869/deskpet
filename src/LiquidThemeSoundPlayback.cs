@@ -12,7 +12,7 @@ namespace Dafeiyu
         void Cancel();
     }
 
-    internal delegate ILiquidThemeSound BeginLiquidThemeSound(bool dark, TimeSpan duration, bool shortFeedback);
+    internal delegate ILiquidThemeSound BeginLiquidThemeSound(bool dark, TimeSpan duration, bool shortFeedback, string motion);
 
     internal sealed class LiquidThemeSoundBinding
     {
@@ -21,10 +21,10 @@ namespace Dafeiyu
 
         internal LiquidThemeSoundBinding(BeginLiquidThemeSound begin) { this.begin = begin; }
 
-        internal void Start(bool dark, TimeSpan duration, bool shortFeedback)
+        internal void Start(bool dark, TimeSpan duration, bool shortFeedback, string motion)
         {
             Cancel();
-            try { if (begin != null) active = begin(dark, duration, shortFeedback); }
+            try { if (begin != null) active = begin(dark, duration, shortFeedback, motion); }
             catch { /* The visual transition also works without audio. */ }
         }
 
@@ -59,6 +59,8 @@ namespace Dafeiyu
         readonly Func<int> allowedVolume;
         readonly bool dark;
         readonly double duration;
+        readonly string motion;
+        readonly double onset, travel, travelEnd;
         LiquidThemeCue next;
         long requestedAt;
         double progress;
@@ -66,12 +68,14 @@ namespace Dafeiyu
         bool terminal, cancelled, ended;
 
         internal LiquidThemeSoundPlayback(Func<ILiveAudioOutput> createOutput, Func<int> allowedVolume,
-            bool dark, TimeSpan duration, bool shortFeedback, int volume)
+            bool dark, TimeSpan duration, bool shortFeedback, int volume, string motion)
         {
             this.createOutput = createOutput;
             this.allowedVolume = allowedVolume;
             this.dark = dark;
             this.duration = duration.TotalSeconds;
+            this.motion = ThemeTransitionMotion.Normalize(motion);
+            ThemeTransitionMotion.SoundStages(this.motion, out onset, out travel, out travelEnd);
             lastVolume = volume;
             terminal = shortFeedback;
             SetCue(shortFeedback ? LiquidThemeCue.Short : LiquidThemeCue.Drop, 0);
@@ -79,8 +83,8 @@ namespace Dafeiyu
 
         public void Advance(double visualProgress)
         {
-            if (visualProgress < LiquidThemeShape.ImpactProgress) return;
-            var cue = visualProgress < LiquidThemeShape.FlowProgress ? LiquidThemeCue.Splash : LiquidThemeCue.Flow;
+            if (visualProgress < onset) return;
+            var cue = visualProgress < travel ? LiquidThemeCue.Splash : LiquidThemeCue.Flow;
             lock (gate)
             {
                 if (terminal || cancelled || ended || (int)cue <= (int)next) return;
@@ -174,7 +178,7 @@ namespace Dafeiyu
                         if (isTail) break;
                         continue;
                     }
-                    var pcm = LiquidThemeAudio.Render(cue, dark, TimeSpan.FromSeconds(Math.Max(0, available)));
+                    var pcm = LiquidThemeAudio.Render(cue, dark, TimeSpan.FromSeconds(Math.Max(0, available)), motion);
                     if (pcm.Length == 0 || !Current(cue)) continue;
 
                     if (output == null)
@@ -259,9 +263,9 @@ namespace Dafeiyu
 
         double RemainingSeconds(LiquidThemeCue cue, double visualProgress, long started)
         {
-            double end = 1;
-            if (cue == LiquidThemeCue.Drop) end = LiquidThemeShape.ImpactProgress;
-            if (cue == LiquidThemeCue.Splash) end = LiquidThemeShape.FlowProgress;
+            double end = travelEnd;
+            if (cue == LiquidThemeCue.Drop) end = onset;
+            if (cue == LiquidThemeCue.Splash) end = travel;
             double age = (Stopwatch.GetTimestamp() - started) / (double)Stopwatch.Frequency;
             if (cue == LiquidThemeCue.Finish || cue == LiquidThemeCue.Short) return .35 - age;
             return duration * (end - visualProgress) - age;

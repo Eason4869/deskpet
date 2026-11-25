@@ -26,7 +26,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
     {
         this.owner=owner;this.host=host;Name="DesktopObservationSettings";Spacing=10;Margin=new Thickness(0,18,0,0);
         Children.Add(SettingsVisual.Header("model",()=>TextResources.Get("desktopObservation.settings.title")));
-        enabled=new CheckBox{Name="DesktopObservationEnabled",Content=SettingsVisual.Text(()=>TextResources.Get("desktopObservation.settings.enabled")),IsChecked=owner.Settings.DesktopObservationEnabled};
+        enabled=new CheckBox{Name="DesktopObservationEnabled",IsChecked=owner.Settings.DesktopObservationEnabled};
         enabled.IsCheckedChanged+=async(_,_)=>
         {
             if(refreshing||busy)return;bool desired=enabled.IsChecked==true;
@@ -49,7 +49,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
             {transientStatus=DesktopObservationUiText.ReasonText(ObservationReason.InvalidConfiguration);}
             finally{busy=false;Refresh();}
         };
-        Children.Add(enabled);Children.Add(SettingsVisual.Text(()=>TextResources.Get("desktopObservation.settings.help"),13,true));
+        Children.Add(SettingsVisual.CheckRow(()=>TextResources.Get("desktopObservation.settings.enabled"),enabled));Children.Add(SettingsVisual.Text(()=>TextResources.Get("desktopObservation.settings.help"),13,true));
         route=SettingsVisual.Text("",13);route.Name="ObservationRoute";
         model=SettingsVisual.Text("",13,true);model.Name="ObservationModel";model.TextWrapping=TextWrapping.NoWrap;model.TextTrimming=TextTrimming.CharacterEllipsis;
         destinations=SettingsVisual.Text("",13,true);destinations.Name="ObservationDestinations";destinations.TextWrapping=TextWrapping.NoWrap;destinations.TextTrimming=TextTrimming.CharacterEllipsis;

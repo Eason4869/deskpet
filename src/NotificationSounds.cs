@@ -92,7 +92,7 @@ namespace Dafeiyu
             }
         }
         static bool OperationAllowed(PetSettings value,bool preview){return value!=null&&(preview||value.NotificationSoundsEnabled)&&!value.QuietMode&&value.CompanionOperationSoundVolume>0;}
-        internal ILiquidThemeSound TryPlayTheme(bool dark,TimeSpan duration,bool shortFeedback)
+        internal ILiquidThemeSound TryPlayTheme(bool dark,TimeSpan duration,bool shortFeedback,string motion=ThemeTransitionMotion.Flow)
         {
             lock(gate)
             {
@@ -100,7 +100,7 @@ namespace Dafeiyu
                 int volume;
                 try{volume=audioBusy()?0:ThemeVolume(settings());}catch{return null;}
                 if(volume<=0||!playback.Wait(0))return null;
-                var request=new LiquidThemeSoundPlayback(createOutput,()=>audioBusy()?0:ThemeVolume(settings()),dark,duration,shortFeedback,volume);
+                var request=new LiquidThemeSoundPlayback(createOutput,()=>audioBusy()?0:ThemeVolume(settings()),dark,duration,shortFeedback,volume,motion);
                 themePlayback=request;
                 Task.Run(async delegate
                 {

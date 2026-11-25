@@ -14,7 +14,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     private readonly TextBox name = Ui.Input(), address = Ui.Input(), key = Ui.Input(), model = Ui.Input(), alias = Ui.Input(), proxy = Ui.Input();
     private readonly ComboBox protocol = new() { ItemsSource = new[] { "auto", "openai", "anthropic", "mimo", "gemini-live" } };
     private readonly ComboBox models = new() { MinWidth = 180, MaxWidth = 280, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch };
-    private readonly CheckBox useProxy = LocalizedUi.With(new CheckBox(){ Content = TextResources.Get("providerEditor.useProxy.content") },"Content",()=>(TextResources.Get("providerEditor.useProxy.content"))), stream = LocalizedUi.With(new CheckBox(){ Content = TextResources.Get("providerEditor.useProxy.content.alternativeA") },"Content",()=>(TextResources.Get("providerEditor.useProxy.content.alternativeA")));
+    private readonly CheckBox useProxy = new(), stream = new();
     private readonly StackPanel found = Ui.Column();
     private readonly TextBlock notice = Ui.Text("");
     private CancellationTokenSource? fetch;
@@ -49,7 +49,10 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         Children.Add(SettingsVisual.Wrap(providers, LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text")), AddProvider), LocalizedUi.Button(()=>(TextResources.Get("common.delete")), RemoveProvider)));
         Children.Add(LocalizedUi.Text(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeA"))));
         Children.Add(presets); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field")), name)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeA")), address)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeB")), new SecretField(key)));
-        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeC")), protocol)); Children.Add(SettingsVisual.Wrap(useProxy, stream)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeD")), proxy));
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeC")), protocol));
+        Children.Add(SettingsVisual.CheckRow(()=>TextResources.Get("providerEditor.useProxy.content"),useProxy));
+        Children.Add(SettingsVisual.CheckRow(()=>TextResources.Get("providerEditor.useProxy.content.alternativeA"),stream));
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeD")), proxy));
         Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeE")), models)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeF")), model)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeG")), alias));
         Children.Add(SettingsVisual.Wrap(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeB")), AddModel), LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeC")), RemoveModel)));
         Children.Add(SettingsVisual.Wrap(LocalizedUi.AsyncButton(()=>(TextResources.Get("providerEditor.providerEditor.asyncButton")), FetchAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeD")), CancelFetch)));
