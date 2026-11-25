@@ -3,7 +3,7 @@ using Dafeiyu;
 
 namespace DeskPet.Platform.Mac;
 
-internal sealed class MacPcmOutput : ILiveAudioOutput, IAudioLevelSource, ILiveAudioFailureSource
+internal sealed class MacPcmOutput : IGuardedLiveAudioOutput, IAudioLevelSource, ILiveAudioFailureSource
 {
     private readonly object gate = new();
     private readonly CancellationTokenSource stop = new();
@@ -18,12 +18,15 @@ internal sealed class MacPcmOutput : ILiveAudioOutput, IAudioLevelSource, ILiveA
     public event Action<string>? Failed;
     internal MacPcmOutput() { MacServices.EnsureMac(); monitor = Task.Run(Monitor); }
     public double AudioLevel { get { lock (gate) return device == IntPtr.Zero || Native.OutputPending(device) <= 0 ? 0 : level * volume / 100.0; } }
-    public void Enqueue(byte[] bytes, int sampleRate)
+    public bool HasPendingAudio { get { lock (gate) return device != IntPtr.Zero && Native.OutputPending(device) > 0; } }
+    public void Enqueue(byte[] bytes, int sampleRate) => TryEnqueue(bytes, sampleRate, null);
+    public bool TryEnqueue(byte[] bytes, int sampleRate, Func<bool>? permit)
     {
         if (bytes == null || bytes.Length == 0 || bytes.Length % 2 != 0 || sampleRate is not (16000 or 24000 or 48000)) throw new ArgumentException(TextResources.Get("macPcmOutput.enqueue.text"));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
+            if (permit != null && !permit()) return false;
             if (failure != null) throw new InvalidOperationException(failure);
             var pending = device == IntPtr.Zero ? 0 : Native.OutputPending(device);
             if (pending < 0) throw new InvalidOperationException(TextResources.Get("macPcmOutput.enqueue.text.alternativeA"));
@@ -45,10 +48,12 @@ internal sealed class MacPcmOutput : ILiveAudioOutput, IAudioLevelSource, ILiveA
             // Bound each scheduled buffer so the monitor observes actual playback progress.
             for (var offset = 0; offset < bytes.Length;)
             {
+                if (permit != null && !permit()) return offset != 0;
                 var chunk = bytes.AsSpan(offset, Math.Min(sampleRate * 2 / 5, bytes.Length - offset)).ToArray();
                 if (Native.OutputEnqueue(device, chunk, chunk.Length) != 0) throw new InvalidOperationException(TextResources.Get("macPcmOutput.enqueue.text.alternativeD"));
                 offset += chunk.Length;
             }
+            return true;
         }
     }
     private async Task Monitor()

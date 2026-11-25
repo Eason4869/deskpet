@@ -6,7 +6,7 @@ using System.Threading;
 namespace Dafeiyu
 {
     // WinMM accepts raw PCM directly; queued headers remain pinned until WHDR_DONE.
-    public sealed class PcmOutput : ILiveAudioOutput, IAudioLevelSource, ILiveAudioFailureSource
+    public sealed class PcmOutput : IGuardedLiveAudioOutput, IAudioLevelSource, ILiveAudioFailureSource
     {
         readonly object gate=new object(); readonly Queue<Buffer> buffers=new Queue<Buffer>();
         readonly AutoResetEvent ready=new AutoResetEvent(false); readonly Thread worker;
@@ -19,12 +19,15 @@ namespace Dafeiyu
         public event Action<string> Failed;
         public PcmOutput(){worker=new Thread(Drain){IsBackground=true,Name="DeskPet Live playback"};worker.Start();}
         public double AudioLevel {get{lock(gate){return disposed || buffers.Count==0?0:buffers.Peek().Level*volume/100.0;}}}
+        public bool HasPendingAudio {get{lock(gate){if(disposed)return false;Collect();return buffers.Count!=0;}}}
         public void Enqueue(byte[] bytes,int sampleRate)
+        { TryEnqueue(bytes,sampleRate,null); }
+        public bool TryEnqueue(byte[] bytes,int sampleRate,Func<bool> permit)
         {
             if(bytes==null || bytes.Length==0 || bytes.Length%2!=0 || (sampleRate!=16000 && sampleRate!=24000 && sampleRate!=48000)) throw new ApiException(TextResources.Get("pcmOutput.enqueue.text"));
             lock(gate)
             {
-                if(disposed)return; Collect();
+                if(disposed||(permit!=null&&!permit()))return false; Collect();
                 if(failure!=null)throw new InvalidOperationException(failure);
                 if((long)bytes.Length+queued>sampleRate*2*MaximumBufferedSeconds) throw new ApiException(TextResources.Get("pcmOutput.enqueue.text.alternativeA"));
                 if(device!=IntPtr.Zero && sampleRate!=rate)
@@ -40,12 +43,14 @@ namespace Dafeiyu
                 // when the service sends a whole long reply in a single message.
                 for(int offset=0;offset<bytes.Length;)
                 {
+                    if(permit!=null&&!permit())return offset!=0;
                     int length=Math.Min(sampleRate*2/5,bytes.Length-offset);
                     var buffer=new Buffer(bytes,offset,length,Dafeiyu.AudioLevel.Pcm16(bytes,offset,length));
                     try {Check(waveOutPrepareHeader(device,buffer.Header,HeaderSize));buffer.Prepared=true;Check(waveOutWrite(device,buffer.Header,HeaderSize));buffers.Enqueue(buffer);queued+=length;}
                     catch {if(buffer.Prepared)waveOutUnprepareHeader(device,buffer.Header,HeaderSize);buffer.Dispose();throw;}
                     offset+=length;
                 }
+                return true;
             }
         }
         public void SetVolume(int value){lock(gate){volume=Math.Max(0,Math.Min(100,value));if(device!=IntPtr.Zero)ApplyVolume();}}

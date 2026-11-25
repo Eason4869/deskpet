@@ -4,9 +4,9 @@
 
 一个可以互动、聊天，也能陪你处理项目文件的桌面伙伴。
 
-**源码版本 1.0.6-dev.5（开发预览）** · [下载已发布的正式版](https://github.com/Eason4869/deskpet/releases/latest) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
+**源码版本 1.0.6-dev.6（开发预览）** · [下载已发布的正式版](https://github.com/Eason4869/deskpet/releases/latest) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
 
-1.0.6-dev.5 新增定时任务，改进工作空间与审批交互，并在 Windows 加入会话级目标、计划模式和 GitHub、Gmail 应用入口。详见 [1.0.6-dev.5 更新日志](CHANGELOG.md#106-dev5--开发预览)。
+1.0.6-dev.6 为 Windows 和 macOS 主聊天窗口加入主题切换按钮，外观设置可选流水、涟漪、折光或拉链，并提供可选音效和音量。详见 [1.0.6-dev.6 更新日志](CHANGELOG.md#106-dev6--开发预览)。
 
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 

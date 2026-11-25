@@ -215,6 +215,23 @@ internal sealed class SettingsWindow : Window
     {
         var s=owner.Settings;
         var theme=new ThemeModePicker(s.ThemeMode);theme.Changed+=owner.SetThemeMode;
+        var themeEffect=new ComboBox{Name="ThemeTransitionEffect",MinWidth=145};
+        themeEffect.ItemsSource=ThemeTransitionMotion.Choices.Select(effect=>
+            LocalizedUi.With(new ComboBoxItem{Tag=effect},"Content",()=>ThemeTransitionMotion.Label(effect))).ToArray();
+        themeEffect.SelectedIndex=Array.IndexOf(ThemeTransitionMotion.Choices,s.ThemeTransitionEffect);
+        LocalizedUi.Automation(themeEffect,ThemeTransitionMotion.Caption);
+        themeEffect.SelectionChanged+=(_,args) =>
+        {
+            if(args.AddedItems.Count==0||args.AddedItems[0] is not ComboBoxItem {Tag:string effect})return;
+            s.ThemeTransitionEffect=effect;
+            owner.Save();
+        };
+        var themeEffectRow=new Grid{ColumnDefinitions=new ColumnDefinitions("*,Auto"),ColumnSpacing=12};
+        var effectLabel=SettingsVisual.Text(ThemeTransitionMotion.Caption,13);
+        effectLabel.VerticalAlignment=Avalonia.Layout.VerticalAlignment.Center;
+        themeEffectRow.Children.Add(effectLabel);
+        Grid.SetColumn(themeEffect,1);
+        themeEffectRow.Children.Add(themeEffect);
         var themeSound=LocalizedUi.Check(()=>TextResources.Get("themeTransition.sound.enabled"),s.ThemeTransitionSoundEnabled,enabled=>
         {
             s.ThemeTransitionSoundEnabled=enabled;
@@ -233,7 +250,7 @@ internal sealed class SettingsWindow : Window
         };
         var language=LocalizedUi.AsyncButton(()=>TextResources.Get("menus.language"),async()=>{await new LanguagePickerWindow(s.UiLanguage,owner.SetUiLanguage).ShowDialog(this);},owner.Error);language.Name="SettingsLanguage";
         var general=SettingsVisual.Group(()=>TextResources.Get("settingsLayout.appearanceGroup"),SettingsVisual.Text(()=>TextResources.Get("settingsLayout.instantSave"),12,true),
-            theme,themeSound,SettingsVisual.Text(()=>TextResources.Get("themeTransition.sound.volume"),12,true),themeVolume,language);
+            theme,themeEffectRow,themeSound,SettingsVisual.Text(()=>TextResources.Get("themeTransition.sound.volume"),12,true),themeVolume,language);
         var imageMotion=LocalizedUi.Check(()=>TextResources.Get("settingsWindow.behavior.check.alternativeI"),s.ImageGenerationMotionEnabled,v=>{s.ImageGenerationMotionEnabled=v;owner.Save();});imageMotion.Name="ImageGenerationMotionEnabled";
         var notificationSounds=LocalizedUi.Check(()=>TextResources.Get("notificationSounds.enabled"),s.NotificationSoundsEnabled,v=>{s.NotificationSoundsEnabled=v;if(!v)owner.StopNotificationSounds();owner.Save();});notificationSounds.Name="NotificationSoundsEnabled";
         var operationVolume=new Slider{Name="CompanionOperationSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,IsSnapToTickEnabled=true,Value=s.CompanionOperationSoundVolume};LocalizedUi.Automation(operationVolume,()=>TextResources.Get("operationSounds.volume"));operationVolume.ValueChanged+=(_,_)=>{s.CompanionOperationSoundVolume=(int)operationVolume.Value;owner.RefreshCompanionSoundSettings();owner.Save();};

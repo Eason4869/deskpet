@@ -4,10 +4,19 @@ using System.Text;
 
 namespace Dafeiyu
 {
+    internal interface ILiquidThemeOutline
+    {
+        void MoveTo(double x, double y);
+        void LineTo(double x, double y);
+        void CurveTo(double x1, double y1, double x2, double y2, double x, double y);
+        void Close();
+    }
+
     internal sealed class LiquidThemeShape
     {
-        internal static readonly TimeSpan DefaultDuration = TimeSpan.FromMilliseconds(1050);
-        const double Impact = .25;
+        internal static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(2);
+        internal const double ImpactProgress = .28;
+        internal const double FlowProgress = .37;
         readonly double width, height, originX, originY, scale;
 
         internal LiquidThemeShape(double width, double height, double originX, double originY)
@@ -21,96 +30,184 @@ namespace Dafeiyu
 
         internal string PathAt(double progress)
         {
-            var path = new StringBuilder(750);
+            var outline = new PathOutline();
+            WriteOutline(progress, outline);
+            return outline.ToString();
+        }
+
+        internal void WriteOutline(double progress, ILiquidThemeOutline outline)
+        {
             double time = Clamp(progress);
-            double fall = Clamp(time / Impact);
-            double reach = fall * (.35 + .65 * fall);
-            double tail = 1 - Smooth((time - .31) / .25);
-            double tip = originY + (height - originY + 4) * reach;
-            if (reach > 0 && tail > 0)
-                Stream(path, time, tip, scale * tail * (4.5 + Math.Sin(time * 29) * .8));
-
-            for (int i = 0; i < 3; i++)
+            double fall = Clamp(time / ImpactProgress);
+            double reach = fall * (.24 + .76 * fall);
+            double tip = originY + (height + 2 - originY) * reach;
+            if (time > ImpactProgress)
             {
-                double drop = (time - .055 - i * .047) / .19;
+                double splash = Clamp((time - ImpactProgress) / .20);
+                double surface = Pool(outline, time, splash);
+                tip = Math.Min(height + 2, surface + 3 * scale);
+                if (splash < 1) Splash(outline, splash);
+            }
+
+            if (tip > originY)
+                Stream(outline, time, tip - originY);
+
+            for (int i = 0; i < 4; i++)
+            {
+                double drop = (time - .037 - i * .041) / (.23 - i * .014);
                 if (drop <= 0 || drop >= 1) continue;
-                double y = originY + (height - originY - 4) * drop * (.32 + .68 * drop);
-                double x = originX + (i % 2 == 0 ? 1 : -1) * scale * (7 + 18 * drop);
-                double radius = scale * (2.8 - i * .36) * (1 - .35 * drop);
-                Oval(path, x, y, radius, radius * 1.45);
+                double y = originY + (height - originY) * drop * (.24 + .76 * drop);
+                double direction = i % 2 == 0 ? 1 : -1;
+                double x = originX + direction * scale * (7 + (24 + i * 4) * drop + 4 * Math.Sin(drop * Math.PI));
+                double radius = scale * (2.5 - i * .23) * Smooth(drop / .14) * (1 - Smooth((drop - .86) / .14));
+                Oval(outline, x, y, radius, radius * (1.25 + .7 * drop));
             }
-
-            double splash = (time - Impact) / .26;
-            if (splash > 0 && splash < 1) Splash(path, splash);
-
-            double rise = Smooth((time - Impact) / (1 - Impact));
-            if (rise > 0) Pool(path, time, splash, rise);
-            return path.Length == 0 ? "M0,0" : "F1 " + path;
         }
 
-        void Stream(StringBuilder path, double time, double tip, double half)
+        void Stream(ILiquidThemeOutline outline, double time, double length)
         {
-            double length = tip - originY;
-            double bend = Math.Sin(time * 24) * 16 * scale;
-            double curl = Math.Sin(time * 20 + 1) * 20 * scale;
-            double endX = originX + curl * .7 * (1 - Smooth((time - .12) / (Impact - .12)));
-            Move(path, originX + half, originY);
-            Curve(path, originX + half - bend * .4, originY + length * .28,
-                originX + half + bend, originY + length * .72, endX + half * .7, tip);
-            Curve(path, endX + half * .45, tip + half, endX - half * .45, tip + half, endX - half * .7, tip);
-            Curve(path, originX - half + bend, originY + length * .72,
-                originX - half - bend * .4, originY + length * .28, originX - half, originY);
-            path.Append("Z ");
+            double thickness = scale * Smooth(time / .038) * Smooth(length / (30 * scale));
+            double swayScale = scale * Smooth(length / (96 * scale));
+            double right = StreamEdge(time, 0, thickness, swayScale, 1);
+            outline.MoveTo(right, originY);
+            right = StreamSide(outline, time, length, thickness, swayScale, 1, right);
+            double left = StreamEdge(time, 1, thickness, swayScale, -1);
+            double tip = originY + length;
+            outline.CurveTo(right, tip + thickness * 1.6, left, tip + thickness * 1.6, left, tip);
+            StreamSide(outline, time, length, thickness, swayScale, -1, left);
+            outline.Close();
         }
 
-        void Splash(StringBuilder path, double t)
+        double StreamSide(ILiquidThemeOutline outline, double time, double length, double thickness,
+            double swayScale, int direction, double x)
         {
-            for (int i = 0; i < 7; i++)
+            const int segments = 8;
+            double step = (double)direction / segments;
+            double start = direction > 0 ? 0 : 1;
+            double y = originY + length * start;
+            for (int i = 1; i <= segments; i++)
             {
-                double speed = (i - 3) * (17 + (i % 2) * 7);
-                double lift = 16 + (i * 23 % 41);
-                double x = originX + speed * (.12 + t) * scale;
-                double y = height - scale * (5 + 4 * lift * t * (1 - t));
-                double radius = (2.1 + i % 3 * .7) * scale * (1 - t * .7);
-                Oval(path, x, y, radius, radius * 1.3);
+                double section = start + step * i;
+                double next = StreamEdge(time, section, thickness, swayScale, direction);
+                double middle = StreamEdge(time, section - step * .5, thickness, swayScale, direction);
+                double control = 2 * middle - (x + next) * .5;
+                double nextY = originY + length * section;
+                outline.CurveTo((x + 2 * control) / 3, y + length * step / 3,
+                    (next + 2 * control) / 3, nextY - length * step / 3, next, nextY);
+                x = next;
+                y = nextY;
+            }
+            return x;
+        }
+
+        double StreamEdge(double time, double section, double thickness, double swayScale, int direction)
+        {
+            double sway = 8.8 * Math.Sin(section * 7 - time * 19) + 2.7 * Math.Sin(section * 13 + time * 22);
+            double anchored = 1 - Smooth((section - .72) / .28) * Smooth((time - .18) / (ImpactProgress - .18));
+            double center = originX + sway * swayScale * Smooth(section / .22) * anchored;
+            double halfWidth = 2.65 + .75 * Math.Sin(section * 5) + 1.1 * Math.Sin(section * 12 - time * 36);
+            return center + direction * halfWidth * thickness;
+        }
+
+        void Splash(ILiquidThemeOutline outline, double t)
+        {
+            SplashJet(outline, t, -1, 36, 53);
+            SplashJet(outline, t, 1, 27, 45);
+            for (int i = 0; i < 8; i++)
+            {
+                double delay = (i % 3) * .08;
+                double flight = (t - delay) / (1 - delay);
+                if (flight <= 0) continue;
+                double direction = i % 2 == 0 ? -1 : 1;
+                double travel = 25 + i / 2 * 18 + (i % 2) * 8;
+                double lift = 25 + (i * 19 % 37);
+                double x = originX + direction * scale * (5 + travel * flight);
+                double y = height + 2 - scale * 4 * lift * flight * (1 - flight);
+                double radius = scale * (1.4 + i % 3 * .65) * Smooth(flight / .14) * (1 - Smooth((flight - .55) / .45));
+                Oval(outline, x, y, radius, radius * (1.6 - .65 * flight));
             }
         }
 
-        void Pool(StringBuilder path, double time, double splash, double rise)
+        void SplashJet(ILiquidThemeOutline outline, double t, int direction, double peakLift, double travel)
         {
-            double spread = Smooth(splash);
-            double travel = Math.Max(originX, width - originX) * spread + 22 * scale;
-            double left = Math.Max(-1, originX - travel);
-            double right = Math.Min(width + 1, originX + travel);
-            double waterline = height + 4 * scale - (height + 48 * scale) * rise;
-            double amplitude = scale * (6 + 4 * Math.Sin(Math.PI * rise)) * (.4 + .6 * spread);
-            double wavelength = Math.Max(140, width / 3.4);
-            double step = (right - left) / 12;
-            double y = Wave(left, time, splash, waterline, amplitude, wavelength);
-            Move(path, left, y);
-            for (int i = 1; i <= 12; i++)
+            double arc = Math.Sin(Math.PI * t);
+            double lift = peakLift * scale * arc * (1 - .4 * t);
+            double baseX = originX + direction * 4 * scale;
+            double drift = direction * scale * (8 + travel * t);
+            double tipX = baseX + drift;
+            double bottom = height + 2;
+            double tipY = bottom - lift;
+            double rootWidth = 6.5 * scale * arc;
+            double tipWidth = 1.6 * scale * arc;
+            double lowerX = baseX + drift * .13;
+            double upperX = tipX - drift * .28;
+            outline.MoveTo(baseX - rootWidth, bottom);
+            outline.CurveTo(lowerX - rootWidth, bottom - lift * .53, upperX - rootWidth * .5, tipY + lift * .13,
+                tipX - tipWidth, tipY);
+            outline.CurveTo(tipX - tipWidth * .5, tipY - tipWidth, tipX + tipWidth * .65, tipY - tipWidth,
+                tipX + tipWidth, tipY);
+            outline.CurveTo(upperX + rootWidth * .5, tipY + lift * .28, lowerX + rootWidth, bottom - lift * .26,
+                baseX + rootWidth, bottom);
+            outline.Close();
+        }
+
+        double Pool(ILiquidThemeOutline outline, double time, double splash)
+        {
+            double bottom = height + 2;
+            double deposit = Smooth((time - ImpactProgress) / (FlowProgress - ImpactProgress));
+            double spread = Smooth((time - ImpactProgress) / (.55 - ImpactProgress));
+            double rise = Clamp((time - FlowProgress) / (1 - FlowProgress));
+            double fill = rise * rise * (2 - rise);
+            double depth = 12 * scale * deposit + (height + 38 * scale) * fill;
+            double amplitude = scale * deposit * (2 + 10 * Math.Sin(Math.PI * fill) + 4 * fill);
+            double wavelength = Math.Max(155, width / 3.6);
+            double rim = scale * (35 + 50 * spread);
+            double radius = 46 * scale + (Math.Max(originX, width - originX) + rim) * spread;
+            double rippleStrength = 6 * scale * Math.Sin(Math.PI * splash);
+            double rippleDistance = 155 * splash;
+            const double left = -1;
+            double right = width + 1;
+            int segments = Math.Max(22, Math.Min(80, (int)Math.Ceiling(width / 15)));
+            double step = (right - left) / segments;
+            double originPosition = (originX - left) / step;
+            int originSegment = (int)originPosition;
+            double fraction = originPosition - originSegment;
+            double surface = bottom;
+            double y = Wave(left, time, bottom, depth, amplitude, wavelength, radius, rim, rippleStrength, rippleDistance);
+            outline.MoveTo(left, y);
+            for (int i = 1; i <= segments; i++)
             {
                 double x = left + step * i;
-                double next = Wave(x, time, splash, waterline, amplitude, wavelength);
-                double middle = Wave(x - step * .5, time, splash, waterline, amplitude, wavelength);
-                double smooth = (4 * middle - y - next) / 2;
-                Curve(path, x - step * 2 / 3, (y + 2 * smooth) / 3,
-                    x - step / 3, (next + 2 * smooth) / 3, x, next);
+                double next = Wave(x, time, bottom, depth, amplitude, wavelength, radius, rim, rippleStrength, rippleDistance);
+                double middle = Wave(x - step * .5, time, bottom, depth, amplitude, wavelength, radius, rim, rippleStrength, rippleDistance);
+                double control = Math.Min(bottom, 2 * middle - (y + next) * .5);
+                if (i - 1 == originSegment)
+                {
+                    // Use the rendered curve to join the stream to the surface.
+                    double complement = 1 - fraction;
+                    surface = complement * complement * y + 2 * complement * fraction * control + fraction * fraction * next;
+                }
+                outline.CurveTo(x - step * 2 / 3, (y + 2 * control) / 3,
+                    x - step / 3, (next + 2 * control) / 3, x, next);
                 y = next;
             }
-            Line(path, right, height + 2);
-            Line(path, left, height + 2);
-            path.Append("Z ");
+            outline.LineTo(right, bottom);
+            outline.LineTo(left, bottom);
+            outline.Close();
+            return surface;
         }
 
-        double Wave(double x, double time, double splash, double level, double amplitude, double wavelength)
+        double Wave(double x, double time, double bottom, double depth, double amplitude, double wavelength,
+            double radius, double rim, double rippleStrength, double rippleDistance)
         {
             double distance = Math.Abs(x - originX);
-            double ripple = splash > 0 && splash < 1
-                ? 9 * scale * Math.Sin(distance / 13 - splash * 15) * Math.Exp(-distance / (105 * scale)) * Math.Sin(Math.PI * splash)
-                : 0;
-            return level + amplitude * Math.Sin(x / wavelength * Math.PI * 2 - time * 12)
-                + amplitude * .27 * Math.Sin(x / wavelength * Math.PI * 4 + time * 16) + ripple;
+            double wetness = Smooth((radius - distance) / rim);
+            if (wetness <= 0) return bottom;
+            double phase = x / wavelength * Math.PI * 2;
+            double wave = amplitude * (Math.Sin(phase - time * 12) + .28 * Math.Sin(phase * 2 + time * 16));
+            double offset = (distance / scale - rippleDistance) / 26;
+            double ripple = rippleStrength * Math.Sin(offset * 4) * Math.Exp(-offset * offset);
+            return bottom - wetness * Math.Max(0, depth - wave - ripple);
         }
 
         static double Clamp(double value) { return Math.Max(0, Math.Min(1, value)); }
@@ -120,30 +217,38 @@ namespace Dafeiyu
             return t * t * (3 - 2 * t);
         }
 
-        static void Oval(StringBuilder path, double x, double y, double rx, double ry)
+        static void Oval(ILiquidThemeOutline outline, double x, double y, double rx, double ry)
         {
             double kx = rx * .5523, ky = ry * .5523;
-            Move(path, x - rx, y);
-            Curve(path, x - rx, y - ky, x - kx, y - ry, x, y - ry);
-            Curve(path, x + kx, y - ry, x + rx, y - ky, x + rx, y);
-            Curve(path, x + rx, y + ky, x + kx, y + ry, x, y + ry);
-            Curve(path, x - kx, y + ry, x - rx, y + ky, x - rx, y);
-            path.Append("Z ");
+            outline.MoveTo(x - rx, y);
+            outline.CurveTo(x - rx, y - ky, x - kx, y - ry, x, y - ry);
+            outline.CurveTo(x + kx, y - ry, x + rx, y - ky, x + rx, y);
+            outline.CurveTo(x + rx, y + ky, x + kx, y + ry, x, y + ry);
+            outline.CurveTo(x - kx, y + ry, x - rx, y + ky, x - rx, y);
+            outline.Close();
         }
 
-        static void Move(StringBuilder path, double x, double y) { path.Append('M'); Point(path, x, y); }
-        static void Line(StringBuilder path, double x, double y) { path.Append('L'); Point(path, x, y); }
-        static void Curve(StringBuilder path, double x1, double y1, double x2, double y2, double x, double y)
+        sealed class PathOutline : ILiquidThemeOutline
         {
-            path.Append('C');
-            Point(path, x1, y1);
-            Point(path, x2, y2);
-            Point(path, x, y);
-        }
-        static void Point(StringBuilder path, double x, double y)
-        {
-            path.Append(x.ToString("0.##", CultureInfo.InvariantCulture)).Append(',')
-                .Append(y.ToString("0.##", CultureInfo.InvariantCulture)).Append(' ');
+            readonly StringBuilder path = new StringBuilder("F1 ", 2048);
+
+            public void MoveTo(double x, double y) { path.Append('M'); Point(x, y); }
+            public void LineTo(double x, double y) { path.Append('L'); Point(x, y); }
+            public void CurveTo(double x1, double y1, double x2, double y2, double x, double y)
+            {
+                path.Append('C');
+                Point(x1, y1);
+                Point(x2, y2);
+                Point(x, y);
+            }
+            public void Close() { path.Append("Z "); }
+            public override string ToString() { return path.Length == 3 ? "M0,0" : path.ToString(); }
+
+            void Point(double x, double y)
+            {
+                path.Append(x.ToString("0.##", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(y.ToString("0.##", CultureInfo.InvariantCulture)).Append(' ');
+            }
         }
     }
 
@@ -157,8 +262,9 @@ namespace Dafeiyu
 
         internal static string Label(string mode)
         {
-            const string key = "themeModePicker.themeModePicker.titleModeMode";
-            return TextResources.Get(mode == "light" ? key + ".alternativeA" : mode == "dark" ? key + ".alternativeB" : key);
+            if (mode == "light") return TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeA");
+            if (mode == "dark") return TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeB");
+            return TextResources.Get("themeModePicker.themeModePicker.titleModeMode");
         }
 
         internal static string Icon(string mode)

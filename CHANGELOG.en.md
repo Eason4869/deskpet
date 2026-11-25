@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.6-dev.6 · Development preview
+
+- The main chat window on Windows and macOS adds a button for light, dark, and system themes. Appearance settings offer Off, Flow, Ripple, Refraction, and Zipper. Each animation keeps DeskPet's original colors.
+- Appearance settings add optional theme sounds with their own volume. The theme button plays synchronized, locally synthesized water sounds for Flow and Ripple, and a short cue for Refraction and Zipper.
+
 ## 1.0.6-dev.5 · Development preview
 
 - Windows and macOS add scheduled tasks. Approval and question prompts now align above the composer.

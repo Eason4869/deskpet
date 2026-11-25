@@ -21,12 +21,19 @@ namespace Dafeiyu.Tests
         static void Stop(object player){((NotificationSoundPlayer)player).Stop();}
         static void Dispose(object player){((IDisposable)player).Dispose();}
 #if !NET8_0_OR_GREATER
-        [STAThread] public static int Main(){return Run();}
+        [STAThread] public static int Main(string[] args)
+        {
+            if(args.Length==2&&args[0]=="--theme-wav"){WriteThemeWavs(args[1]);return 0;}
+            return Run();
+        }
 #endif
         public static int Run()
         {
             try
             {
+                var themeEnabled=typeof(PetSettings).GetProperty("ThemeTransitionSoundEnabled");
+                var themeVolume=typeof(PetSettings).GetProperty("ThemeTransitionSoundVolume");
+                Check(themeEnabled!=null&&themeVolume!=null,"theme sounds have independent preferences");
                 var enabled=typeof(PetSettings).GetProperty("NotificationSoundsEnabled");
                 if(enabled==null)throw new Exception("Missing notification sound preference");
                 Check(enabled.PropertyType==typeof(bool),"notification sound preference exists");
@@ -48,11 +55,216 @@ namespace Dafeiyu.Tests
                 }
                 finally{Directory.Delete(root,true);}
                 Check(typeof(PetSettings).Assembly.GetType("Dafeiyu.NotificationSoundPlayer")!=null&&typeof(PetSettings).Assembly.GetType("Dafeiyu.NotificationCue")!=null,"shared notification sound service exists");
+                ThemePreferences();ThemePlayback();ThemeInterruption();DelayedDevice();DeferredTail();
                 Resources();Policy(enabled);Lifecycle(enabled);QuietLifecycle();SerializedRestart();
                 Console.WriteLine("Notification sound tests: "+checks+" passed");return 0;
             }
             catch(Exception e){Console.WriteLine("FAIL notification sound: "+e);return 1;}
         }
+        static void ThemePreferences()
+        {
+            var settings=new PetSettings();
+            Check(!settings.ThemeTransitionSoundEnabled&&settings.ThemeTransitionSoundVolume==30&&settings.ThemeTransitionEffect=="flow",
+                "new settings default to Flow and theme sounds off at 30 percent");
+            using(var stream=new MemoryStream(Encoding.UTF8.GetBytes("{}")))
+            {
+                var previous=new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream) as PetSettings;
+                Check(previous!=null&&!previous.ThemeTransitionSoundEnabled&&previous.ThemeTransitionSoundVolume==30&&previous.ThemeTransitionEffect=="flow",
+                    "old settings preserve Flow and the opt-in audio defaults");
+            }
+            settings.ThemeTransitionSoundEnabled=true;
+            settings.ThemeTransitionSoundVolume=0;
+            settings.ThemeTransitionEffect="ripple";
+            var copy=settings.Copy();
+            Check(copy.ThemeTransitionSoundEnabled&&copy.ThemeTransitionSoundVolume==0,"theme volume zero survives a preference copy");
+            string root=Path.Combine("work","theme-sounds-"+Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                var store=new SettingsStore(Path.Combine(root,"settings.json"));
+                store.Save(settings);
+                var saved=store.Load();
+                Check(saved.ThemeTransitionSoundEnabled&&saved.ThemeTransitionSoundVolume==0&&saved.ThemeTransitionEffect=="ripple",
+                    "theme motion, sound and silent volume survive reload");
+                var copyPreferences=typeof(SettingsStore).GetMethod("CopyPreferences",BindingFlags.Static|BindingFlags.NonPublic);
+                if(copyPreferences==null)throw new Exception("Missing preference copy contract");
+                copyPreferences.Invoke(null,new object[]{new PetSettings(),settings});
+                Check(!settings.ThemeTransitionSoundEnabled&&settings.ThemeTransitionSoundVolume==30&&settings.ThemeTransitionEffect=="flow",
+                    "reset restores the theme motion and sound defaults");
+            }
+            finally{Directory.Delete(root,true);}
+        }
+
+        static void ThemePlayback()
+        {
+            var settings=new PetSettings();
+            var output=new FakeOutput();
+            int creates=0;
+            var duration=LiquidThemeShape.DefaultDuration;
+            using(var player=new NotificationSoundPlayer(()=>settings,()=>{Interlocked.Increment(ref creates);return output;}))
+            {
+                Check(player.TryPlayTheme(true,duration,false)==null&&creates==0,"default theme preferences leave the device unopened");
+                settings.ThemeTransitionSoundEnabled=true;
+                var sound=player.TryPlayTheme(true,duration,false);
+                if(sound==null)throw new Exception("Theme transition was not admitted");
+                Check(player.TryPlayTheme(false,duration,false)==null,"one theme transition owns the shared output");
+                Until(()=>output.Plays==1,"drop plays at the start of the reveal");
+                sound.Advance(LiquidThemeShape.ImpactProgress-.01);
+                Check(output.Plays==1,"splash waits for the actual impact frame");
+                sound.Advance(LiquidThemeShape.ImpactProgress);
+                Until(()=>output.Plays==2,"impact frame triggers the splash");
+                sound.Advance(LiquidThemeShape.ImpactProgress);
+                sound.Advance(LiquidThemeShape.FlowProgress);
+                Until(()=>output.Plays==3,"rising phase emits continuous flow once");
+                Check(output.Rate==48000&&output.Bytes>48000&&output.Volume==30,"flow playback uses the remaining reveal duration and theme volume");
+                settings.ThemeTransitionSoundVolume=47;
+                player.Refresh();
+                Until(()=>output.Volume==47&&output.Plays==3,"volume changes apply without replaying a cue");
+                sound.Complete();
+                sound.Complete();
+                Until(()=>output.Plays==4&&output.Interrupts>0,"normal completion stops the flow and plays one finish");
+                Until(()=>output.Disposals==1,"the finish tail releases the shared device");
+            }
+        }
+
+        static void ThemeInterruption()
+        {
+            var settings=new PetSettings{ThemeTransitionSoundEnabled=true};
+            var duration=LiquidThemeShape.DefaultDuration;
+            var output=new FakeOutput();
+            bool busy=false;
+            using(var player=new NotificationSoundPlayer(()=>settings,()=>output,()=>busy))
+            {
+                settings.QuietMode=true;
+                Check(player.TryPlayTheme(true,duration,false)==null,"quiet mode suppresses enabled theme feedback");
+                settings.QuietMode=false;
+                settings.NotificationSoundsEnabled=false;
+                Check(player.TryPlayTheme(true,duration,false)==null,"master sound mute suppresses theme feedback");
+                settings.NotificationSoundsEnabled=true;
+                busy=true;
+                Check(player.TryPlayTheme(true,duration,false)==null,"speech and live audio have priority");
+                busy=false;
+                var sound=player.TryPlayTheme(false,duration,false);
+                Until(()=>output.Plays==1,"theme cue starts when idle");
+                sound.Advance(LiquidThemeShape.FlowProgress);
+                Until(()=>output.Plays==2,"a skipped impact frame avoids stale splash and starts the current flow");
+                settings.ThemeTransitionSoundVolume=0;
+                player.Refresh();
+                Until(()=>output.Interrupts>0&&output.Disposals==1,"zero volume immediately interrupts and releases the flow");
+                sound.Complete();
+                Check(output.Plays==2,"cancelled flow has no finish");
+            }
+            output=new FakeOutput();
+            settings.ThemeTransitionSoundVolume=30;
+            using(var player=new NotificationSoundPlayer(()=>settings,()=>output))
+            {
+                var sound=player.TryPlayTheme(false,duration,true);
+                sound.Advance(LiquidThemeShape.FlowProgress);
+                sound.Complete();
+                Until(()=>output.Disposals==1,"reduced motion plays a short cue and releases it");
+                Check(output.Plays==1&&output.Bytes<48000,"reduced motion omits the streaming and finish cues");
+            }
+            output=new FakeOutput{ThrowOnEnqueue=true};
+            using(var player=new NotificationSoundPlayer(()=>settings,()=>output))
+            {
+                Check(player.TryPlayTheme(false,duration,false)!=null,"device errors are handled asynchronously");
+                Until(()=>output.Disposals==1,"a playback error releases the output");
+            }
+        }
+
+        static void DelayedDevice()
+        {
+            var settings=new PetSettings{ThemeTransitionSoundEnabled=true};
+            var output=new DelayedOutput();
+            using(var player=new NotificationSoundPlayer(()=>settings,()=>output))
+            {
+                var sound=player.TryPlayTheme(false,LiquidThemeShape.DefaultDuration,false);
+                if(sound==null)throw new Exception("Theme transition was not admitted");
+                try
+                {
+                    Check(output.Entered.Wait(4000),"device opens lazily on the first cue");
+                    sound.Advance(LiquidThemeShape.FlowProgress);
+                    output.Ready.Set();
+                    Until(()=>output.Plays==1,"only the current phase is submitted after a slow device opens");
+                    Check(output.Bytes>48000,"the expired drop never enters the output queue");
+                    sound.Cancel();
+                    Until(()=>output.Disposals==1,"cancelling delayed playback still releases its device");
+                }
+                finally{output.Ready.Set();}
+            }
+        }
+
+        sealed class DelayedOutput : IGuardedLiveAudioOutput
+        {
+            internal readonly ManualResetEventSlim Entered=new ManualResetEventSlim();
+            internal readonly ManualResetEventSlim Ready=new ManualResetEventSlim();
+            internal int Plays,Bytes,Disposals;
+            internal volatile bool Pending;
+            public bool HasPendingAudio {get{return Pending;}}
+            public void Enqueue(byte[] bytes,int rate){throw new InvalidOperationException("Expected guarded submission");}
+            public bool TryEnqueue(byte[] bytes,int rate,Func<bool> permit)
+            {
+                Entered.Set();
+                Ready.Wait();
+                if(!permit())return false;
+                Bytes=bytes.Length;
+                Interlocked.Increment(ref Plays);
+                return true;
+            }
+            public void Interrupt(){ }
+            public void SetVolume(int _){ }
+            public void Dispose(){Interlocked.Increment(ref Disposals);}
+        }
+
+        static void DeferredTail()
+        {
+            var settings=new PetSettings{ThemeTransitionSoundEnabled=true};
+            var output=new DelayedOutput{Pending=true};
+            output.Ready.Set();
+            using(var player=new NotificationSoundPlayer(()=>settings,()=>output))
+            {
+                Check(player.TryPlayTheme(false,LiquidThemeShape.DefaultDuration,true)!=null,"short cue is accepted on an idle native stream");
+                Until(()=>output.Plays==1,"the short cue is queued");
+                Check(!SpinWait.SpinUntil(()=>output.Disposals!=0,240),"native playback acknowledgement controls the tail instead of PCM duration");
+                output.Pending=false;
+                Until(()=>output.Disposals==1,"the acknowledged native tail is released");
+            }
+        }
+
+        static void WriteThemeWavs(string output)
+        {
+            Directory.CreateDirectory(output);
+            foreach(bool dark in new[]{true,false})
+            {
+                int rate=LiquidThemeAudio.SampleRate;
+                var duration=LiquidThemeShape.DefaultDuration;
+                int frames=(int)(rate*duration.TotalSeconds);
+                var outro=LiquidThemeAudio.Render(LiquidThemeCue.Finish,dark,TimeSpan.Zero);
+                var samples=new short[frames+outro.Length/2];
+                Mix(samples,0,LiquidThemeAudio.Render(LiquidThemeCue.Drop,dark,TimeSpan.Zero));
+                Mix(samples,(int)(frames*LiquidThemeShape.ImpactProgress),LiquidThemeAudio.Render(LiquidThemeCue.Splash,dark,TimeSpan.Zero));
+                Mix(samples,(int)(frames*LiquidThemeShape.FlowProgress),LiquidThemeAudio.Render(LiquidThemeCue.Flow,dark,
+                    TimeSpan.FromSeconds(duration.TotalSeconds*(1-LiquidThemeShape.FlowProgress))));
+                Mix(samples,frames,outro);
+                string file=Path.Combine(output,dark?"DeskPet-Liquid-Light-to-Dark.wav":"DeskPet-Liquid-Dark-to-Light.wav");
+                using(var writer=new BinaryWriter(File.Create(file)))
+                {
+                    writer.Write(Encoding.ASCII.GetBytes("RIFF"));writer.Write(36+samples.Length*2);
+                    writer.Write(Encoding.ASCII.GetBytes("WAVEfmt "));writer.Write(16);
+                    writer.Write((short)1);writer.Write((short)1);writer.Write(rate);writer.Write(rate*2);
+                    writer.Write((short)2);writer.Write((short)16);
+                    writer.Write(Encoding.ASCII.GetBytes("data"));writer.Write(samples.Length*2);
+                    foreach(short sample in samples)writer.Write((short)(sample*30/100));
+                }
+            }
+        }
+
+        static void Mix(short[] target,int offset,byte[] pcm)
+        {
+            for(int i=0;i<pcm.Length/2&&offset+i<target.Length;i++)
+                target[offset+i]+=(short)(pcm[i*2]|pcm[i*2+1]<<8);
+        }
+
         static void Resources()
         {
             foreach(string file in new[]{"task-complete","review-needed","permission-needed","attention-failed"})

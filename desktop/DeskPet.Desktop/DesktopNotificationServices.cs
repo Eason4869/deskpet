@@ -17,6 +17,11 @@ internal sealed partial class DesktopController
     internal void RefreshCompanionSoundSettings()=>RefreshNotificationSounds();
     internal void RefreshNotificationSounds()=>notificationSounds?.Refresh();
     NotificationSoundPlayer SoundPlayer()=>notificationSounds??=new NotificationSoundPlayer(()=>Settings,runtime.CreateLiveOutput,()=>NotificationAudioBusy);
+    internal ILiquidThemeSound? PlayThemeSound(bool dark,TimeSpan duration,bool shortFeedback)
+    {
+        if(exiting||!Settings.ThemeTransitionSoundEnabled)return null;
+        return SoundPlayer().TryPlayTheme(dark,duration,shortFeedback);
+    }
     internal void PreviewCompanionOperation(CompanionOperationCue cue)=>PlayCompanionOperation(cue,true);
     void PlayCompanionOperation(CompanionOperationCue cue,bool preview=false)
     {

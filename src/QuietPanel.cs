@@ -10,6 +10,7 @@ namespace Dafeiyu
         readonly Slider operationVolume;
         readonly CheckBox themeSound;
         readonly Slider themeVolume;
+        readonly ComboBox themeEffect;
         readonly CheckBox quiet,notificationSounds,fullscreen,clickthrough,locked,history;
         readonly SettingsPageHeader header;readonly ContentControl body=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch};
         readonly UIElement[] pages;readonly ShortcutSettingsPanel shortcuts;bool refreshing;
@@ -22,6 +23,26 @@ namespace Dafeiyu
             header=new SettingsPageHeader(()=>(TextResources.Get("quietPanel.quietPanel.headerSettingsPageHeader")),()=>(TextResources.Get("quietPanel.quietPanel.headerSettingsPageHeader.alternativeA")),()=>(new[]{TextResources.Get("quietPanel.quietPanel.headerSettingsPageHeader.alternativeB"),TextResources.Get("quietPanel.quietPanel.headerSettingsPageHeader.alternativeC"),TextResources.Get("dataManagement.title")}),new[]{"GeneralAppearanceTab","GeneralShortcutsTab","GeneralHistoryTab"}){Margin=new Thickness(0,0,0,18)};Children.Add(header);Grid.SetRow(body,1);Children.Add(body);
             var general=new StackPanel();general.Children.Add(LocalizedUi.Text(()=>TextResources.Get("settingsLayout.instantSave"),12,Ui.Muted));var appearance=new StackPanel();
             theme=new ThemeModePicker(pet.Settings.ThemeMode);theme.Name="ThemeModePicker";theme.Changed+=delegate(string mode){if(!refreshing)pet.SetThemeMode(mode);};appearance.Children.Add(Ui.SettingRow(()=>TextResources.Get("quietPanel.quietPanel.text"),null,theme));
+            themeEffect=new ComboBox{Name="ThemeTransitionEffect",SelectedValuePath="Tag",Width=180,MinHeight=36};
+            foreach(var effect in ThemeTransitionMotion.Choices)
+            {
+                var choice=effect;
+                var item=new ComboBoxItem{Tag=choice};
+                LocalizedUi.Set(item,"Content",()=>ThemeTransitionMotion.Label(choice));
+                themeEffect.Items.Add(item);
+            }
+            themeEffect.SelectedValue=pet.Settings.ThemeTransitionEffect;
+            LocalizedUi.Automation(themeEffect,ThemeTransitionMotion.Caption);
+            themeEffect.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args)
+            {
+                if(refreshing||args.AddedItems.Count==0)return;
+                var item=args.AddedItems[0] as ComboBoxItem;
+                var chosen=item==null?null:item.Tag as string;
+                if(chosen==null)return;
+                pet.Settings.ThemeTransitionEffect=chosen;
+                pet.SaveSettings();
+            };
+            appearance.Children.Add(Ui.SettingRow(ThemeTransitionMotion.Caption,null,themeEffect));
             themeSound=LocalizedUi.Toggle(()=>TextResources.Get("themeTransition.sound.enabled"),pet.Settings.ThemeTransitionSoundEnabled,enabled=>
             {
                 if(refreshing)return;
@@ -64,6 +85,6 @@ namespace Dafeiyu
         void AddOperationPreview(Panel panel,CompanionOperationCue cue,System.Func<string> label){var button=LocalizedUi.Button(label);button.Name="PreviewCompanion"+cue;LocalizedUi.Automation(button,label);button.Click+=delegate{pet.PreviewCompanionOperation(cue);};panel.Children.Add(button);}
         public void SelectSection(int index){header.Select(index);}
         internal void ShowTarget(string name){SelectSection(name.StartsWith("Hotkey")||name.StartsWith("GuideShortcut")||name.StartsWith("SaveShortcut")?1:name=="SaveChatHistory"||name=="ClearAllHistory"||name=="RestoreDefaultPreferences"||name=="OpenPreservedAttachments"||name=="GeneralHistoryTab"||name=="GeneralClearCache"||name=="GeneralArchivedConversations"?2:0);}
-        public void RefreshState(){refreshing=true;imageMotion.IsChecked=pet.Settings.ImageGenerationMotionEnabled;imageConcurrency.SelectedItem=pet.Settings.ImageGenerationConcurrency;theme.Value=pet.Settings.ThemeMode;themeSound.IsChecked=pet.Settings.ThemeTransitionSoundEnabled;themeVolume.Value=pet.Settings.ThemeTransitionSoundVolume;quiet.IsChecked=pet.Settings.QuietMode;notificationSounds.IsChecked=pet.Settings.NotificationSoundsEnabled;operationVolume.Value=pet.Settings.CompanionOperationSoundVolume;fullscreen.IsChecked=pet.Settings.HideOnFullscreen;clickthrough.IsChecked=pet.Settings.ClickThrough;locked.IsChecked=pet.Settings.LockPosition;history.IsChecked=pet.Settings.SaveChatHistory;refreshing=false;shortcuts.RefreshState();}
+        public void RefreshState(){refreshing=true;imageMotion.IsChecked=pet.Settings.ImageGenerationMotionEnabled;imageConcurrency.SelectedItem=pet.Settings.ImageGenerationConcurrency;theme.Value=pet.Settings.ThemeMode;themeEffect.SelectedValue=pet.Settings.ThemeTransitionEffect;themeSound.IsChecked=pet.Settings.ThemeTransitionSoundEnabled;themeVolume.Value=pet.Settings.ThemeTransitionSoundVolume;quiet.IsChecked=pet.Settings.QuietMode;notificationSounds.IsChecked=pet.Settings.NotificationSoundsEnabled;operationVolume.Value=pet.Settings.CompanionOperationSoundVolume;fullscreen.IsChecked=pet.Settings.HideOnFullscreen;clickthrough.IsChecked=pet.Settings.ClickThrough;locked.IsChecked=pet.Settings.LockPosition;history.IsChecked=pet.Settings.SaveChatHistory;refreshing=false;shortcuts.RefreshState();}
     }
 }

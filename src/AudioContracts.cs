@@ -43,6 +43,12 @@ namespace Dafeiyu
         void Interrupt();
         void SetVolume(int value);
     }
+    public interface IGuardedLiveAudioOutput : ILiveAudioOutput
+    {
+        // The predicate is checked again after lazy device initialization, just before submission.
+        bool TryEnqueue(byte[] bytes,int rate,Func<bool> permit);
+        bool HasPendingAudio { get; }
+    }
     public interface ILiveAudioFailureSource
     {
         event Action<string> Failed;

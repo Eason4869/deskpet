@@ -114,6 +114,20 @@ try
             Until(() => !Overlay());
             Check(store.Load().ThemeMode == "light" && draft.Text == "Preserve draft",
                 "Desktop resize settles the selected mode and preserves the draft");
+            owner.Settings.ThemeTransitionEffect = ThemeTransitionMotion.Off;
+            Switch();
+            Check(!Overlay() && store.Load().ThemeMode == "dark" && store.Load().ThemeTransitionEffect == "off",
+                "Desktop Off immediately switches the palette and remembers the choice");
+            foreach (var effect in new[] { ThemeTransitionMotion.Ripple, ThemeTransitionMotion.Refraction, ThemeTransitionMotion.Zipper })
+            {
+                owner.Settings.ThemeTransitionEffect = effect;
+                owner.SetThemeMode("light");
+                Switch();
+                Check(Overlay() == !reducedMotion, $"Desktop {effect} uses the same native reveal lifecycle");
+                Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
+                Check(store.Load().ThemeMode == "dark" && store.Load().ThemeTransitionEffect == effect,
+                    $"Desktop {effect} remembers its choice and preserves the resulting theme");
+            }
         }
         finally { window.Close(); CloseController(owner); }
         Console.WriteLine("Theme reveal: " + assertions + " passed");

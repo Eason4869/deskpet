@@ -19,16 +19,21 @@ namespace Dafeiyu
         readonly Button button;
         readonly Action<string> commit;
         readonly TimeSpan duration;
+        readonly Func<string> motion;
+        readonly LiquidThemeSoundBinding sound;
         readonly ScrollChangedEventHandler scrollChanged;
         readonly Stopwatch clock = new Stopwatch();
         SnapshotLayer layer;
-        LiquidThemeShape shape;
+        ThemeRevealPaths paths;
+        TimeSpan activeDuration;
+        string activeEffect;
         string targetMode;
         bool targetDark;
         bool saveOnFinish;
+        TimeSpan? lastRenderingTime;
 
         internal LiquidThemeReveal(Window window, Grid host, FrameworkElement content, Button button,
-            Action<string> commit, TimeSpan duration)
+            Action<string> commit, TimeSpan duration, Func<string> motion, BeginLiquidThemeSound beginSound = null)
         {
             this.window = window;
             this.host = host;
@@ -36,6 +41,8 @@ namespace Dafeiyu
             this.button = button;
             this.commit = commit;
             this.duration = duration;
+            this.motion = motion;
+            sound = new LiquidThemeSoundBinding(beginSound);
             scrollChanged = OnScrollChanged;
             button.Click += Switch;
             button.PreviewGotKeyboardFocus += PreservePointerFocus;
@@ -69,23 +76,26 @@ namespace Dafeiyu
         void Switch(object sender, RoutedEventArgs args)
         {
             if (targetMode != null) return;
+            sound.Cancel();
             string next = ThemeSwitch.Next(ThemeManager.Mode);
             bool wasDark = ThemeManager.IsDark;
             bool reduceMotion = !SystemParameters.ClientAreaAnimation;
+            string effect = motion();
             bool couldChangePalette = next == "system" || (next == "dark") != wasDark;
-            if (couldChangePalette && !reduceMotion) Prepare();
+            if (couldChangePalette && !reduceMotion) Prepare(effect);
             ThemeManager.Apply(next);
             if (ThemeManager.IsDark != wasDark && StartPrepared(next, true)) return;
 
             ClearLayer();
             commit(next);
-            if (wasDark == ThemeManager.IsDark && !reduceMotion) AnimateIcon();
+            if (wasDark != ThemeManager.IsDark) sound.Start(ThemeManager.IsDark, duration, true);
+            if (wasDark == ThemeManager.IsDark && !reduceMotion && effect != ThemeTransitionMotion.Off) AnimateIcon();
         }
 
         void PrepareSystemAppearance()
         {
             Finish();
-            if (SystemParameters.ClientAreaAnimation) Prepare();
+            if (SystemParameters.ClientAreaAnimation) Prepare(motion());
         }
 
         void RevealSystemAppearance()
@@ -93,15 +103,18 @@ namespace Dafeiyu
             if (!StartPrepared("system", false)) ClearLayer();
         }
 
-        void Prepare()
+        void Prepare(string effect)
         {
-            if (duration <= TimeSpan.Zero || !content.IsVisible || window.WindowState == WindowState.Minimized ||
+            if (effect == ThemeTransitionMotion.Off || duration <= TimeSpan.Zero || !content.IsVisible || window.WindowState == WindowState.Minimized ||
                 content.ActualWidth < 1 || content.ActualHeight < 1 || HasUncapturableSurface(content)) return;
-            var origin = button.TranslatePoint(new Point(button.ActualWidth / 2, button.ActualHeight - 2), content);
+            double originY = effect == ThemeTransitionMotion.Flow ? button.ActualHeight - 2 : button.ActualHeight / 2;
+            var origin = button.TranslatePoint(new Point(button.ActualWidth / 2, originY), content);
             var before = Capture();
             if (before == null) return;
-            layer = new SnapshotLayer(before, content.RenderSize);
-            shape = new LiquidThemeShape(content.ActualWidth, content.ActualHeight, origin.X, origin.Y);
+            paths = ThemeRevealPaths.Create(effect, content.ActualWidth, content.ActualHeight, origin.X, origin.Y);
+            layer = new SnapshotLayer(before, content.RenderSize, paths.Refraction != null);
+            activeDuration = ThemeTransitionMotion.Duration(effect, duration);
+            activeEffect = effect;
             host.Children.Add(layer);
         }
 
@@ -114,7 +127,9 @@ namespace Dafeiyu
             targetMode = next;
             targetDark = ThemeManager.IsDark;
             saveOnFinish = persist;
+            lastRenderingTime = null;
             clock.Restart();
+            if (persist) sound.Start(targetDark, activeDuration, !ThemeTransitionMotion.IsLiquid(activeEffect));
             CompositionTarget.Rendering += RenderFrame;
             return true;
         }
@@ -174,19 +189,38 @@ namespace Dafeiyu
         void RenderFrame(object sender, EventArgs args)
         {
             if (targetMode == null) return;
+            var render = args as RenderingEventArgs;
+            if (render != null)
+            {
+                if (lastRenderingTime == render.RenderingTime) return;
+                lastRenderingTime = render.RenderingTime;
+            }
             if (ThemeManager.Mode != targetMode || ThemeManager.IsDark != targetDark || !SystemParameters.ClientAreaAnimation)
             {
                 Finish();
                 return;
             }
-            var progress = clock.Elapsed.TotalMilliseconds / duration.TotalMilliseconds;
+            var progress = clock.Elapsed.TotalMilliseconds / activeDuration.TotalMilliseconds;
             if (progress >= 1)
             {
-                Finish();
+                Finish(true);
                 return;
             }
-            try { layer.SetClip(Geometry.Parse(shape.PathAt(progress))); }
-            catch (FormatException) { Finish(); }
+            try
+            {
+                layer.SetClip(ClipAt(paths.Reveal, progress));
+                if (paths.Refraction != null) layer.SetRefractionClip(ClipAt(paths.Refraction, progress));
+                sound.Advance(progress);
+            }
+            catch (ArgumentException) { Finish(); }
+            catch (InvalidOperationException) { Finish(); }
+        }
+
+        static StreamGeometry ClipAt(Action<double, ILiquidThemeOutline> write, double progress)
+        {
+            var geometry = new StreamGeometry { FillRule = FillRule.Nonzero };
+            using (var context = geometry.Open()) write(progress, new ClipOutline(context));
+            return geometry;
         }
 
         void OnScrollChanged(object sender, ScrollChangedEventArgs args)
@@ -213,12 +247,13 @@ namespace Dafeiyu
             if (!window.IsVisible) Finish();
         }
 
-        void Finish()
+        void Finish(bool completedNormally = false)
         {
+            if (completedNormally) sound.Complete();
+            else sound.Cancel();
             if (targetMode == null) return;
             string completed = targetMode;
             targetMode = null;
-            shape = null;
             clock.Stop();
             CompositionTarget.Rendering -= RenderFrame;
             ClearLayer();
@@ -230,7 +265,7 @@ namespace Dafeiyu
             if (layer == null) return;
             host.Children.Remove(layer);
             layer = null;
-            shape = null;
+            paths = null;
         }
 
         void Closed(object sender, EventArgs args) { Dispose(); }
@@ -254,14 +289,28 @@ namespace Dafeiyu
             ThemeManager.SystemAppearanceChanged -= RevealSystemAppearance;
         }
 
+        sealed class ClipOutline : ILiquidThemeOutline
+        {
+            readonly StreamGeometryContext context;
+            internal ClipOutline(StreamGeometryContext context) { this.context = context; }
+            public void MoveTo(double x, double y) { context.BeginFigure(new Point(x, y), true, true); }
+            public void LineTo(double x, double y) { context.LineTo(new Point(x, y), false, false); }
+            public void CurveTo(double x1, double y1, double x2, double y2, double x, double y)
+            {
+                context.BezierTo(new Point(x1, y1), new Point(x2, y2), new Point(x, y), false, false);
+            }
+            public void Close() { }
+        }
+
         sealed class SnapshotLayer : FrameworkElement
         {
             readonly VisualCollection visuals;
             readonly DrawingVisual after = new DrawingVisual();
+            readonly DrawingVisual refraction;
             readonly Rect viewport;
             readonly int pixelWidth, pixelHeight;
 
-            internal SnapshotLayer(BitmapSource before, Size size)
+            internal SnapshotLayer(BitmapSource before, Size size, bool refract)
             {
                 visuals = new VisualCollection(this);
                 viewport = new Rect(size);
@@ -271,16 +320,27 @@ namespace Dafeiyu
                 IsHitTestVisible = false;
                 ClipToBounds = true;
                 var old = new DrawingVisual();
-                Draw(old, before);
+                Draw(old, before, viewport);
                 after.Clip = Geometry.Empty;
                 visuals.Add(old);
                 visuals.Add(after);
+                if (refract)
+                {
+                    refraction = new DrawingVisual { Clip = Geometry.Empty };
+                    visuals.Add(refraction);
+                }
             }
 
             internal bool SetAfter(BitmapSource bitmap)
             {
                 if (bitmap.PixelWidth != pixelWidth || bitmap.PixelHeight != pixelHeight) return false;
-                Draw(after, bitmap);
+                Draw(after, bitmap, viewport);
+                if (refraction != null)
+                {
+                    var shifted = viewport;
+                    shifted.Offset(ThemeRevealPaths.RefractionOffsetX, ThemeRevealPaths.RefractionOffsetY);
+                    Draw(refraction, bitmap, shifted);
+                }
                 return true;
             }
 
@@ -290,10 +350,16 @@ namespace Dafeiyu
                 after.Clip = clip;
             }
 
-            void Draw(DrawingVisual target, BitmapSource bitmap)
+            internal void SetRefractionClip(Geometry clip)
+            {
+                clip.Freeze();
+                refraction.Clip = clip;
+            }
+
+            static void Draw(DrawingVisual target, BitmapSource bitmap, Rect rect)
             {
                 RenderOptions.SetBitmapScalingMode(target, BitmapScalingMode.Linear);
-                using (var context = target.RenderOpen()) context.DrawImage(bitmap, viewport);
+                using (var context = target.RenderOpen()) context.DrawImage(bitmap, rect);
             }
 
             protected override int VisualChildrenCount { get { return visuals.Count; } }

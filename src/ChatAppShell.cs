@@ -53,7 +53,8 @@ namespace Dafeiyu
             appPages=new Grid{Name="AppPageHost",Background=ThemeManager.Surface,ClipToBounds=true};homePage=new Grid{Name="AppHomePage"};homePage.Children.Add(workspaceShell);appPages.Children.Add(homePage);
             var pageFrame=new Border{Name="AppContentFrame",Background=ThemeManager.Surface,CornerRadius=new CornerRadius(16),BorderBrush=Ui.Brush("#E3E7EC"),BorderThickness=new Thickness(1),Child=appPages,ClipToBounds=true};pageFrame.SizeChanged+=delegate{pageFrame.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,pageFrame.ActualWidth),Math.Max(0,pageFrame.ActualHeight)),16,16);};Grid.SetColumn(pageFrame,1);body.Children.Add(pageFrame);Grid.SetRow(body,1);frame.Children.Add(body);
             var themeHost=new Grid{ClipToBounds=true};themeHost.Children.Add(frame);Content=themeHost;
-            new LiquidThemeReveal(this,themeHost,frame,themeButton,pet.SetThemeMode,LiquidThemeShape.DefaultDuration);
+            new LiquidThemeReveal(this,themeHost,frame,themeButton,pet.SetThemeMode,LiquidThemeShape.DefaultDuration,
+                ()=>pet.Settings.ThemeTransitionEffect,pet.PlayThemeSound);
             sidebarHidden=false;shellReady=true;RecordPage("home");RefreshShellAppearance();
             PreviewKeyDown+=ShellKeyDown;PreviewMouseDown+=delegate(object sender,MouseButtonEventArgs e){if(sidebarTemporary&&!navigation.IsMouseOver&&!shellSidebar.IsMouseOver){sidebarTemporary=false;RefreshWorkspaceLayout();}if(e.ChangedButton==MouseButton.XButton1){e.Handled=true;TravelPage(-1);}else if(e.ChangedButton==MouseButton.XButton2){e.Handled=true;TravelPage(1);}};
             AddHandler(Keyboard.GotKeyboardFocusEvent,new KeyboardFocusChangedEventHandler(delegate(object sender,KeyboardFocusChangedEventArgs e){var element=e.NewFocus as FrameworkElement;if(element!=null&&(element is System.Windows.Controls.Primitives.TextBoxBase||element is PasswordBox)&&element.IsVisible)lastEditingTarget=e.NewFocus;}),true);

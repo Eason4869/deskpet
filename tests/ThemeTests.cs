@@ -39,6 +39,19 @@ namespace Dafeiyu.Tests
                 var rising = Geometry.Parse(shape.PathAt(.62));
                 Check(rising.FillContains(new Point(size.Width / 2, size.Height - 4)) &&
                     !rising.FillContains(new Point(size.Width / 2, 5)), size + " liquid fills from the bottom");
+                foreach(double progress in new[]{.70,.84,.90})
+                {
+                    var pouring=Geometry.Parse(shape.PathAt(progress));
+                    bool connected=true;
+                    for(double y=origin.Y+4;y<size.Height;y+=8)
+                    {
+                        bool wet=false;
+                        for(int dx=-18;dx<=18&&!wet;dx++)
+                            wet=pouring.FillContains(new Point(origin.X+dx,y));
+                        connected&=wet;
+                    }
+                    Check(connected,size+" the falling stream connects to the rising surface at "+progress);
+                }
                 var full = Geometry.Parse(shape.PathAt(1));
                 Check(full.FillContains(new Point(0, 0)) && full.FillContains(new Point(size.Width - 1, size.Height - 1)),
                     size + " liquid covers the viewport");
@@ -46,7 +59,9 @@ namespace Dafeiyu.Tests
         }
         static void Click(Button button){button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}
         static bool HasOverlay(Window window){return All<FrameworkElement>(window).Any(e=>e.Name=="LiquidThemeOverlay");}
-        static void Preview(ChatWindow chat)
+        static void PumpReveal(string effect=ThemeTransitionMotion.Flow)
+        {Pump((int)ThemeTransitionMotion.Duration(effect,LiquidThemeShape.DefaultDuration).TotalMilliseconds+210);}
+        static void Preview(ChatWindow chat,string effect,bool manualOnly)
         {
             chat.Title="DeskPet Liquid Theme Preview";
             chat.WindowState=WindowState.Normal;
@@ -57,17 +72,24 @@ namespace Dafeiyu.Tests
             chat.Activate();
             chat.UpdateLayout();
             Console.WriteLine("PREVIEW_WINDOW="+new System.Windows.Interop.WindowInteropHelper(chat).Handle.ToInt64());
-            Pump(1450);
+            Pump(920);
             var button=All<Button>(chat).Single(b=>b.Name=="AppThemeMode");
             Click(button);
-            Pump(1450);
+            PumpReveal(effect);
             Click(button);
-            Pump(1500);
+            if(manualOnly&&ThemeManager.IsDark)
+            {
+                Pump(180);
+                Click(button);
+            }
+            PumpReveal(effect);
+            if(manualOnly){Pump(850);return;}
             bool systemDark=ThemeManager.IsDark;
             ThemeManager.SetSystemTheme(!systemDark);
-            Pump(1450);
+            PumpReveal(effect);
             ThemeManager.SetSystemTheme(systemDark);
-            Pump(1800);
+            PumpReveal(effect);
+            Pump(900);
         }
         [STAThread]public static int Main(string[] args)
         {
@@ -79,10 +101,12 @@ namespace Dafeiyu.Tests
                     var previewRoot=Path.Combine("work","theme-preview-"+Guid.NewGuid().ToString("N"));
                     var preview=new PetSettings{ThemeMode="light",UiLanguage="zh_CN",AutoUpdate=false,GreetingEnabled=false,
                         ReadReplies=false,AgentEnabled=true,OnboardingState="completed",ShowPredictedMessages=false};
+                    var effectArg=args.FirstOrDefault(arg=>arg.StartsWith("--effect=",StringComparison.Ordinal));
+                    if(effectArg!=null)preview.ThemeTransitionEffect=effectArg.Substring("--effect=".Length);
                     foreach(var key in preview.Hotkeys.Keys.ToArray())preview.Hotkeys[key]="";
                     pet=new PetWindow(null,preview,new SettingsStore(Path.Combine(previewRoot,"settings.json")),null);
                     pet.ShowChat();
-                    Preview(app.Windows.OfType<ChatWindow>().Single(window=>window.IsVisible));
+                    Preview(app.Windows.OfType<ChatWindow>().Single(window=>window.IsVisible),preview.ThemeTransitionEffect,args.Contains("--manual-only"));
                     return 0;
                 }
                 CheckLiquidGeometry();
@@ -100,6 +124,15 @@ namespace Dafeiyu.Tests
                 Check(picker!=null,"general settings expose theme selection");
                 var ink=Ui.Ink;Check(ink.Color.R>160,"startup applies saved dark palette");
                 var main=Window.GetWindow(picker);
+                var motion=All<ComboBox>(main).SingleOrDefault(b=>b.Name=="ThemeTransitionEffect");
+                Check(motion!=null&&Equals(motion.SelectedValue,"flow"),"visual style shows Flow as the default theme animation");
+                Check(motion.Items.Cast<ComboBoxItem>().Select(item=>(string)item.Tag).SequenceEqual(ThemeTransitionMotion.Choices),
+                    "the same dropdown contains Off, Flow, Ripple, Refraction and Zipper in order");
+                var themeSound=All<CheckBox>(main).Single(b=>b.Name=="ThemeTransitionSoundEnabled");
+                var themeVolume=All<Slider>(main).Single(s=>s.Name=="ThemeTransitionSoundVolume");
+                Check(themeSound.IsChecked==false&&themeVolume.Value==30,"appearance settings expose opt-in sound and 30 percent volume");
+                themeSound.IsChecked=true;themeVolume.Value=41;
+                Check(store.Load().ThemeTransitionSoundEnabled&&store.Load().ThemeTransitionSoundVolume==41,"appearance controls persist both theme audio preferences");
                 Check(All<Button>(main).Count(button=>button.Name=="AppThemeMode") == 1,"main title bar exposes one persistent theme button");
                 var behavior=All<Border>(main).Single(b=>b.Child is Panel&&((Panel)b.Child).Children.OfType<CheckBox>().Any(c=>c.Name=="QuietMode"));
                 Check(Contrast(Painted(behavior.Background),Painted(ThemeManager.Surface))>=1.18,"dark behavior card visibly separates from the settings page");
@@ -121,24 +154,43 @@ namespace Dafeiyu.Tests
                     Check(HasOverlay(main)&&store.Load().ThemeMode=="light","transition retains the previous stored mode while the reveal is active");
                     Click(titleTheme);
                     Check(ThemeManager.Mode=="dark","repeat click coalesces into the current reveal");
-                    Pump(1250);
+                    PumpReveal();
                 }
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&picker.Value=="dark","title switch saves the mode, updates settings and removes the layer");
-                Click(titleTheme);Pump(1250);
+                Click(titleTheme);PumpReveal();
                 Check(store.Load().ThemeMode=="system"&&picker.Value=="system","title button reaches follow-system mode");
                 foreach(bool systemDark in new[]{!ThemeManager.IsDark,ThemeManager.IsDark})
                 {
                     ThemeManager.SetSystemTheme(systemDark);
                     Check(ThemeManager.IsDark==systemDark&&HasOverlay(main)==SystemParameters.ClientAreaAnimation,
                         "changing system appearance plays the same reveal when motion is allowed");
-                    Pump(1150);
+                    PumpReveal();
                     Check(!HasOverlay(main)&&store.Load().ThemeMode=="system","system reveal clears without changing the saved preference");
                 }
-                Click(titleTheme);Pump(1250);
+                Click(titleTheme);PumpReveal();
                 Check(store.Load().ThemeMode=="light"&&picker.Value=="light","title button cycles back to light");
                 Click(titleTheme);
                 main.Width-=8;main.UpdateLayout();Pump();
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark","resizing settles the requested theme and clears the layer");
+                motion.SelectedValue=ThemeTransitionMotion.Off;
+                Check(store.Load().ThemeTransitionEffect=="off","changing the motion dropdown immediately persists Off");
+                Click(All<Button>(picker).Single(b=>b.Name=="ThemeChoicelight"));Pump();
+                Click(titleTheme);
+                Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&store.Load().ThemeTransitionEffect=="off",
+                    "Off takes effect immediately and survives reload");
+                Click(titleTheme);
+                ThemeManager.SetSystemTheme(!ThemeManager.IsDark);
+                Check(!HasOverlay(main)&&store.Load().ThemeMode=="system","Off also suppresses automatic system animation");
+                foreach(string effect in new[]{ThemeTransitionMotion.Ripple,ThemeTransitionMotion.Refraction,ThemeTransitionMotion.Zipper})
+                {
+                    motion.SelectedValue=effect;
+                    Click(All<Button>(picker).Single(b=>b.Name=="ThemeChoicelight"));Pump();
+                    Click(titleTheme);
+                    Check(HasOverlay(main)==SystemParameters.ClientAreaAnimation,effect+" uses the native reveal when motion is allowed");
+                    PumpReveal(effect);
+                    Check(!HasOverlay(main)&&store.Load().ThemeTransitionEffect==effect&&store.Load().ThemeMode=="dark",
+                        effect+" selection and completed palette survive reload");
+                }
                 var settingsPage=All<SettingsPage>(main).Single();settingsPage.SelectNavigation(4);Pump();var about=All<AboutPanel>(main).Single();
                 var updateCard=All<Border>(about).Single(b=>b.Background is LinearGradientBrush&&All<Button>(b).Any(c=>c.Name=="CheckUpdates"));
                 Check(Contrast(Painted(updateCard.Background),Painted(ThemeManager.Surface))>=1.18,"dark about update card visibly separates from its page");

@@ -199,7 +199,8 @@ internal sealed partial class ChatWindow : Window
             themeHost.Children.Add(shell);
             Content = themeHost;
             _ = new LiquidThemeReveal(this, themeHost, shell, themeButton,
-                mode => Try(() => owner.SetThemeMode(mode)), LiquidThemeShape.DefaultDuration);
+                mode => Try(() => owner.SetThemeMode(mode)), LiquidThemeShape.DefaultDuration,
+                () => owner.Settings.ThemeTransitionEffect, beginSound: owner.PlayThemeSound);
         }
         ApplyRoute();
         models.SelectionChanged += (_, _) =>
