@@ -13,16 +13,59 @@ namespace Dafeiyu
 {
     internal sealed class GitHubClient : IDisposable
     {
+        internal const string PublicApi = "https://api.github.com/";
         const int MaximumResponseBytes=2*1024*1024,MaximumTextChars=120000;
         readonly Uri apiRoot;readonly HttpClient http;readonly string repository,apiToken;bool disposed;
         internal string Repository {get{return repository;}}
         internal GitHubClient(Uri root,HttpMessageHandler handler,string repository,string token)
         {
-            apiRoot=root??new Uri("https://api.github.com/");this.repository=repository??"";this.apiToken=token??"";
+            apiRoot=root??new Uri(PublicApi);this.repository=repository??"";this.apiToken=token??"";
             http=new HttpClient(handler??new HttpClientHandler{UseProxy=false,AllowAutoRedirect=false}){Timeout=Timeout.InfiniteTimeSpan};
         }
         internal GitHubClient(string repository,ConnectionSettings settings):this(new Uri(String.IsNullOrWhiteSpace(settings==null?null:settings.BaseUrl)?"https://api.github.com/":settings.BaseUrl),null,repository,settings==null?null:settings.ApiKey)
         {
+        }
+
+        internal static GitHubClient ForApp(string repository, string apiToken, HttpMessageHandler handler = null)
+        {
+            string normalized = repository ?? "";
+            if (normalized.Length != 0 && (normalized.Length > 300 || !Regex.IsMatch(normalized, @"\A[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*\z")))
+                throw new ArgumentException(TextResources.Get("gitHubUpdates.repository.text"));
+            return new GitHubClient(new Uri(PublicApi), handler, normalized, apiToken);
+        }
+
+        internal async Task<string> GetAuthenticatedLoginAsync(CancellationToken token)
+        {
+            string json = await SendJsonAsync(HttpMethod.Get, "/user", null, token).ConfigureAwait(false);
+            string login = GetString(ParseObject(json), "login", "");
+            if (!Regex.IsMatch(login, @"\A[A-Za-z0-9][A-Za-z0-9_-]{0,99}\z")) throw new FormatException();
+            return login;
+        }
+
+        internal async Task<string> GetDefaultBranchAsync(CancellationToken token)
+        {
+            var repo = ParseRepository(repository);
+            string json = await SendJsonAsync(HttpMethod.Get, "/repos/" + repo.Owner + "/" + repo.Name, null, token).ConfigureAwait(false);
+            string branch = GetString(ParseObject(json), "default_branch", "");
+            if (String.IsNullOrWhiteSpace(branch) || branch.Length > 240 || branch.Any(Char.IsControl)) throw new FormatException();
+            return branch;
+        }
+
+        internal async Task<Uri> CreateAppPullRequestAsync(string title, string body, string head, string baseBranch, CancellationToken token)
+        {
+            string json = await ExecuteCoreAsync("github_create_pull_request", new Dictionary<string, object> {
+                { "title", title }, { "body", body }, { "head", head }, { "base", baseBranch }
+            }, token).ConfigureAwait(false);
+            object raw;
+            if (!ParseObject(json).TryGetValue("number", out raw) || !(raw is int) || (int)raw <= 0) throw new FormatException();
+            return new Uri("https://github.com/" + repository + "/pull/" + ((int)raw).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        static Dictionary<string, object> ParseObject(string json)
+        {
+            var value = new JavaScriptSerializer { MaxJsonLength = MaximumResponseBytes }.DeserializeObject(json) as Dictionary<string, object>;
+            if (value == null) throw new FormatException();
+            return value;
         }
         public async Task<string> ExecuteAsync(string name,Dictionary<string,object> args,CancellationToken token)
         {
@@ -82,11 +125,31 @@ namespace Dafeiyu
             using(var request=new HttpRequestMessage(method,new Uri(apiRoot,path.TrimStart('/'))))
             {
                 if(!String.IsNullOrEmpty(apiToken))request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",apiToken);
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));request.Headers.Add("X-GitHub-Api-Version","2022-11-28");
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));request.Headers.Add("X-GitHub-Api-Version","2022-11-28");request.Headers.UserAgent.ParseAdd("DeskPet");
                 if(payload!=null)request.Content=new StringContent(new JavaScriptSerializer{MaxJsonLength=MaximumResponseBytes}.Serialize(payload),Encoding.UTF8,"application/json");
                 using(var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false))
                 {
-                    using(var memory=new MemoryStream()){await response.Content.CopyToAsync(memory).ConfigureAwait(false);if(memory.Length>MaximumResponseBytes)throw new ApiException(TextResources.Get("gitHubClient.sendJsonAsync.text"));string body=Encoding.UTF8.GetString(memory.ToArray());if(!response.IsSuccessStatusCode)throw new ApiException(TextResources.Format("gitHubClient.sendJsonAsync.template",(int)response.StatusCode));return body;}
+                    if(!response.IsSuccessStatusCode)throw new ApiException(TextResources.Format("gitHubClient.sendJsonAsync.template",(int)response.StatusCode));
+                    using (var cancelBody = token.Register(response.Dispose))
+                    using (var memory = new MemoryStream())
+                    {
+                        try
+                        {
+                            using (var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                            {
+                                var buffer = new byte[8192];
+                                int count;
+                                while ((count = await stream.ReadAsync(buffer, 0, buffer.Length, token).ConfigureAwait(false)) > 0)
+                                {
+                                    if (memory.Length + count > MaximumResponseBytes) throw new ApiException(TextResources.Get("gitHubClient.sendJsonAsync.text"));
+                                    memory.Write(buffer, 0, count);
+                                }
+                            }
+                        }
+                        catch (Exception) { token.ThrowIfCancellationRequested(); throw; }
+                        token.ThrowIfCancellationRequested();
+                        return Encoding.UTF8.GetString(memory.ToArray());
+                    }
                 }
             }
         }

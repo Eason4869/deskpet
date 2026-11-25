@@ -125,9 +125,11 @@ namespace Dafeiyu
         [DataMember] public bool RelationshipWork {get;internal set;}
         [DataMember] public bool RelationshipSucceeded {get;internal set;}
         [DataMember] public string AgentTaskId { get; internal set; }
+        [DataMember(EmitDefaultValue=false)] internal bool IsGeneratedPlan { get; set; }
         [DataMember(EmitDefaultValue=false)] internal string AgentTurnStreamId { get; set; }
         [DataMember(EmitDefaultValue=false)] internal long AgentTurnRevision { get; set; }
         [DataMember(EmitDefaultValue=false)] public AgentReplyChangeSummary ChangeSummary { get; set; }
+        [DataMember(EmitDefaultValue=false)] internal List<AgentChildResult> AgentChildren { get; set; }
         [DataMember] public DateTime? ProcessingStartedAt { get; private set; }
         [DataMember] public long ProcessingMilliseconds { get; private set; }
         [DataMember] public List<ChatAttachment> Attachments { get; private set; }
@@ -141,7 +143,13 @@ namespace Dafeiyu
         public ChatMessage(string role, string content) : this(role,content,Guid.NewGuid().ToString("N"),"complete","text") { }
         public ChatMessage(string role,string content,string turnId,string status,string source)
         { Id=Guid.NewGuid().ToString("N");TurnId=turnId;Role=role;Content=content??"";Status=status;Source=source;Timestamp=DateTime.UtcNow; }
-        public ChatMessage Copy() { var copy=(ChatMessage)MemberwiseClone();copy.SetAttachments(Attachments);copy.SetTools(ToolEvents);copy.SetGeneratedImages(GeneratedImages);copy.ImageGenerationTaskIds=ImageGenerationTaskIds==null?null:new List<string>(ImageGenerationTaskIds);copy.ChangeSummary=ChangeSummary==null?null:ChangeSummary.Copy();return copy; }
+        public ChatMessage Copy() { return Copy(true); }
+        internal ChatMessage Copy(bool includeAgentChildren)
+        {
+            var copy=(ChatMessage)MemberwiseClone();copy.SetAttachments(Attachments);copy.SetTools(ToolEvents);copy.SetGeneratedImages(GeneratedImages);copy.ImageGenerationTaskIds=ImageGenerationTaskIds==null?null:new List<string>(ImageGenerationTaskIds);copy.ChangeSummary=ChangeSummary==null?null:ChangeSummary.Copy();
+            copy.AgentChildren=includeAgentChildren&&AgentChildren!=null?AgentChildren.Where(child=>child!=null).Select(child=>child.Copy()).ToList():null;
+            return copy;
+        }
         internal void SetGeneratedImages(IEnumerable<GeneratedImage> images) { GeneratedImages=images==null?null:images.Where(i=>i!=null).Take(20).Select(i=>i.Copy()).ToList(); }
         internal void SetTools(IEnumerable<AgentToolEvent> tools) { ToolEvents=tools==null?null:tools.Select(t=>t.Copy()).ToList(); }
         internal void SetAttachments(IEnumerable<ChatAttachment> files) { Attachments=files==null?null:files.Select(f=>f.Copy()).ToList(); }
@@ -162,11 +170,13 @@ namespace Dafeiyu
             TurnId=String.IsNullOrEmpty(TurnId)?Id:TurnId;Content=Content??"";Source=Source??"text";
             if(Status=="pending")Status="interrupted";
             if(ToolEvents!=null)foreach(var item in ToolEvents.Where(t=>t!=null && t.Status=="running")){item.Status="error";item.Summary+=TextResources.Get("petBusiness.normalize.itemSummary");}
+            if(AgentChildren!=null)foreach(var child in AgentChildren)child.RecoverInterrupted();
             if(Status!="complete" && Status!="interrupted" && Status!="cancelled" && Status!="error")Status="interrupted";
         }
     }
     public sealed class ConversationLog
     {
+        const int MaximumStoredSubagents=128;
         private readonly List<ChatMessage> messages = new List<ChatMessage>();
         private readonly HashSet<string> retainedImageReplies=new HashSet<string>();
         private readonly object gate=new object();
@@ -177,6 +187,17 @@ namespace Dafeiyu
         internal void ReconcileImageUsage(){lock(gate){var current=new HashSet<string>(ImageAssetUsageRegistry.ReferenceKeys(messages),StringComparer.Ordinal);foreach(string key in imageLeases.Keys.Where(k=>!current.Contains(k)).ToArray()){imageLeases[key].Dispose();imageLeases.Remove(key);}}}
         public void ReleaseImageUsage(){lock(gate){foreach(var lease in imageLeases.Values)lease.Dispose();imageLeases.Clear();}}
         public IList<ChatMessage> Messages { get { lock(gate)return messages.Select(m=>m.Copy()).ToList().AsReadOnly(); } }
+        internal ChatMessage LatestGeneratedPlan
+        {
+            get
+            {
+                lock(gate)
+                {
+                    var plan=messages.FindLast(message=>message.Role=="assistant"&&message.IsGeneratedPlan&&message.Status=="complete"&&!String.IsNullOrWhiteSpace(message.Content));
+                    return plan==null?null:plan.Copy(false);
+                }
+            }
+        }
         public void Commit(string user, string assistant)
         {
             Commit(user,assistant,"text");
@@ -217,7 +238,7 @@ namespace Dafeiyu
             }
         }
         internal void RetainImageReply(string id,bool retain){lock(gate){if(retain)retainedImageReplies.Add(id);else retainedImageReplies.Remove(id);}}
-        internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&!retainedImageReplies.Contains(id)&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.ImageGenerationTaskIds==null||m.ImageGenerationTaskIds.Count==0)&&(m.GeneratedImages==null||m.GeneratedImages.Count==0)&&(m.ToolEvents==null||m.ToolEvents.Count==0));}
+        internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&!retainedImageReplies.Contains(id)&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.ImageGenerationTaskIds==null||m.ImageGenerationTaskIds.Count==0)&&(m.GeneratedImages==null||m.GeneratedImages.Count==0)&&(m.ToolEvents==null||m.ToolEvents.Count==0)&&(m.AgentChildren==null||m.AgentChildren.Count==0));}
         internal void PersistGeneratedImages(GeneratedImageStore assets)
         {
             lock(gate)foreach(var message in messages.Where(m=>m.GeneratedImages!=null&&m.GeneratedImages.Any(i=>i.Temporary)))
@@ -227,11 +248,74 @@ namespace Dafeiyu
         internal void UpdateAgentTaskSummary(AgentTaskState task)
         {
             if(task==null || String.IsNullOrEmpty(task.Id))return;
-            lock(gate)foreach(var message in messages.Where(m=>m.Role=="assistant" && m.AgentTaskId==task.Id))message.ChangeSummary=AgentReplyChangeSummary.FromTask(task);
+            lock(gate)
+            {
+                var linked=messages.Where(m=>m.Role=="assistant"&&m.AgentTaskId==task.Id).ToArray();
+                foreach(var message in linked)message.ChangeSummary=AgentReplyChangeSummary.FromTask(task);
+                if(linked.Length==0||task.Children==null||task.Children.Count==0)return;
+                var reply=linked[linked.Length-1];
+                reply.AgentChildren=MergeChildRows(task.Children,reply.AgentChildren).Select(child=>child.ArchiveCopy()).ToList();
+                PruneAgentChildren();
+            }
+        }
+
+        internal IReadOnlyList<AgentChildResult> Subagents(AgentTaskState current)
+        {
+            lock(gate)
+            {
+                var rows=new List<AgentChildResult>();
+                var seen=new HashSet<string>(StringComparer.Ordinal);
+                bool includedCurrent=false;
+                for(int index=messages.Count-1;index>=0;index--)
+                {
+                    var message=messages[index];
+                    if(message.Role!="assistant")continue;
+                    if(!includedCurrent&&current!=null&&!String.IsNullOrEmpty(current.Id)&&message.AgentTaskId==current.Id)
+                    {
+                        AddChildRows(MergeChildRows(current.Children,message.AgentChildren),rows,seen);
+                        includedCurrent=true;
+                    }
+                    else AddChildRows(message.AgentChildren,rows,seen);
+                }
+                return rows.AsReadOnly();
+            }
+        }
+
+        static bool HasChildId(AgentChildResult child) { return child!=null&&!String.IsNullOrEmpty(child.Id); }
+
+        static IEnumerable<AgentChildResult> MergeChildRows(IEnumerable<AgentChildResult> latest,IEnumerable<AgentChildResult> previous)
+        {
+            return (latest??Enumerable.Empty<AgentChildResult>()).Concat(previous??Enumerable.Empty<AgentChildResult>())
+                .Where(HasChildId).GroupBy(child=>child.Id,StringComparer.Ordinal)
+                .Select(group=>group.OrderBy(child=>child.IsInProgress).ThenByDescending(child=>child.FinishedUtc.HasValue).First())
+                .OrderByDescending(child=>child.CreatedUtc);
+        }
+
+        static void AddChildRows(IEnumerable<AgentChildResult> children,List<AgentChildResult> rows,HashSet<string> seen)
+        {
+            if(children==null)return;
+            foreach(var child in children.Where(HasChildId).OrderByDescending(child=>child.CreatedUtc))
+                if(rows.Count<MaximumStoredSubagents&&seen.Add(child.Id))rows.Add(child.Copy());
+        }
+
+        void PruneAgentChildren()
+        {
+            var kept=new HashSet<string>(StringComparer.Ordinal);
+            for(int index=messages.Count-1;index>=0;index--)
+            {
+                var message=messages[index];
+                if(message.AgentChildren==null)continue;
+                message.AgentChildren.RemoveAll(child=>!HasChildId(child)||kept.Count>=MaximumStoredSubagents||!kept.Add(child.Id));
+                if(message.AgentChildren.Count==0)message.AgentChildren=null;
+            }
         }
         public ChatMessage Update(string id,string content,string status,string reasoning=null,long reasoningMilliseconds=0,IEnumerable<AgentToolEvent> tools=null,long? processingMilliseconds=null)
         {
-            lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;if(message.Source=="proactive")return message.Copy();message.Update(content,status);if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }
+            return Update(id,content,status,reasoning,reasoningMilliseconds,tools,processingMilliseconds,false);
+        }
+        internal ChatMessage Update(string id,string content,string status,string reasoning,long reasoningMilliseconds,IEnumerable<AgentToolEvent> tools,long? processingMilliseconds,bool generatedPlan)
+        {
+            lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;if(message.Source=="proactive")return message.Copy();message.Update(content,status);message.IsGeneratedPlan=generatedPlan;if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }
         }
         public void Attach(string id,IEnumerable<ChatAttachment> files) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.SetAttachments(files);} }
         public ChatMessage AttachImageTask(string id,string taskId)
@@ -242,7 +326,7 @@ namespace Dafeiyu
             lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;var images=message.GeneratedImages??new List<GeneratedImage>();if(images.Any(i=>i.Id==image.Id))return message.Copy();if(images.Count>=20)throw new InvalidOperationException(TextResources.Get("petBusiness.attachGeneratedImage.text"));LeaseImageKeys(String.IsNullOrEmpty(image.ReferenceImageId)?new[]{image.Id}:new[]{image.Id,image.ReferenceImageId});message.SetGeneratedImages(images.Concat(new[]{image}));return message.Copy();}
         }
         public void Replace(IList<ChatMessage> restored)
-        { lock(gate) { if(restored!=null)LeaseImageKeys(ImageAssetUsageRegistry.ReferenceKeys(restored));messages.Clear();if(restored!=null)foreach(var m in restored){if(m==null || (m.Role!="user" && m.Role!="assistant"))continue;var copy=m.Copy();copy.Normalize();messages.Add(copy);}Trim(); } }
+        { lock(gate) { if(restored!=null)LeaseImageKeys(ImageAssetUsageRegistry.ReferenceKeys(restored));messages.Clear();if(restored!=null)foreach(var m in restored){if(m==null || (m.Role!="user" && m.Role!="assistant"))continue;var copy=m.Copy();copy.Normalize();messages.Add(copy);}PruneAgentChildren();Trim(); } }
         private void Trim()
         {
             while(messages.Count>0 && (messages.Select(m=>m.TurnId).Distinct().Count()>200 || messages.Sum(m=>(long)Encoding.UTF8.GetByteCount(m.Content)+Encoding.UTF8.GetByteCount(m.Reasoning??"")+ChatAttachment.StoredSize(m.Attachments)+512)>8*1024*1024))
@@ -254,7 +338,7 @@ namespace Dafeiyu
             if (!String.IsNullOrWhiteSpace(persona)) result.Add(new ChatMessage("system", persona));
             lock(gate) {
                 var pairs=new List<ChatMessage>();
-                for(int i=0;i<messages.Count;i++) { var u=messages[i];if(u.Role=="assistant" && u.Source=="proactive" && u.Status=="complete" && u.TurnId.StartsWith("proactive-",StringComparison.Ordinal)){pairs.Add(new ChatMessage("user","Context: the assistant previously initiated the following conversation. Text-only continuation; no visual evidence is attached. Do not assume a current view of the desktop.",u.TurnId,"complete","proactive-context"));var proactive=u.Copy();proactive.ChangeSummary=null;pairs.Add(proactive);continue;}if(i+1>=messages.Count)continue;var a=messages[i+1];if(u.Role=="user" && a.Role=="assistant" && u.TurnId==a.TurnId && u.Status=="complete" && a.Status=="complete") { var userCopy=u.Copy();var assistantCopy=a.Copy();userCopy.ChangeSummary=null;assistantCopy.ChangeSummary=null;pairs.Add(userCopy);pairs.Add(assistantCopy);i++; } }
+                for(int i=0;i<messages.Count;i++) { var u=messages[i];if(u.Role=="assistant" && u.Source=="proactive" && u.Status=="complete" && u.TurnId.StartsWith("proactive-",StringComparison.Ordinal)){pairs.Add(new ChatMessage("user","Context: the assistant previously initiated the following conversation. Text-only continuation; no visual evidence is attached. Do not assume a current view of the desktop.",u.TurnId,"complete","proactive-context"));var proactive=u.Copy(false);proactive.ChangeSummary=null;pairs.Add(proactive);continue;}if(i+1>=messages.Count)continue;var a=messages[i+1];if(u.Role=="user" && a.Role=="assistant" && u.TurnId==a.TurnId && u.Status=="complete" && a.Status=="complete") { var userCopy=u.Copy(false);var assistantCopy=a.Copy(false);userCopy.ChangeSummary=null;assistantCopy.ChangeSummary=null;pairs.Add(userCopy);pairs.Add(assistantCopy);i++; } }
                 result.AddRange(pairs);
             }
             result.Add(new ChatMessage("user", user)); return result;

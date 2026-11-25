@@ -11,33 +11,55 @@ namespace Dafeiyu
     public sealed partial class ChatWindow
     {
         WorkSummaryRepository summaryRepository;
+        GitWorkspaceChangeSnapshot summaryGitChanges;
         string summaryRepositoryWorkspace;
+        ConversationSession summaryRepositorySession;
         int summaryRepositoryRequest;
 
         async void ReadWorkSummaryRepository(bool refresh = false)
         {
             var sourceSession = session;
-            var project = SummaryProject;
-            var path = project == null ? null : project.Workspace;
-            if (!refresh && String.Equals(path, summaryRepositoryWorkspace, StringComparison.OrdinalIgnoreCase)) return;
-            if (!String.Equals(path, summaryRepositoryWorkspace, StringComparison.OrdinalIgnoreCase)) summaryRepository = null;
+            var path = SummaryWorkspacePath;
+            bool same = ReferenceEquals(sourceSession, summaryRepositorySession) &&
+                String.Equals(path, summaryRepositoryWorkspace, StringComparison.OrdinalIgnoreCase);
+            if (!refresh && same) return;
+            if (!same) { summaryRepository = null; summaryGitChanges = null; }
+            summaryRepositorySession = sourceSession;
             summaryRepositoryWorkspace = path;
             if (String.IsNullOrWhiteSpace(path)) return;
             int request = ++summaryRepositoryRequest;
             WorkSummaryRepository result = null;
-            using (var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(3)))
+            GitWorkspaceChangeSnapshot changes = null;
+            using (var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(8)))
             {
                 try { result = await Task.Run(() => WorkSummaryRepository.Read(path, cancel.Token)); }
-                catch (Exception error)
+                catch (Exception error) { if (!CanReportGitReadError(error)) throw; }
+                if (result != null)
                 {
-                    if (!(error is IOException || error is UnauthorizedAccessException || error is ArgumentException ||
-                          error is OperationCanceledException || error is InvalidOperationException || error is System.ComponentModel.Win32Exception ||
-                          error is NotSupportedException || error is System.Security.SecurityException)) throw;
+                    try { changes = await Task.Run(() => GitWorkspaceChanges.Read(path, false, cancel.Token)); }
+                    catch (Exception error) { if (!CanReportGitReadError(error)) throw; }
                 }
             }
             if (closed || request != summaryRepositoryRequest || !ReferenceEquals(sourceSession, session) || !String.Equals(path, summaryRepositoryWorkspace, StringComparison.OrdinalIgnoreCase)) return;
             summaryRepository = result;
+            summaryGitChanges = changes;
             RefreshWorkSummaryOverviews();
+        }
+
+        internal static bool CanReportGitReadError(Exception error)
+        {
+            return error is IOException || error is UnauthorizedAccessException || error is ArgumentException ||
+                error is OperationCanceledException || error is InvalidOperationException || error is System.ComponentModel.Win32Exception ||
+                error is NotSupportedException || error is System.Security.SecurityException;
+        }
+
+        string SummaryWorkspacePath
+        {
+            get
+            {
+                var project = SummaryProject;
+                return project != null ? project.Workspace : WorkEntry && workspace != null ? workspace.ProjectWorkspace : null;
+            }
         }
 
         ProjectDefinition SummaryProject

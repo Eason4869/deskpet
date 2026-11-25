@@ -6,10 +6,42 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 namespace Dafeiyu
 {
+    [DataContract]
+    internal sealed class ConversationWorkOptions
+    {
+        [DataMember(EmitDefaultValue=false)] internal string Mode {get;private set;}
+        [DataMember(EmitDefaultValue=false)] internal string Goal {get;private set;}
+
+        internal ConversationWorkOptions(string mode,string goal)
+        {
+            Mode=mode;
+            Goal=goal;
+            Normalize();
+        }
+
+        [OnDeserialized] void AfterDeserialize(StreamingContext context){Normalize();}
+
+        void Normalize()
+        {
+            if(Mode!=null&&Mode!="plan"&&Mode!="goal")Mode="off";
+            Goal=(Goal??"").Trim();
+            if(Goal.Length>4000)Goal=Goal.Substring(0,Char.IsHighSurrogate(Goal[3999])?3999:4000);
+        }
+
+        internal string Apply(PetSettings settings,bool allowWork)
+        {
+            string mode=allowWork?(Mode??(settings.AgentPlanMode?"plan":"off")):"off";
+            settings.AgentPlanMode=mode=="plan";
+            settings.AgentGoal=mode=="goal"?Goal??"":"";
+            return mode=="plan"||mode=="goal"?mode:"";
+        }
+    }
+
     [DataContract] public sealed class ConversationDefinition
     {
         [DataMember] public string Id="",Name=TextResources.Get("projectCatalog.id.name"),Status="idle";[DataMember] public bool NameEdited,Archived,HasUnreadCompletion,Pinned;
         [DataMember] public string Mode="work",PetId="";
+        [DataMember(EmitDefaultValue=false)] internal volatile ConversationWorkOptions WorkOptions;
         [DataMember(EmitDefaultValue=false)] public string Origin;
         [DataMember] public ImageDescriptionOverride ImageDescriptionOverride;
         [DataMember] public string SectionId="";

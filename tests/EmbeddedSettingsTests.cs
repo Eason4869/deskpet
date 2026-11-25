@@ -36,15 +36,15 @@ namespace Dafeiyu.Tests
                 Call(page,"SelectAiSection",0);Pump();var name=(TextBox)Find(page,"TextProviderName");name.Text="unsaved embedded provider";
                 Call(page,"RefreshTextProviders");Check(name.Text=="unsaved embedded provider","external provider refresh preserves pending local configuration");
                 Call(page,"SelectCompanionSection",0);Pump();var prompt=(TextBox)Find(page,"PersonaPrompt");prompt.Text="unsaved embedded persona";
-                Call(page,"SelectWorkSettings");Pump();var goal=(TextBox)Find(page,"AgentGoal");goal.Text="unsaved embedded work goal";
+                Call(page,"SelectWorkSettings");Pump();var instructions=(TextBox)Find(page,"AgentGlobalInstructions");instructions.Text="unsaved embedded instructions";
                 var scroll=(ScrollViewer)Find(page,"WorkSettingsScroll");scroll.ScrollToVerticalOffset(240);Pump();double offset=scroll.VerticalOffset;
                 slot.Content=new TextBlock{Text="Home"};Pump();Call(page,"RefreshState");slot.Content=page;Pump();
-                Check(Object.ReferenceEquals(goal,Find(page,"AgentGoal")) && goal.Text=="unsaved embedded work goal" && Math.Abs(scroll.VerticalOffset-offset)<1,"home and settings switching retains work controls draft and scroll");
+                Check(Object.ReferenceEquals(instructions,Find(page,"AgentGlobalInstructions")) && instructions.Text=="unsaved embedded instructions" && Math.Abs(scroll.VerticalOffset-offset)<1,"home and settings switching retains work controls draft and scroll");
                 Call(page,"SelectAiSection",0);Pump();Check(((TextBox)Find(page,"TextProviderName")).Text=="unsaved embedded provider","background refresh retains AI draft");
                 Call(page,"SelectCompanionSection",0);Pump();Check(((TextBox)Find(page,"PersonaPrompt")).Text=="unsaved embedded persona","background refresh retains persona draft");
                 Call(page,"SelectWorkSettings");Pump();
                 var editing=typeof(PetWindow).GetField("editingProject",BindingFlags.Instance|BindingFlags.NonPublic);editing.SetValue(pet,new ProjectDefinition{Id="another-project",Name="Other project"});
-                Check(!(bool)Call(page,"TrySelectWorkSettings") && goal.Text=="unsaved embedded work goal","changing work editing object requires resolving existing draft");editing.SetValue(pet,null);
+                Check(!(bool)Call(page,"TrySelectWorkSettings") && instructions.Text=="unsaved embedded instructions","changing work editing object requires resolving existing draft");editing.SetValue(pet,null);
                 int changed=-1;Action<int> onChanged=delegate(int index){changed=index;};type.GetEvent("NavigationChanged").AddEventHandler(page,onChanged);Call(page,"SelectNavigation",4);Pump();Check(changed==4 && (int)type.GetProperty("SelectedNavigationIndex").GetValue(page,null)==4,"navigation reports the actual selected destination");
                 // Existing Live test controls resolve Window.GetWindow; the page must not insert a phantom owner.
                 Call(page,"SelectAiSection",3);Pump();Check(Object.ReferenceEquals(Window.GetWindow(Find(page,"PreviewLive")),host),"live test control is owned by the visible main host");

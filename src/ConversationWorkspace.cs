@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Web.Script.Serialization;
 namespace Dafeiyu
 {
     public sealed class ConversationWorkspace : IDisposable
@@ -18,6 +20,44 @@ namespace Dafeiyu
         internal bool UiObserved;
         internal bool IsDisposed {get{return disposed;}}
         internal bool IsDraft;internal Action DraftProjectChanged;internal string DraftOwner;internal ConversationDefinition Definition;
+        static readonly ConversationWorkOptions InheritedWorkOptions=new ConversationWorkOptions(null,"");
+        ComposerDraftStore draftWorkStore;
+        string draftWorkScope;
+
+        internal void BindDraftWorkOptions(ComposerDraftStore store,string role,Func<string,bool> isPromoted)
+        {
+            if(Definition.Mode!="work"||ProjectId==ProjectCatalogStore.QuickProjectId)return;
+            draftWorkStore=store;
+            draftWorkScope=ComposerDraftStore.Scope(role,"work-options",ProjectId,Definition.SectionId);
+            Definition.WorkOptions=null;
+            string saved=store.Get(draftWorkScope);
+            if(String.IsNullOrEmpty(saved))return;
+            try
+            {
+                var value=new JavaScriptSerializer().Deserialize<Dictionary<string,string>>(saved);
+                string owner,mode,goal;
+                if(value==null||!value.TryGetValue("owner",out owner)||!value.TryGetValue("mode",out mode)||!value.TryGetValue("goal",out goal))return;
+                if(isPromoted==null||!isPromoted(owner))Definition.WorkOptions=new ConversationWorkOptions(mode,goal);
+            }
+            catch(ArgumentException) { }
+            catch(InvalidOperationException) { }
+        }
+
+        internal void SaveDraftWorkOptions(ConversationWorkOptions options)
+        {
+            if(!IsDraft||draftWorkStore==null)throw new InvalidOperationException(TextResources.Get("petWindow.prepareConversationSubmission.text"));
+            var payload=options==null?"":new JavaScriptSerializer().Serialize(new Dictionary<string,string>{{"owner",Id},{"mode",options.Mode},{"goal",options.Goal}});
+            draftWorkStore.SaveNow(draftWorkScope,payload);
+            Definition.WorkOptions=options;
+        }
+
+        internal void FinishDraftWorkOptions()
+        {
+            if(draftWorkStore==null)return;
+            draftWorkStore.Set(draftWorkScope,"");
+            draftWorkStore.Flush();
+            draftWorkStore=null;
+        }
         AgentJobApplicationService jobServices;
         internal void ConfigureJobServices(AgentJobApplicationService services)
         {
@@ -70,10 +110,26 @@ namespace Dafeiyu
         }
         public PetSettings EffectiveSettings()
         {
+            string mode;
+            return EffectiveSettings(out mode);
+        }
+
+        internal bool SupportsWorkOptions { get { return EffectiveSettings().AgentEnabled&&ProjectId!=ProjectCatalogStore.QuickProjectId; } }
+
+        internal string WorkMode
+        {
+            get { string mode;EffectiveSettings(out mode);return mode; }
+        }
+
+        PetSettings EffectiveSettings(out string workMode)
+        {
             var cfg=settings().Copy();
             cfg.ImageDescriptionOverride=Definition.ImageDescriptionOverride==null?null:Definition.ImageDescriptionOverride.Copy();
             if(project.Id!=ProjectCatalogStore.UnassignedProjectId && project.Id!=ProjectCatalogStore.QuickProjectId){
-                cfg.AgentWorkspace=project.Workspace;cfg.AgentGoal=project.Goal;cfg.AgentFullAccess=project.FullAccess;cfg.AgentBackupFiles=project.BackupFiles;cfg.AgentPlanMode=project.PlanMode;
+                cfg.AgentWorkspace=project.Workspace;cfg.AgentFullAccess=project.FullAccess;cfg.AgentBackupFiles=project.BackupFiles;cfg.AgentPlanMode=project.PlanMode;
+#if PORTABLE
+                cfg.AgentGoal=project.Goal;
+#endif
                 cfg.AgentCommandTimeoutSeconds=project.CommandTimeoutSeconds;cfg.AgentBackgroundJobTimeoutSeconds=project.BackgroundJobTimeoutSeconds;cfg.AgentTerminalPolicy=project.TerminalPolicy;
                 cfg.AgentSandboxReadDirectories=project.SandboxReadDirectories;cfg.AgentApprovalMode=project.ApprovalMode;cfg.AgentSandboxEnabled=project.SandboxEnabled;
                 cfg.AgentTrustProjectInstructions=project.TrustProjectInstructions;cfg.AgentGlobalInstructions=project.GlobalInstructions;cfg.AgentSkillsDirectory=project.SkillsDirectory;cfg.AgentContextTokenLimit=project.ContextTokenLimit;
@@ -81,6 +137,13 @@ namespace Dafeiyu
             if(!String.IsNullOrEmpty(Definition.Mode))cfg.AgentEnabled=Definition.Mode=="work";
             if(Definition.HasPermissionOverride){cfg.AgentApprovalMode=Definition.ApprovalMode;cfg.AgentSandboxEnabled=Definition.SandboxEnabled;}
             if(!localAgentSupported)cfg.AgentEnabled=false;
+            bool allowWork=cfg.AgentEnabled&&ProjectId!=ProjectCatalogStore.QuickProjectId;
+#if PORTABLE
+            // The Avalonia composer still exposes the project-level work settings.
+            workMode=allowWork?(cfg.AgentPlanMode?"plan":String.IsNullOrWhiteSpace(cfg.AgentGoal)?"":"goal"):InheritedWorkOptions.Apply(cfg,false);
+#else
+            workMode=(Definition.WorkOptions??InheritedWorkOptions).Apply(cfg,allowWork);
+#endif
             ProjectWorkspace=cfg.AgentWorkspace;return cfg;
         }
         static string TransientDataDirectory(string dataRoot,string conversationId)

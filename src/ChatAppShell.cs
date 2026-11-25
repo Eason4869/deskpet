@@ -73,6 +73,7 @@ namespace Dafeiyu
             if(!shellReady||closed)return;if(usagePage==null){usagePage=new UsageStatisticsPage(pet.UsageStats){Visibility=Visibility.Collapsed};appPages.Children.Add(usagePage);}SetShellPage("usage");RecordPage("usage");
         }
         internal void ShowMcpPage(bool edit=false){ShowPluginsPage();if(mcpPage!=null){if(edit)mcpPage.OpenMcpEditor();else mcpPage.SelectMcp();}}
+        internal void ShowAppsPage(){ShowPluginsPage();if(mcpPage!=null)mcpPage.SelectApps();}
         internal void ShowPluginsPage()
         {
             if(!shellReady||closed)return;if(mcpPage==null){mcpPage=new PluginsPage(pet){Visibility=Visibility.Collapsed};appPages.Children.Add(mcpPage);}SetShellPage("mcp");RecordPage("mcp");

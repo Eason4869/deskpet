@@ -27,6 +27,7 @@ namespace Dafeiyu
         [DataMember(EmitDefaultValue = false)] public string StepId { get; set; }
         [DataMember(EmitDefaultValue = false)] public string CallId { get; set; }
         [DataMember(EmitDefaultValue = false)] public string Outcome { get; set; }
+        [DataMember(EmitDefaultValue = false)] internal bool IsGeneratedPlan { get; set; }
         [DataMember(EmitDefaultValue = false)] public string Text { get; set; }
         [DataMember(EmitDefaultValue = false)] public AgentToolEvent Tool { get; set; }
         [DataMember(EmitDefaultValue = false)] public long Revision { get; set; }

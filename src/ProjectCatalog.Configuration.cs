@@ -81,20 +81,41 @@ namespace Dafeiyu
             var existing=AllConversations(current).ToDictionary(conversation=>conversation.Id);
             foreach(var conversation in AllConversations(candidate)){ConversationDefinition saved;if(existing.TryGetValue(conversation.Id,out saved))conversation.ImageDescriptionOverride=saved.ImageDescriptionOverride==null?null:saved.ImageDescriptionOverride.Copy();}
         }
+        internal static void PreserveConversationWorkOptions(ProjectCatalog current,ProjectCatalog candidate)
+        {
+            var existing=AllConversations(current).ToDictionary(conversation=>conversation.Id);
+            foreach(var conversation in AllConversations(candidate))
+            {
+                ConversationDefinition saved;
+                if(existing.TryGetValue(conversation.Id,out saved))conversation.WorkOptions=saved.WorkOptions;
+            }
+        }
+
+        internal void SaveConversationWorkOptions(string conversationId,ConversationWorkOptions value)
+        {
+            SaveSelectionChanges(latest=>
+            {
+                var target=AllConversations(latest).SingleOrDefault(conversation=>conversation.Id==conversationId);
+                if(target==null||(!String.IsNullOrEmpty(target.Mode)&&target.Mode!="work")||latest.QuickConversations.Contains(target))
+                    throw new InvalidOperationException(TextResources.Get("petWindow.prepareConversationSubmission.text"));
+                target.WorkOptions=value;
+            });
+        }
+
         // Change only selection fields while holding the same writer lease as catalog saves.
         public void SaveImageDescriptionOverride(string personaId,string conversationId,ImageDescriptionOverride value)
         {
             if(String.IsNullOrEmpty(personaId)==String.IsNullOrEmpty(conversationId))throw new ArgumentException("Specify exactly one selection owner.");
             var selection=value==null?null:value.Copy();if(selection!=null)selection.Normalize();
-            SaveImageDescriptionChanges(latest=>{
+            SaveSelectionChanges(latest=>{
                 if(!String.IsNullOrEmpty(personaId)){if(selection==null||selection.Mode=="inherit")latest.RemoveLegacyImageDescriptionOverride(personaId);else latest.LegacyImageDescriptionOverrides[personaId]=selection.Copy();}
                 else{var target=AllConversations(latest).SingleOrDefault(c=>c.Id==conversationId);if(target==null)throw new InvalidOperationException("Conversation no longer exists.");target.ImageDescriptionOverride=selection==null||selection.Mode=="inherit"?null:selection.Copy();}
             });
         }
-        public void ClearImageDescriptionOverrides(){SaveImageDescriptionChanges(latest=>latest.ClearImageDescriptionOverrides());}
-        void SaveImageDescriptionChanges(Action<ProjectCatalog> change)
+        public void ClearImageDescriptionOverrides(){SaveSelectionChanges(latest=>latest.ClearImageDescriptionOverrides());}
+        void SaveSelectionChanges(Action<ProjectCatalog> change)
         {
-            string temporary=path+".image-selection-"+Guid.NewGuid().ToString("N")+".tmp";bool committed=false;
+            string temporary=path+".conversation-options-"+Guid.NewGuid().ToString("N")+".tmp";bool committed=false;
             try{lock(gate){if(readFailed)throw new IOException(TextResources.Get("projectCatalog.save.text"));Directory.CreateDirectory(Path.GetDirectoryName(path));
                 using(var lease=new FileStream(path+".write.lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)){
                     ProjectCatalog latest;if(File.Exists(path)){using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))latest=(ProjectCatalog)new DataContractJsonSerializer(typeof(ProjectCatalog)).ReadObject(stream);}else latest=new ProjectCatalog();

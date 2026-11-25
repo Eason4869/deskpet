@@ -192,6 +192,7 @@ namespace Dafeiyu
                 var persisted=File.Exists(path)?new ProjectCatalogStore(path).Load():new ProjectCatalog();
                 if(ProjectCatalogStore.WorkBindingSignature(persisted)!=baseline)throw new IOException(TextResources.Get("agent.jobs.ui.bindingChanged"));
                 ProjectCatalogStore.PreserveImageDescriptionOverrides(persisted,catalog);
+                ProjectCatalogStore.PreserveConversationWorkOptions(persisted,catalog);
                 if(ProjectCatalogStore.WorkBindingSignature(catalog)!=baseline)try{AgentJobs.EnsureWritable();}catch(Exception error){throw new IOException(AgentJobUiText.Error(error),error);}
             };
             projectCatalogStore.AfterSave=catalog=>baseline=ProjectCatalogStore.WorkBindingSignature(catalog);
@@ -747,7 +748,15 @@ namespace Dafeiyu
         }
         internal PetSettings ConversationSettings(ConversationSession session)
         {
-            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));var cfg=workspace==null?Settings.Copy():workspace.EffectiveSettings();ImageDescriptionOverride imageOverride;if(workspace==null&&Projects.LegacyImageDescriptionOverrides.TryGetValue(session.PersonaId,out imageOverride))cfg.ImageDescriptionOverride=imageOverride.Copy();if(workspace==null&&session.PermissionOverride!=null){cfg.AgentApprovalMode=session.PermissionOverride.Mode;cfg.AgentSandboxEnabled=session.PermissionOverride.Sandbox;}return cfg;
+            var workspace=ConversationModeWorkspace(session);
+            if(workspace!=null)return workspace.EffectiveSettings();
+            var cfg=Settings.Copy();
+            cfg.AgentGoal="";
+            if(!cfg.AgentEnabled)cfg.AgentPlanMode=false;
+            ImageDescriptionOverride imageOverride;
+            if(Projects.LegacyImageDescriptionOverrides.TryGetValue(session.PersonaId,out imageOverride))cfg.ImageDescriptionOverride=imageOverride.Copy();
+            if(session.PermissionOverride!=null){cfg.AgentApprovalMode=session.PermissionOverride.Mode;cfg.AgentSandboxEnabled=session.PermissionOverride.Sandbox;}
+            return cfg;
         }
         sealed class ImageDescriptionDraft {internal readonly System.Collections.Generic.Dictionary<string,ImageDescriptionOverride> Values=new System.Collections.Generic.Dictionary<string,ImageDescriptionOverride>();}
         System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft> imageDescriptionDrafts=new System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft>();
@@ -776,16 +785,68 @@ namespace Dafeiyu
         }
         internal void ClearAllImageDescriptionOverrides()
         {ProjectStore.ClearImageDescriptionOverrides();Projects.ClearImageDescriptionOverrides();foreach(var workspace in Workspaces.OpenWorkspaces)workspace.Definition.ImageDescriptionOverride=null;imageDescriptionDrafts=new System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft>();}
-        internal void SetConversationPlanMode(ConversationSession session,bool enabled){UpdateConversationSettings(session,delegate(PetSettings cfg){cfg.AgentPlanMode=enabled;});}
-        internal void SetConversationGoal(ConversationSession session,string goal){UpdateConversationSettings(session,delegate(PetSettings cfg){cfg.AgentGoal=goal;});}
-        void UpdateConversationSettings(ConversationSession session,Action<PetSettings> update)
+        ConversationWorkspace ConversationModeWorkspace(ConversationSession session)
         {
-            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));
-            if(workspace==null || workspace.ProjectId==ProjectCatalogStore.UnassignedProjectId){update(Settings);if(workspace!=null){var globalSettings=Settings.Copy();update(globalSettings);workspace.Project.PlanMode=globalSettings.AgentPlanMode;workspace.Project.Goal=globalSettings.AgentGoal;}SaveSettings();return;}
-            var cfg=workspace.EffectiveSettings();update(cfg);var project=workspace.Project;bool oldPlan=project.PlanMode;string oldGoal=project.Goal;
-            try{project.PlanMode=cfg.AgentPlanMode;project.Goal=cfg.AgentGoal;ProjectStore.Save(Projects);}
-            catch{project.PlanMode=oldPlan;project.Goal=oldGoal;throw;}
+            return session==null?null:Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));
+        }
+        internal string ConversationWorkMode(ConversationSession session)
+        {
+            var workspace=ConversationModeWorkspace(session);
+            return workspace==null?"":workspace.WorkMode;
+        }
+        internal string ConversationGoal(ConversationSession session)
+        {
+            var workspace=ConversationModeWorkspace(session);
+            var options=workspace==null||!workspace.SupportsWorkOptions?null:workspace.Definition.WorkOptions;
+            return options==null?"":options.Goal??"";
+        }
+        internal void SetConversationPlanMode(ConversationSession session,bool enabled){SetConversationWorkMode(session,enabled?"plan":"");}
+        internal Action SetConversationWorkMode(ConversationSession session,string mode)
+        {
+            return UpdateConversationWorkOptions(session,previous=>new ConversationWorkOptions(mode??"",previous==null?null:previous.Goal));
+        }
+        internal void SetConversationGoal(ConversationSession session,string goal)
+        {
+            UpdateConversationWorkOptions(session,previous=>new ConversationWorkOptions(previous==null?null:previous.Mode,goal));
+        }
+        readonly object conversationWorkOptionsGate=new object();
+        Action UpdateConversationWorkOptions(ConversationSession session,Func<ConversationWorkOptions,ConversationWorkOptions> change)
+        {
+            var workspace=ConversationModeWorkspace(session);
+            if(workspace==null||!workspace.SupportsWorkOptions)return null;
+            ConversationWorkOptions previous,options;
+            using(session.EnterRequestActivity())lock(conversationWorkOptionsGate)
+            {
+                previous=workspace.Definition.WorkOptions;
+                options=change(previous);
+                if(previous!=null&&previous.Mode==options.Mode&&previous.Goal==options.Goal)return null;
+                SaveWorkspaceWorkOptions(workspace,options);
+            }
             RefreshChatAppearance();
+            return delegate
+            {
+                if(workspace.IsDisposed||!ReferenceEquals(ConversationModeWorkspace(session),workspace))return;
+                using(session.EnterRequestActivity())lock(conversationWorkOptionsGate)
+                {
+                    if(!ReferenceEquals(workspace.Definition.WorkOptions,options))return;
+                    SaveWorkspaceWorkOptions(workspace,previous);
+                }
+                RefreshChatAppearance();
+            };
+        }
+
+        void SaveWorkspaceWorkOptions(ConversationWorkspace workspace,ConversationWorkOptions options)
+        {
+            if(workspace.IsDraft)
+            {
+                workspace.SaveDraftWorkOptions(options);
+                return;
+            }
+            var target=ProjectCatalogStore.AllConversations(Projects).SingleOrDefault(conversation=>conversation.Id==workspace.Id);
+            if(target==null)throw new InvalidOperationException(TextResources.Get("petWindow.prepareConversationSubmission.text"));
+            ProjectStore.SaveConversationWorkOptions(workspace.Id,options);
+            target.WorkOptions=options;
+            workspace.Definition.WorkOptions=options;
         }
         public void ShowWorkSettings(){if(preferences!=null&&!preferences.CanChangeWorkSettingsProject(null)){ShowSettings();preferences.SelectWorkSettings();return;}editingProject=null;ShowWorkSettingsCore();}
         void ShowWorkSettingsCore(){if(ReturnToGuide())return;ShowSettings();if(preferences!=null)preferences.SelectWorkSettings();}
@@ -975,7 +1036,7 @@ namespace Dafeiyu
             var pending=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.IsDraft&&w.DraftOwner==Skin.PickerKey&&w.Session!=null&&w.ProjectId==project.Id&&w.Definition.Mode==(work?"work":"chat")&&(work||w.Definition.PetId==Skin.Id&&w.Definition.SectionId==targetSection));
             if(pending!=null)return pending;
             var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name=TextResources.Get("petWindow.createDraftConversation.name"),Mode=work?"work":"chat",PetId=work?"":Skin.Id,SectionId=work?"":sectionId??ProjectCatalogStore.DefaultChatSectionId,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
-            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;Workspaces.BindDraft(workspace,Skin.PickerKey);WatchConversationTitle(project,definition,workspace);return workspace;
+            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;Workspaces.BindDraft(workspace,Skin.PickerKey,id=>ProjectCatalogStore.AllConversations(Projects).Any(conversation=>conversation.Id==id));WatchConversationTitle(project,definition,workspace);return workspace;
         }
         void BeginDraftConversation(ProjectDefinition project,bool? workEntry=null,string sectionId=null)
         {
@@ -995,7 +1056,7 @@ namespace Dafeiyu
             try{ProjectStore.Save(Projects);}catch{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;throw;}
             return delegate{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;ProjectStore.Save(Projects);};
         }
-        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.Session.FinishDraft();workspace.IsDraft=false;NotifyProjectsChanged();}}
+        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.Session.FinishDraft();workspace.FinishDraftWorkOptions();workspace.IsDraft=false;NotifyProjectsChanged();}}
         internal ProjectDefinition CreateProjectForConversation()
         {
             var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return null;var previous=Projects.Copy();try{var project=ProjectCatalogStore.CreateProject(Projects,dialog.ProjectName,dialog.Workspace);project.Conversations.Clear();ProjectStore.Save(Projects);NotifyProjectsChanged();return project;}catch{RestoreProjectCatalog(previous);throw;}
@@ -1266,6 +1327,7 @@ namespace Dafeiyu
         {
             if(preferenceSaves!=null)preferenceSaves.Dispose();if(preferenceMaintenance!=null)preferenceMaintenance.Dispose();if(explicitSettingsMaintenance!=null)explicitSettingsMaintenance.Dispose();exitWindowEnabled.Clear();
             if(imChannels!=null)imChannels.Dispose();
+            DisposeGmailApp();
             foreach(var binding in proactiveReplies.Values.ToArray()){if(binding.Full!=null)binding.Full.Close();if(binding.Quick!=null)binding.Quick.Close();}
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();

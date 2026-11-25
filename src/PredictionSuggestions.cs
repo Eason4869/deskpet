@@ -18,6 +18,7 @@ namespace Dafeiyu
         bool subscribed,closed,ghost,enterHeld;string shown="";
         TextBlock placeholder;string defaultPlaceholder="";
         internal Func<bool> AdditionalBlocker {get;set;}
+        internal Func<string> DefaultPlaceholder {get;set;}
         internal bool GhostActive{get{return ghost;}}
         internal bool EnterHeld{get{return enterHeld;}}
         public PredictionSuggestions(PetWindow pet,ConversationSession sessionOverride,ConversationQueue queueOverride,MarkdownEditor input,Window host)
@@ -89,7 +90,7 @@ namespace Dafeiyu
         void HideGhost()
         {
             if(!ghost)return;ghost=false;shown="";
-            var box=Placeholder();if(box!=null)box.Text=defaultPlaceholder;
+            var box=Placeholder();if(box!=null)box.Text=DefaultPlaceholder==null?defaultPlaceholder:DefaultPlaceholder();
         }
         TextBlock Placeholder()
         {

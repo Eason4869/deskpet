@@ -1,5 +1,7 @@
 # Third-party notices
 
+The Windows Apps tab identifies its GitHub and Gmail integrations using their respective product marks. The Gmail icon is bundled from Google's [Gmail application favicon](https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico). GitHub and Gmail marks belong to their respective trademark owners.
+
 Markdown rendering uses Markdig 1.3.2 (BSD-2-Clause) and Microsoft System.Memory 4.6.3, System.Buffers 4.6.1, System.Numerics.Vectors 4.6.1, System.Runtime.CompilerServices.Unsafe 6.1.2 (MIT).
 
 Fixed Windows binaries and SHA-256 hashes are recorded in vendor/markdown/README.md. Their DLLs and license texts are embedded in the Windows executable. The .NET 10 build uses the locked NuGet dependency.

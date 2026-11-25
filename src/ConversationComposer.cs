@@ -47,7 +47,6 @@ namespace Dafeiyu
         {
             if(host.ActualHeight>0)questionSurface.MaxHeight=Math.Min(340,host.ActualHeight*.45);
         }
-        void SetPlanMode(bool enabled){pet.SetConversationPlanMode(session,enabled);RefreshAction();}
         // "/" and "@" palettes share one popup and are filtered as you type.
         sealed class TriggerItem{public string Title{get;set;}public string Hint,Icon,Group;public Action Action;}
         Popup triggerPopup;readonly StackPanel triggerList=new StackPanel{Margin=new Thickness(4)};
@@ -60,7 +59,8 @@ namespace Dafeiyu
         public ConversationComposer(PetWindow pet,Window host,MarkdownEditor input,Button record,TextBlock status,bool compact,bool conversationOnly=false,ConversationSession sessionOverride=null,ConversationQueue queueOverride=null)
         {
             this.pet=pet;this.host=host;this.input=input;this.status=status;queue=queueOverride??pet.InputQueue;session=sessionOverride??pet.Conversation;dictation=pet.Dictation;this.record=record;this.conversationOnly=conversationOnly;
-            predictionSuggestions=new PredictionSuggestions(pet,sessionOverride,queueOverride,input,host){AdditionalBlocker=()=>HasEdit};Children.Add(predictionSuggestions);
+            predictionSuggestions=new PredictionSuggestions(pet,sessionOverride,queueOverride,input,host){
+                AdditionalBlocker=()=>HasEdit||ComposerWorkMode.Length>0,DefaultPlaceholder=ComposerPlaceholderText};Children.Add(predictionSuggestions);
             // The running task's real change count sits directly above the queue
             // rows and the input box, and collapses outside a running task.
             if(!(host is ChatWindow)){changeStatus=new AgentChangeStatus(pet,host,sessionOverride);Children.Add(changeStatus);}
@@ -106,10 +106,19 @@ namespace Dafeiyu
             var modelControls=CreateContextControls();
             var leading=new Grid{MinWidth=0};leading.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(36)});leading.Children.Add(addAttachment);
             if(conversationOnly){leading.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});Grid.SetColumn(modelControls,1);leading.Children.Add(modelControls);}
-            else{leading.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});leading.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});Grid.SetColumn(modePicker,1);leading.Children.Add(modePicker);Grid.SetColumn(modelControls,2);leading.Children.Add(modelControls);}
+            else
+            {
+                leading.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+                leading.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+                leading.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});
+                Grid.SetColumn(modePicker,1);leading.Children.Add(modePicker);
+                var workMode=CreateWorkModeChip();Grid.SetColumn(workMode,2);leading.Children.Add(workMode);
+                Grid.SetColumn(modelControls,3);leading.Children.Add(modelControls);
+            }
             modelPicker.HorizontalAlignment=HorizontalAlignment.Right;modelPicker.VerticalAlignment=VerticalAlignment.Center;modelPicker.Margin=new Thickness(0,0,2,0);modelPicker.RenderTransform=new TranslateTransform(0,4);
             record.Padding=new Thickness(5);primary.Padding=new Thickness(0);options.Padding=new Thickness(1);
-            normalSurface=ChatUi.Composer(input,leading,controls,new TextBlock{Visibility=Visibility.Collapsed},compact,attachmentArea);if(conversationOnly)LocalizedUi.Set(ChatUi.GetComposerPlaceholder(input),"Text",()=>(TextResources.Get("conversationComposer.conversationComposer.chatUiGetComposerPlaceholder")));inputSurface.Children.Add(normalSurface);Children.Add(inputSurface);
+            normalSurface=ChatUi.Composer(input,leading,controls,new TextBlock{Visibility=Visibility.Collapsed},compact,attachmentArea);
+            inputSurface.Children.Add(normalSurface);Children.Add(BuildPlanExecutionOffer());Children.Add(inputSurface);
             var recordingBody=new StackPanel();var recordingLabel=LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.conversationComposer.text")),12,Ui.Muted);recordingLabel.MinHeight=48;recordingLabel.Padding=new Thickness(4,6,4,6);recordingBody.Children.Add(recordingLabel);var recordingControls=new DockPanel{Margin=new Thickness(2,8,2,0)};
             stopDictation=UiIcons.Button("stop-solid",()=>(TextResources.Get("conversationComposer.conversationComposer.uiIcons.alternativeB")));stopDictation.Name="StopDictation";stopDictation.Width=32;stopDictation.Height=32;stopDictation.MinHeight=32;stopDictation.Content=UiIcons.Image("stop-solid",Ui.Brush("#202329"));stopDictation.Margin=new Thickness(0,0,5,0);stopDictation.Click+=async delegate{await FinishDictation(false);};
             finishDictation=ChatUi.Action("send",()=>(TextResources.Get("conversationComposer.conversationComposer.chatUiAction.alternativeA")));finishDictation.Name="FinishDictation";finishDictation.Width=finishDictation.Height=finishDictation.MinHeight=32;finishDictation.Background=ThemeManager.ActionSurface;finishDictation.BorderBrush=finishDictation.Background;finishDictation.Content=UiIcons.Image("send",Brushes.White);finishDictation.Click+=async delegate{await FinishDictation(true);};DockPanel.SetDock(finishDictation,Dock.Right);recordingControls.Children.Add(finishDictation);
@@ -175,6 +184,7 @@ namespace Dafeiyu
         {
             if(approvals!=null)approvals.Dispose();
             var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r),host,inputSurface);
+            BindPlanExecutionOffer();
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
@@ -238,6 +248,7 @@ namespace Dafeiyu
         {
             if((String.IsNullOrWhiteSpace(input.Text) && Attachments.Count==0) || loadingAttachments || pet.LiveActive || pet.IsUpdating)return;
             if(!pet.ProactiveSessionOwnerCurrent(session)){status.Text=TextResources.Get("desktopObservation.switchCompanion");return;}
+            if(TryOpenGmailCommand(input.Text))return;
             if(pet.IsProactiveTransient(session))
             {
                 string submitted=input.Text;var files=ChatAttachment.Snapshot(Attachments);long revision=pet.ProactiveDraftRevision(session);IsEnabled=false;
@@ -248,6 +259,7 @@ namespace Dafeiyu
                 return;
             }
             if(TryExecutePermissionCommand(input.Text)){input.Clear();return;}
+            if(!SaveInitialComposerGoal())return;
             if(session.IsBusy && !opposite && pet.Settings.FollowUpBehavior=="steer"){await InterruptDraft();return;}
             Try(delegate{using(session.EnterRequestActivity()){Action rollback=PrepareSubmission==null?null:PrepareSubmission();try{queue.Enqueue(input.Text,Attachments,conversationOnly);}catch{if(rollback!=null)rollback();throw;}if(Submitted!=null)Submitted();Attachments.Clear();RefreshAttachments();input.Clear();input.Focus();}});
         }
@@ -266,10 +278,17 @@ namespace Dafeiyu
             var target=SnapshotTargetProvider();
             var snapshots=LocalizedUi.With(LocalizedUi.With(new MenuItem{Header=target==null?TextResources.Get("conversationComposer.openAddMenu.nullTargetAppName.alternativeA"):TextResources.Format("conversationComposer.openAddMenu.nullTargetAppName",target.AppName),Name="AddApplicationSnapshot",Icon=UiIcons.Image("snapshot",Ui.Muted),IsEnabled=target!=null,ToolTip=target==null?TextResources.Get("conversationComposer.openAddMenu.nullTargetTitle"):target.Title},"Header",()=>(target==null?TextResources.Get("conversationComposer.openAddMenu.nullTargetAppName.alternativeA"):TextResources.Format("conversationComposer.openAddMenu.nullTargetAppName",target.AppName))),"ToolTip",()=>(target==null?TextResources.Get("conversationComposer.openAddMenu.nullTargetTitle"):target.Title));
             if(target!=null){snapshots.Icon=SnapshotIcon(target);snapshots.Click+=async delegate{await CaptureApplication(target);};}menu.Items.Add(snapshots);
-            if(!conversationOnly && WorkSettings.AgentEnabled)
+            if(CanUseComposerWorkModes())
             {
-                var goal=new MenuItem{Header=AddMenuLabel(()=> (TextResources.Get("conversationComposer.openAddMenu.addMenuLabel")),()=> (String.IsNullOrWhiteSpace(WorkSettings.AgentGoal)?TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeA"):WorkSettings.AgentGoal)),Name="SetAgentGoal",Icon=UiIcons.Image("target",Ui.Muted),IsEnabled=!pet.DialogueBusy};goal.Click+=delegate{ShowGoal();};menu.Items.Add(goal);
-                var plan=new MenuItem{Header=AddMenuLabel(()=> (TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeB")),()=> (WorkSettings.AgentPlanMode?TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeC"):TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeD"))),Name="AgentPlanMode",IsCheckable=true,IsChecked=WorkSettings.AgentPlanMode,IsEnabled=!pet.DialogueBusy};plan.Click+=delegate{SetPlanMode(plan.IsChecked);};menu.Items.Add(plan);
+                var savedGoal=pet.ConversationGoal(session);
+                var goal=new MenuItem{Header=AddMenuLabel(()=>TextResources.Get("conversationComposer.openAddMenu.addMenuLabel"),
+                    ()=>String.IsNullOrWhiteSpace(savedGoal)?TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeA"):savedGoal),
+                    Name="SetAgentGoal",Icon=UiIcons.Image("target",Ui.Muted),IsEnabled=!session.IsBusy&&!queue.IsRunning};
+                goal.Click+=delegate{SelectGoalMode();};menu.Items.Add(goal);
+                var plan=new MenuItem{Header=AddMenuLabel(()=>TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeB"),
+                    ()=>ComposerWorkMode=="plan"?TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeC"):TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeD")),
+                    Name="AgentPlanMode",Icon=UiIcons.Image("list",Ui.Muted),IsCheckable=true,IsChecked=ComposerWorkMode=="plan",IsEnabled=!session.IsBusy&&!queue.IsRunning};
+                plan.Click+=delegate{ChangeComposerWorkMode(plan.IsChecked?"plan":"");};menu.Items.Add(plan);
             }
             addAttachment.ContextMenu=menu;menu.PlacementTarget=addAttachment;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.IsOpen=true;
         }
@@ -288,8 +307,8 @@ namespace Dafeiyu
         void ShowGoal()
         {
             var dialog=new Window{Owner=host,WindowStartupLocation=WindowStartupLocation.CenterOwner};LocalizedUi.Window(dialog,()=>(TextResources.Get("conversationComposer.showGoal.window")),470,320);dialog.ResizeMode=ResizeMode.NoResize;
-            var body=new StackPanel{Margin=new Thickness(20)};body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.showGoal.text")),18));body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeA")),12,Ui.Muted));var goal=Ui.Field(WorkSettings.AgentGoal,true);goal.Name="AgentGoalInput";goal.MaxLength=4000;goal.Height=115;goal.Margin=new Thickness(0,12,0,12);body.Children.Add(goal);
-            var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var clear=LocalizedUi.Button(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeB")));clear.Click+=delegate{goal.Clear();};buttons.Children.Add(clear);var save=LocalizedUi.Button(()=>(TextResources.Get("common.save")),true);save.Name="SaveAgentGoal";save.Click+=delegate{pet.SetConversationGoal(session,goal.Text.Trim());dialog.Close();};buttons.Children.Add(save);body.Children.Add(buttons);body.Margin=new Thickness(24);((FrameworkElement)body.Children[0]).Margin=new Thickness(0,0,32,0);DialogUi.Apply(dialog,Ui.Scroll(body));dialog.ShowDialog();
+            var body=new StackPanel{Margin=new Thickness(20)};body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.showGoal.text")),18));body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeA")),12,Ui.Muted));var goal=Ui.Field(pet.ConversationGoal(session),true);goal.Name="AgentGoalInput";goal.MaxLength=4000;goal.Height=115;goal.Margin=new Thickness(0,12,0,12);body.Children.Add(goal);
+            var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var clear=LocalizedUi.Button(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeB")));clear.Click+=delegate{goal.Clear();};buttons.Children.Add(clear);var save=LocalizedUi.Button(()=>(TextResources.Get("common.save")),true);save.Name="SaveAgentGoal";save.Click+=delegate{Try(delegate{pet.SetConversationGoal(session,goal.Text.Trim());RefreshAction();dialog.Close();});};buttons.Children.Add(save);body.Children.Add(buttons);body.Margin=new Thickness(24);((FrameworkElement)body.Children[0]).Margin=new Thickness(0,0,32,0);DialogUi.Apply(dialog,Ui.Scroll(body));dialog.ShowDialog();
         }
         async System.Threading.Tasks.Task CaptureApplication(ApplicationSnapshotTarget target)
         {
@@ -434,7 +453,10 @@ namespace Dafeiyu
         }
         async System.Threading.Tasks.Task InterruptDraft(bool force=false)
         {
-            if((String.IsNullOrWhiteSpace(input.Text) && Attachments.Count==0) || loadingAttachments || pet.LiveActive || pet.IsUpdating)return;string text=input.Text;var files=ChatAttachment.Snapshot(Attachments);string persona=pet.Skin.Id;string attachmentKey=AttachmentKey;
+            if((String.IsNullOrWhiteSpace(input.Text) && Attachments.Count==0) || loadingAttachments || pet.LiveActive || pet.IsUpdating)return;
+            if(TryOpenGmailCommand(input.Text))return;
+            if(!SaveInitialComposerGoal())return;
+            string text=input.Text;var files=ChatAttachment.Snapshot(Attachments);string persona=pet.Skin.Id;string attachmentKey=AttachmentKey;
             try{if(force)await queue.InterruptAsync(text,null,files,conversationOnly);else await queue.SteerAsync(text,null,files,conversationOnly);if(pet.Skin.Id==persona && input.Text==text)input.Clear();var draft=attachmentDrafts[attachmentKey];foreach(var file in files)draft.RemoveAll(f=>f.Name==file.Name && f.Data==file.Data && f.Text==file.Text);RefreshAttachments();}catch(Exception e){Error(e);}
         }
         // ---- "/" and "@" palettes -------------------------------------------------
@@ -537,26 +559,54 @@ namespace Dafeiyu
             triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildAtItems.title"),Hint=TextResources.Get("conversationComposer.buildAtItems.hint"),Icon="attachment",Action=delegate{var ignored=PickAttachments();}},"Title",()=>(TextResources.Get("conversationComposer.buildAtItems.title"))));
             var target=SnapshotTargetProvider();
             triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=target==null?TextResources.Get("conversationComposer.buildAtItems.nullTargetAppName.alternativeA"):TextResources.Format("conversationComposer.buildAtItems.nullTargetAppName",target.AppName),Hint=target==null?TextResources.Get("conversationComposer.buildAtItems.nullTargetTitle"):target.Title,Icon="snapshot",Action=target==null?(Action)null:delegate{var ignored=CaptureApplication(target);}},"Title",()=>(target==null?TextResources.Get("conversationComposer.buildAtItems.nullTargetAppName.alternativeA"):TextResources.Format("conversationComposer.buildAtItems.nullTargetAppName",target.AppName))));
-            if(!conversationOnly && WorkSettings.AgentEnabled)
+            if(CanUseComposerWorkModes())
             {
-                triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildAtItems.title.alternativeA"),Hint=String.IsNullOrWhiteSpace(WorkSettings.AgentGoal)?TextResources.Get("conversationComposer.buildAtItems.hintStringIsNullOrWhiteSpace"):WorkSettings.AgentGoal,Icon="target",Action=ShowGoal},"Title",()=>(TextResources.Get("conversationComposer.buildAtItems.title.alternativeA"))));
-                triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildAtItems.title.alternativeB"),Hint=WorkSettings.AgentPlanMode?TextResources.Get("conversationComposer.buildAtItems.hintWorkSettingsAgentPlanMode"):TextResources.Get("conversationComposer.buildAtItems.hintWorkSettingsAgentPlanMode.alternativeA"),Icon="edit",Action=delegate{SetPlanMode(!WorkSettings.AgentPlanMode);}},"Title",()=>(TextResources.Get("conversationComposer.buildAtItems.title.alternativeB"))));
+                string saved=pet.ConversationGoal(session);
+                triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildAtItems.title.alternativeA"),Hint=String.IsNullOrWhiteSpace(saved)?TextResources.Get("conversationComposer.buildAtItems.hintStringIsNullOrWhiteSpace"):saved,Icon="target",Action=SelectGoalMode},"Title",()=>(TextResources.Get("conversationComposer.buildAtItems.title.alternativeA"))));
+                triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildAtItems.title.alternativeB"),Hint=ComposerWorkMode=="plan"?TextResources.Get("conversationComposer.buildAtItems.hintWorkSettingsAgentPlanMode"):TextResources.Get("conversationComposer.buildAtItems.hintWorkSettingsAgentPlanMode.alternativeA"),Icon="list",Action=delegate{ChangeComposerWorkMode(ComposerWorkMode=="plan"?"":"plan");}},"Title",()=>(TextResources.Get("conversationComposer.buildAtItems.title.alternativeB"))));
             }
             triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildAtItems.title.alternativeC"),Hint=TextResources.Get("conversationComposer.buildAtItems.hint.alternativeA"),Icon="settings",Group=TextResources.Get("conversationComposer.buildAtItems.group"),Action=delegate{pet.ShowSettings(true);}},"Title",()=>(TextResources.Get("conversationComposer.buildAtItems.title.alternativeC"))));
             triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildAtItems.title.alternativeD"),Hint=TextResources.Get("conversationComposer.buildAtItems.hint.alternativeB"),Icon="settings",Group=TextResources.Get("conversationComposer.buildAtItems.group"),Action=delegate{pet.ShowWorkSettings();}},"Title",()=>(TextResources.Get("conversationComposer.buildAtItems.title.alternativeD"))));
         }
+        bool CanOpenWorkGmail()
+        {
+            var chat=host as ChatWindow;
+            return chat!=null&&chat.WorkEntry&&WorkSettings.AgentEnabled;
+        }
+        bool TryOpenGmailCommand(string input)
+        {
+            if(String.IsNullOrWhiteSpace(input))return false;
+            const string command="/gmail";
+            string text=input.Trim();
+            if(!text.StartsWith(command,StringComparison.OrdinalIgnoreCase)
+                ||text.Length>command.Length&&!Char.IsWhiteSpace(text[command.Length]))return false;
+            if(!CanOpenWorkGmail())
+            {
+                LocalizedUi.Set(status,"Text",()=>TextResources.Get("conversationSession.resumeAgentTaskAsync.text"));
+                return true;
+            }
+            OpenWorkGmail(text.Substring(command.Length).Trim());
+            this.input.Clear();
+            return true;
+        }
+        void OpenWorkGmail(string query)
+        {
+            var settings=WorkSettings.Copy();
+            pet.ShowGmail(host,()=>settings,query);
+        }
         void BuildSlashItems()
         {
             var chat=host as ChatWindow;
+            if(CanOpenWorkGmail())triggerItems.Add(new TriggerItem{Title="Gmail",Hint=TextResources.Get("apps.gmail.search"),Icon="file",Action=()=>OpenWorkGmail("")});
             if(chat!=null)triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("chatFilePreview.openSideChat.filePreviewAddPage"),Hint=TextResources.Get("sideChatPane.contextHint"),Icon="chat",Action=chat.OpenSideChat},"Title",()=>TextResources.Get("chatFilePreview.openSideChat.filePreviewAddPage")));
             triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildSlashItems.title"),Hint=TextResources.Get("conversationComposer.buildSlashItems.hint"),Icon="chat",Action=delegate{pet.NewActiveConversation();}},"Title",()=>(TextResources.Get("conversationComposer.buildSlashItems.title"))));
             if(!conversationOnly)
             {
                 if(WorkSettings.AgentEnabled){triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildSlashItems.title.alternativeA"),Hint=TextResources.Get("conversationComposer.buildSlashItems.hint.alternativeA"),Icon="target",Action=OpenPermissions},"Title",()=>(TextResources.Get("conversationComposer.buildSlashItems.title.alternativeA"))));triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildSlashItems.title.alternativeB"),Hint=TextResources.Get("conversationComposer.buildSlashItems.hint.alternativeB"),Icon="target",Action=delegate{status.Text=AgentAccessPolicy.Label(WorkSettings);}},"Title",()=>(TextResources.Get("conversationComposer.buildSlashItems.title.alternativeB"))));}
-                if(WorkSettings.AgentEnabled)
+                if(CanUseComposerWorkModes())
                 {
-                    triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildSlashItems.title.alternativeC"),Hint=WorkSettings.AgentPlanMode?TextResources.Get("conversationComposer.buildSlashItems.hintWorkSettingsAgentPlanMode"):TextResources.Get("conversationComposer.buildSlashItems.hintWorkSettingsAgentPlanMode.alternativeA"),Icon="target",Action=delegate{SetPlanMode(!WorkSettings.AgentPlanMode);}},"Title",()=>(TextResources.Get("conversationComposer.buildSlashItems.title.alternativeC"))));
-                    triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildSlashItems.title.alternativeD"),Hint=TextResources.Get("conversationComposer.buildSlashItems.hint.alternativeC"),Icon="target",Action=ShowGoal},"Title",()=>(TextResources.Get("conversationComposer.buildSlashItems.title.alternativeD"))));
+                    triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildSlashItems.title.alternativeC"),Hint=ComposerWorkMode=="plan"?TextResources.Get("conversationComposer.buildSlashItems.hintWorkSettingsAgentPlanMode"):TextResources.Get("conversationComposer.buildSlashItems.hintWorkSettingsAgentPlanMode.alternativeA"),Icon="list",Action=delegate{ChangeComposerWorkMode(ComposerWorkMode=="plan"?"":"plan");}},"Title",()=>(TextResources.Get("conversationComposer.buildSlashItems.title.alternativeC"))));
+                    triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildSlashItems.title.alternativeD"),Hint=TextResources.Get("conversationComposer.buildSlashItems.hint.alternativeC"),Icon="target",Action=SelectGoalMode},"Title",()=>(TextResources.Get("conversationComposer.buildSlashItems.title.alternativeD"))));
                 }
             }
             var cfg=WorkSettings;
@@ -578,6 +628,7 @@ namespace Dafeiyu
             if(predictionSuggestions!=null)predictionSuggestions.Dispose();
             if(changeStatus!=null)changeStatus.Dispose();
             if(approvals!=null)approvals.Dispose();
+            DisposePlanExecutionOffer();
             if(subscribed)
             {
                 queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;
@@ -633,7 +684,7 @@ namespace Dafeiyu
         void RefreshAction()
         {
             if(attachmentPersona!=AttachmentKey)RefreshAttachments();
-            input.PlainTextMode=pet.Settings.PlainTextEditor;RefreshMode();RefreshContextUsage();
+            input.PlainTextMode=pet.Settings.PlainTextEditor;RefreshMode();RefreshContextUsage();RefreshComposerWorkMode();RefreshPlanExecutionOffer();
             bool text=!String.IsNullOrWhiteSpace(input.Text) || Attachments.Count>0,busy=session.IsBusy || queue.IsRunning;string action=text?"send":busy?"stop":"live";
             bool steering=busy&&pet.Settings.FollowUpBehavior=="steer",queued=busy||queue.Items.Count>0;
             Func<string> label=()=>text?(steering?TextResources.Get("conversationComposer.refreshAction.labelText"):queued?TextResources.Get("conversationComposer.refreshAction.labelText.alternativeA"):TextResources.Get("conversationComposer.refreshAction.labelText.alternativeB")):busy?TextResources.Get("conversationComposer.refreshAction.labelText.alternativeC"):TextResources.Get("conversationComposer.refreshAction.labelText.alternativeD");

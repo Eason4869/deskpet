@@ -45,6 +45,11 @@ namespace Dafeiyu
         public bool NeedsExecutionReconciliation {get{lock(gate){AgentTaskState state;return agentTasks.TryGetValue(personaId,out state)&&state.Status=="needs_reconciliation";}}}
         public string AgentTaskWarning {get{return taskStore==null?"":taskStore.Warning;}}
         public AgentTaskState CurrentAgentTask {get{lock(gate){AgentTaskState task;return agentTasks.TryGetValue(personaId,out task)?task.Copy():null;}}}
+        internal ChatMessage LatestGeneratedPlan { get { lock(gate)return History.LatestGeneratedPlan; } }
+        public IReadOnlyList<AgentChildResult> Subagents
+        {
+            get { lock(gate) { AgentTaskState current;agentTasks.TryGetValue(personaId,out current);return History.Subagents(current); } }
+        }
         private readonly Func<bool> saveEnabled;
         private readonly object gate=new object();
         internal object SynchronizationRoot { get { return gate; } }
@@ -358,7 +363,8 @@ namespace Dafeiyu
                 lock(gate){
                     string content=answer;
                     if(op.Workspace!=null && op.Partial.Length>0){content=op.Partial.ToString().Trim();if(!content.EndsWith(answer.Trim(),StringComparison.Ordinal))content+="\n\n"+answer.Trim();}
-                    UpdateReply(op,content,"complete",true,true);
+                    bool generatedPlan=op.Snapshot.AgentEnabled&&op.Snapshot.AgentPlanMode&&!String.IsNullOrWhiteSpace(answer);
+                    UpdateReply(op,content,"complete",true,true,generatedPlan);
                 }
                 if(firstRelationshipSuccess && Relationships!=null && op.Outcome=="complete" && !String.IsNullOrWhiteSpace(answer))await Relationships.Enqueue(op.RelationshipCompanionId,op.RelationshipWork?RelationshipEventType.SuccessfulWorkTask:RelationshipEventType.CompletedConversation,op.RelationshipEventId,RelationshipTime.Current()).ConfigureAwait(false);
                 if(op.Workspace!=null && op.Outcome=="complete")op.Workspace.MarkRelationshipSucceeded();
@@ -419,7 +425,7 @@ namespace Dafeiyu
                 UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);
             }
         }
-        private void UpdateReply(Operation op,string content,string status,bool persist,bool relationshipSuccess=false)
+        private void UpdateReply(Operation op,string content,string status,bool persist,bool relationshipSuccess=false,bool generatedPlan=false)
         {
             lock(gate) {
                 if(disposed || active!=op || op.ReplyId==null)return;
@@ -430,7 +436,7 @@ namespace Dafeiyu
                     op.ThinkingTime.Stop();op.ProcessingTime.Stop();
                     var unfinished=op.ToolEvents.Where(AgentTurnRecording.IsUnfinished).ToArray();
                     foreach(var item in unfinished){item.Status="error";item.Summary+=(status=="cancelled"?TextResources.Get("conversationSession.updateReply.itemSummary"):TextResources.Get("conversationSession.updateReply.itemSummary.alternativeA"));}
-                    FinishAgentTurnSegment(op,content,status,true,unfinished);
+                    FinishAgentTurnSegment(op,content,status,true,unfinished,generatedPlan);
                 }
                 if(relationshipSuccess && status=="complete"){
                     // First completion consumes logical-input eligibility even if
@@ -438,7 +444,7 @@ namespace Dafeiyu
                     op.History.BindRelationship(op.ReplyId,op.RelationshipCompanionId,op.RelationshipEventId,op.RelationshipWork,true);
                     op.History.MarkRelationshipSucceeded(op.RelationshipEventId);op.RelationshipSucceeded=true;
                 }
-                var updated=op.History.Update(op.ReplyId,content,status,op.Reasoning.ToString(),op.ThinkingTime.ElapsedMilliseconds,op.ToolEvents,op.ProcessingTime.ElapsedMilliseconds);
+                var updated=op.History.Update(op.ReplyId,content,status,op.Reasoning.ToString(),op.ThinkingTime.ElapsedMilliseconds,op.ToolEvents,op.ProcessingTime.ElapsedMilliseconds,generatedPlan);
                 if(updated!=null && op.PersonaId==personaId && MessageUpdated!=null)MessageUpdated(updated);
                 if(persist){Save(op.PersonaId,op.History);op.Checkpoint.Restart();}
             }

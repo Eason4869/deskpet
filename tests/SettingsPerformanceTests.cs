@@ -103,12 +103,12 @@ namespace Dafeiyu.Tests
                 var invalidProvider=new TextProviderSettings{Name="invalid hidden service",Connection=new ConnectionSettings{BaseUrl="file:///not-an-api",Model="fixture"}};invalidProvider.Models.Add("fixture");asrDrafts.Add(invalidProvider);
                 string savedName=cfg.TextProviders[0].Name;
                 Check(!((ConnectionSettingsPanel)ai).Save()&&cfg.TextProviders[0].Name==savedName,"invalid inactive provider cannot partially apply text drafts");asrDrafts.Remove(invalidProvider);
-                page.SelectWorkSettings();Render(host);var work=Field(page,"work");var goal=(TextBox)page.FindControl("AgentGoal");string previousGoal=goal.Text;
-                page.SelectNavigation(0);cfg.AgentGoal="externally updated goal";page.RefreshState();
-                Check(goal.Text==previousGoal,"hidden work controls are not refreshed by unrelated state updates");
-                page.SelectWorkSettings();Render(host);Check(goal.Text==cfg.AgentGoal,"activating work catches up with committed settings");goal.Text="local unsaved work";
+                page.SelectWorkSettings();Render(host);var work=Field(page,"work");var instructions=(TextBox)page.FindControl("AgentGlobalInstructions");string previousInstructions=instructions.Text;
+                page.SelectNavigation(0);cfg.AgentGlobalInstructions="externally updated instructions";page.RefreshState();
+                Check(instructions.Text==previousInstructions,"hidden work controls are not refreshed by unrelated state updates");
+                page.SelectWorkSettings();Render(host);Check(instructions.Text==cfg.AgentGlobalInstructions,"activating work catches up with committed settings");instructions.Text="local unsaved work";
                 page.SelectNavigation(0);page.RefreshState();page.SelectWorkSettings();Render(host);
-                Check(ReferenceEquals(work,Field(page,"work"))&&goal.Text=="local unsaved work","work page is reused and unsaved edits survive activation");
+                Check(ReferenceEquals(work,Field(page,"work"))&&instructions.Text=="local unsaved work","work page is reused and unsaved edits survive activation");
                 page.SelectGeneralSection(2);Render(host);Check(page.FindControl("ClearAllHistory")!=null,"direct general deep link materializes its page");
                 page.SelectNavigation(5);Render(host);var channels=Field(Field(page,"toolsSettings"),"channels");var channelName=(TextBox)page.FindControl("ImChannelName");channelName.Text="local unsaved channel";
                 page.SelectNavigation(0);page.SelectNavigation(5);Render(host);
