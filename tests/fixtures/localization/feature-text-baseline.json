@@ -2324,6 +2324,30 @@
       "argument_count": 0
     },
     {
+      "key": "themeTransition.motion.flow",
+      "expected": "流水",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.label",
+      "expected": "切换动效",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.off",
+      "expected": "关闭",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.ripple",
+      "expected": "涟漪",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "themeTransition.sound.enabled",
       "expected": "主题切换音效",
       "format": false,
