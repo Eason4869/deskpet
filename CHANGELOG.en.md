@@ -7,6 +7,7 @@
 - On Windows and macOS, select the sun or moon in the main chat window to switch directly between light and dark with a sliding thumb. Select the adjacent monitor to follow the system theme. Appearance settings keep all three theme previews. Window transitions default to Random, with Off, Flow, Ripple, Refraction, and Zipper also available.
 - Each theme animation has its own synchronized sound. Zipper uses a recording of a real zipper. Sounds are off by default and have a separate volume control.
 - Settings pages use narrower, responsive content beneath the existing headings and tabs. Switches align to the right. The animation and volume controls line up with the language selector.
+- Localizes text that appeared in English in settings, web search, and the setup guide.
 - Scheduled tasks opens to six colorful template tiles by default. Drafts and saved task details both have a Back button, and the sidebar selection has rounded corners.
 
 ## 1.0.6-dev.5 · Development preview
