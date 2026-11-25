@@ -84,6 +84,13 @@ namespace Dafeiyu.Tests
                 var navigation=Named<ListBox>(page,"SettingsNavigation");var actual=navigation.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).ToArray();
                 Check(actual.SequenceEqual(new[]{"伙伴","模型配置","对话与输入","工作与权限","工具与连接","通用"}),"six settings categories have the approved labels and order");
                 Check(Named<Button>(page,"SettingsAboutNavigation").IsVisible,"about and updates has a permanent footer entry");
+                page.RestoreNavigation(0,0,null);Pump();
+                var switchEffect=Named<ComboBox>(page,"CompanionTransitionEffect");
+                Check(switchEffect.IsVisible&&switchEffect.Items.Cast<ComboBoxItem>().Select(item=>(string)item.Tag)
+                    .SequenceEqual(new[]{"off","ripple","zipper","random"}),"partner settings show the four transition choices in order");
+                Check((string)switchEffect.SelectedValue=="ripple","partner transition starts at ripple");
+                switchEffect.SelectedValue="off";page.RefreshState();Pump();
+                Check(pet.Store.Load().CompanionTransitionEffect=="off"&&(string)switchEffect.SelectedValue=="off","partner motion selection saves immediately");
                 CheckDetailedLayout(page,host);
                 page.RestoreNavigation(6,0,null);Pump();Check(new[]{"ConversationDefaultsTab","ConversationInputTab","ConversationDisplayTab"}.All(n=>Named<Button>(page,n).IsVisible),"conversation settings offer three real content tabs");page.RestoreNavigation(6,1,null);Pump();var shortcut=Named<ComboBox>(page,"SendShortcut");int choice=shortcut.SelectedIndex==0?1:0;shortcut.SelectedIndex=choice;
                 page.SelectNavigation(2);Pump();Check(!All<ComboBox>(page).Any(c=>c.Name=="SendShortcut"&&c.IsVisible),"work and permissions does not contain global input preferences");

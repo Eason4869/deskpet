@@ -5034,6 +5034,36 @@
       "expected": "{0} 次工具调用 · {1} 次模型请求",
       "format": true,
       "argument_count": 2
+    },
+    {
+      "key": "companionTransition.motion.label",
+      "expected": "角色切换动效",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionTransition.motion.off",
+      "expected": "关闭",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionTransition.motion.random",
+      "expected": "随机",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionTransition.motion.ripple",
+      "expected": "头像涟漪",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionTransition.motion.zipper",
+      "expected": "拉链开场",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

@@ -14,7 +14,7 @@ namespace Dafeiyu
         private readonly PetWindow pet;
         private readonly TextBlock name,notice,sizeLabel;
         private readonly Image avatar;
-        private readonly ComboBox skins;
+        private readonly ComboBox skins,companionEffect;
         private readonly HolidayOutfitPanel holidayOutfits;
         private readonly ColumnDefinition wardrobeColumn,wardrobeGap;
         private readonly TextBlock wardrobeHeading;
@@ -89,6 +89,21 @@ namespace Dafeiyu
             appearance.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeD")),11,Ui.Muted));
             pet.Holidays.Changed+=HolidayWardrobeChanged;RefreshHolidayLayout();
             restoreCompanions=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeE")));restoreCompanions.Name="RestoreCompanions";restoreCompanions.HorizontalAlignment=HorizontalAlignment.Left;restoreCompanions.FontSize=11;restoreCompanions.MinHeight=26;restoreCompanions.Padding=new Thickness(0);restoreCompanions.Background=Brushes.Transparent;restoreCompanions.BorderThickness=new Thickness(0);restoreCompanions.Click+=delegate {if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}if(HasUnsavedEdits || pet.DialogueBusy || pet.DictationActive){ShowNotice(()=>(TextResources.Get("settingsPage.settingsPage.showNotice.alternativeA")));return;}pet.Catalog.RestoreRemoved();pet.Catalog.PreserveActive(pet.Skin);RefreshSkinChoices();ShowNotice(()=>(TextResources.Get("settingsPage.settingsPage.showNotice.alternativeB")));};appearance.Children.Add(restoreCompanions);
+            companionEffect=new ComboBox{Name="CompanionTransitionEffect",SelectedValuePath="Tag",Width=180,MinHeight=36};
+            foreach(string effect in CompanionTransitionMotion.Choices)
+            {
+                string choice=effect;
+                companionEffect.Items.Add(LocalizedUi.With(new ComboBoxItem{Tag=choice},"Content",()=>CompanionTransitionMotion.Label(choice)));
+            }
+            companionEffect.SelectedValue=pet.Settings.CompanionTransitionEffect;
+            companionEffect.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args){
+                var item=args.AddedItems.Count==0?null:args.AddedItems[0] as ComboBoxItem;
+                var selected=item==null?null:item.Tag as string;
+                if(refreshing||selected==null||selected==pet.Settings.CompanionTransitionEffect)return;
+                pet.Settings.CompanionTransitionEffect=selected;
+                pet.SaveSettings();
+            };
+            appearance.Children.Add(Ui.SettingRow(CompanionTransitionMotion.Caption,null,companionEffect,alignRight:true));
             var guide=LocalizedUi.With(new Expander{Name="ImportGuide",Header=TextResources.Get("settingsPage.settingsPage.header"),Margin=new Thickness(0,12,0,0)},"Header",()=>(TextResources.Get("settingsPage.settingsPage.header")));var tutorial=new StackPanel{Margin=new Thickness(0,8,0,0)};
             tutorial.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeF")),12,Ui.Muted));
             var guideButtons=new WrapPanel{Margin=new Thickness(0,10,0,0)};var templates=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeG")));templates.Name="OpenTemplates";templates.Click+=delegate {Process.Start(new ProcessStartInfo(ReleaseInfo.RepositoryUrl+"/releases/tag/v"+ReleaseInfo.DisplayVersion){UseShellExecute=true});};guideButtons.Children.Add(templates);var fullGuide=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeH")));fullGuide.Name="OpenImportGuide";fullGuide.Click+=delegate {OpenGuide(Path.Combine("docs","skin-format.md"));};guideButtons.Children.Add(fullGuide);tutorial.Children.Add(guideButtons);guide.Content=tutorial;SettingsSurface.StyleExpander(guide);appearance.Children.Add(guide);var appearanceCard=GlassSurface.Card(appearance);appearanceCard.Padding=new Thickness(12);appearanceCard.Margin=new Thickness(0,0,0,12);root.Children.Add(appearanceCard);
@@ -272,7 +287,8 @@ namespace Dafeiyu
             if(restoreCompanions!=null)restoreCompanions.IsEnabled=pet.Catalog.HasRemoved;
             refreshing=true; follow.IsChecked=pet.Settings.FollowCursor; wander.IsChecked=pet.Settings.Wander;stumble.IsChecked=pet.Settings.StumbleEnabled;autoSleep.IsChecked=pet.Settings.AutoSleepEnabled;
             top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;greetingAutoRead.IsChecked=pet.Settings.GreetingAutoReadEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
-            sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin; refreshing=false;
+            sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin;
+            companionEffect.SelectedValue=pet.Settings.CompanionTransitionEffect; refreshing=false;
             RefreshAutoStart();if(observationGroup!=null)RefreshObservation();if(IsVisible)RefreshActiveCategory();
         }
         private void HolidayWardrobeChanged(object sender,EventArgs args)

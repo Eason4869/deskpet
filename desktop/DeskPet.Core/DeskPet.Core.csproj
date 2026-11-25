@@ -77,6 +77,7 @@
     <Compile Include="../../src/ShortcutDefinitions.cs" Link="Shared/ShortcutDefinitions.cs" />
     <Compile Include="../../src/ThemeColors.cs" Link="Shared/ThemeColors.cs" />
     <Compile Include="../../src/LiquidThemeShape.cs" Link="Shared/LiquidThemeShape.cs" />
+    <Compile Include="../../src/CompanionTransitionMotion.cs;../../src/CompanionRevealPaths.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/RippleThemeShape.cs;../../src/ThemeTransitionMotion.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ThemeRevealPaths.cs;../../src/RefractionThemeShape.cs;../../src/ZipperThemeShape.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/LiquidThemeAudio.cs;../../src/LiquidThemeSoundPlayback.cs" Link="Shared/%(Filename)%(Extension)" />

@@ -110,6 +110,7 @@ namespace Dafeiyu
         long BeginCompanionSelection(SkinDefinition target)
         {
             if(officialSelection!=null)officialSelection.Cancel();
+            if(chat!=null&&chat.CompanionReveal!=null)chat.CompanionReveal.Cancel();
             officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;renderedSelection=null;
             bool hadPending=!String.IsNullOrEmpty(Settings.PendingOfficialCompanionId);Settings.PendingOfficialCompanionId="";
             if(hadPending)SaveSettings();return officialRequest;
@@ -137,7 +138,7 @@ namespace Dafeiyu
             if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey))return false;
             RecordPetInteraction();long token=BeginCompanionSelection(skin);selectionClocks.Clear();selectionClocks[token]=System.Diagnostics.Stopwatch.StartNew();
             using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(officialLifetime.Token)) {
-                IDisposable heldPreparation=null;officialSelection=cancel;SelectionStage(token,skin,origin,"requested");
+                IDisposable heldPreparation=null;CompanionWindowReveal reveal=null;officialSelection=cancel;SelectionStage(token,skin,origin,"requested");
                 try {
                     SkinDefinition ready=skin;bool cached=false,repair=false;
                     if(skin.IsOfficial) {
@@ -166,15 +167,22 @@ namespace Dafeiyu
                     SelectionStage(token,ready,origin,"prepared",cached);
                     if(!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding,origin==CompanionSelectionOrigin.StartupRestore)){SelectionStage(token,ready,origin,"reselect-required");return false;}
                     bool changed=Skin.PickerKey!=ready.PickerKey;
+                    if(changed&&chat!=null&&origin!=CompanionSelectionOrigin.StartupRestore&&origin!=CompanionSelectionOrigin.Onboarding)
+                        reveal=chat.PrepareCompanionReveal(token,Skin.PickerKey,ready.PickerKey);
                     if(!ActivateSkin(ready))return false;
                     WpfPreparedCompanion.Activate(ready);Catalog.PreserveActive(ready);MergeOfficialHoliday(ready);RefreshHoliday();UpdateFrame();
+                    if(reveal!=null)
+                    {
+                        reveal.MarkCommitted(token,Skin.PickerKey);
+                        reveal.OnContentRefreshed();
+                    }
                     SelectionStage(token,ready,origin,"committed",cached);
                     if(changed&&origin!=CompanionSelectionOrigin.StartupRestore)renderedSelection=new CompanionSelectionUpdate(token,ready.PickerKey,origin.ToString(),"render-pending",0);
                     if(ready.IsOfficial&&origin!=CompanionSelectionOrigin.StartupRestore){var background=RefreshOfficialAsync(ready.BuiltinCharacterId,token,false,origin,null,OfficialCompanionCheckMode.Cached);}
                     return true;
                 }catch(OperationCanceledException){if(OwnsOfficial(token))SelectionStage(token,skin,origin,"cancelled");return false;}
                 catch(Exception error){if(!OfficialError(error))throw;if(OwnsOfficial(token))SelectionStage(token,skin,origin,"failed");return false;}
-                finally{if(cancel.IsCancellationRequested&&OwnsOfficial(token)&&CurrentCompanionSelection!=null&&CurrentCompanionSelection.Request==token&&CurrentCompanionSelection.Stage!="cancelled")SelectionStage(token,skin,origin,"cancelled");if(heldPreparation!=null)heldPreparation.Dispose();if(ReferenceEquals(officialSelection,cancel))officialSelection=null;if(renderedSelection==null||renderedSelection.Request!=token)selectionClocks.Remove(token);}
+                finally{if(reveal!=null)reveal.AbortPending(token);if(cancel.IsCancellationRequested&&OwnsOfficial(token)&&CurrentCompanionSelection!=null&&CurrentCompanionSelection.Request==token&&CurrentCompanionSelection.Stage!="cancelled")SelectionStage(token,skin,origin,"cancelled");if(heldPreparation!=null)heldPreparation.Dispose();if(ReferenceEquals(officialSelection,cancel))officialSelection=null;if(renderedSelection==null||renderedSelection.Request!=token)selectionClocks.Remove(token);}
             }
         }
         bool OwnsOfficial(long token){return !officialStopping&&!closing&&officialDownloads!=null&&officialDownloads.OwnsSelection(token);}

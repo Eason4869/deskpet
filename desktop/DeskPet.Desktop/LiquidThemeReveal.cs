@@ -36,6 +36,7 @@ internal sealed class LiquidThemeReveal : IDisposable
     private bool saveOnFinish;
     private bool systemAppearancePrepared;
     private int generation;
+    internal Action? BeforeCapture { get; set; }
 
     internal LiquidThemeReveal(Window window, Grid host, Control content, ThemeTitleSwitch? themeSwitch,
         Action<string> commit, TimeSpan duration, Func<string> motion, Func<bool>? reducedMotion = null,
@@ -123,15 +124,15 @@ internal sealed class LiquidThemeReveal : IDisposable
     {
         if (effect == ThemeTransitionMotion.Off || duration <= TimeSpan.Zero || !content.IsEffectivelyVisible || window.WindowState == WindowState.Minimized ||
             content.Bounds.Width < 1 || content.Bounds.Height < 1 ||
-            content.GetVisualDescendants().Any(v => v.IsEffectivelyVisible &&
-                (v is NativeControlHost || v is Popup { IsOpen: true }))) return;
+            HasUncapturableSurface(content)) return;
+        BeforeCapture?.Invoke();
         var origin = new Point(Math.Max(0, content.Bounds.Width - 42), 22);
         if (anchor is { IsEffectivelyVisible: true })
         {
             double originY = effect == ThemeTransitionMotion.Flow ? anchor.Bounds.Height - 2 : anchor.Bounds.Height / 2;
             origin = anchor.TranslatePoint(new Point(anchor.Bounds.Width / 2, originY), content) ?? origin;
         }
-        var before = Capture();
+        var before = Capture(window, content);
         if (before == null) return;
         paths = ThemeRevealPaths.Create(effect, content.Bounds.Width, content.Bounds.Height, origin.X, origin.Y);
         layer = new SnapshotLayer(before, content.Bounds.Size, paths);
@@ -154,7 +155,7 @@ internal sealed class LiquidThemeReveal : IDisposable
     {
         if (layer == null) return false;
         content.UpdateLayout();
-        var after = Capture();
+        var after = Capture(window, content);
         if (after == null) return false;
         if (!layer.SetAfter(after))
         {
@@ -176,7 +177,12 @@ internal sealed class LiquidThemeReveal : IDisposable
         return true;
     }
 
-    private RenderTargetBitmap? Capture()
+    internal static bool HasUncapturableSurface(Control content) =>
+        content.GetVisualDescendants().Any(v => v.IsEffectivelyVisible &&
+            (v is NativeControlHost or Popup { IsOpen: true } or ComboBox { IsDropDownOpen: true } ||
+             v is Control { ContextMenu.IsOpen: true }));
+
+    internal static RenderTargetBitmap? Capture(Window window, Control content)
     {
         RenderTargetBitmap? bitmap = null;
         try
@@ -193,6 +199,12 @@ internal sealed class LiquidThemeReveal : IDisposable
             bitmap?.Dispose();
             return null;
         }
+    }
+
+    internal void InterruptForCompanion()
+    {
+        Finish();
+        ClearLayer();
     }
 
     private bool RenderFrame()
@@ -316,22 +328,27 @@ internal sealed class LiquidThemeReveal : IDisposable
         public void Close() => context.EndFigure(true);
     }
 
-    private sealed class SnapshotLayer : Grid, IDisposable
+    internal sealed class SnapshotLayer : Grid, IDisposable
     {
         private readonly RenderTargetBitmap before;
         private readonly Rect viewport;
         private readonly Control[]? refractionLayers;
         private readonly ZipperDecoration? zipper;
+        private readonly Border[]? rings;
         private RenderTargetBitmap? after;
         private SnapshotImage? revealedImage;
 
-        internal SnapshotLayer(RenderTargetBitmap before, Size size, ThemeRevealPaths paths)
+        internal SnapshotLayer(RenderTargetBitmap before, Size size, ThemeRevealPaths paths, string name = "LiquidThemeOverlay")
         {
             this.before = before;
             viewport = new Rect(size);
             if (paths.Refraction != null) refractionLayers = new Control[RefractionThemeShape.Layers.Length];
             if (paths.Zipper != null) zipper = new ZipperDecoration();
-            Name = "LiquidThemeOverlay";
+            if (paths.CompanionRipple != null)
+                rings = Enumerable.Range(0, CompanionRevealPaths.RingCount).Select(i => new Border
+                { Background = new SolidColorBrush(Color.Parse(i == 0 ? "#BDF5FF" : "#62CCFF")), Clip = new StreamGeometry() }).ToArray();
+            Name = name;
+            Avalonia.Automation.AutomationProperties.SetAccessibilityView(this,Avalonia.Automation.AccessibilityView.Raw);
             IsHitTestVisible = false;
             Focusable = false;
             ClipToBounds = true;
@@ -341,6 +358,20 @@ internal sealed class LiquidThemeReveal : IDisposable
         internal void SetFrame(ThemeRevealPaths paths, double progress)
         {
             if (revealedImage != null) revealedImage.Clip = ClipAt(paths.Reveal, progress);
+            if (rings != null)
+            {
+                for (int i = 0; i < rings.Length; i++)
+                {
+                    var ring = new StreamGeometry();
+                    using (var context = ring.Open())
+                    {
+                        context.SetFillRule(FillRule.NonZero);
+                        paths.CompanionRipple.WriteRing(progress, i, new ClipOutline(context));
+                    }
+                    rings[i].Clip = ring;
+                    rings[i].Opacity = CompanionRevealPaths.RingOpacity(progress, i, DesktopTheme.IsDark);
+                }
+            }
             if (refractionLayers != null)
             {
                 for (int i = 0; i < refractionLayers.Length; i++)
@@ -360,7 +391,6 @@ internal sealed class LiquidThemeReveal : IDisposable
         internal bool SetAfter(RenderTargetBitmap bitmap)
         {
             if (bitmap.PixelSize != before.PixelSize) return false;
-            after = bitmap;
             revealedImage = new SnapshotImage(bitmap, viewport) { Clip = new StreamGeometry() };
             Children.Add(revealedImage);
             if (refractionLayers != null)
@@ -392,6 +422,8 @@ internal sealed class LiquidThemeReveal : IDisposable
                 }
             }
             if (zipper != null) Children.Add(zipper);
+            if (rings != null) foreach (var ring in rings) Children.Add(ring);
+            after = bitmap;
             return true;
         }
 

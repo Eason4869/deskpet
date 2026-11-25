@@ -56,6 +56,13 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--companion-window-reveal"))
+    {
+        if(Dafeiyu.Tests.CompanionTransitionMotionTests.Run()!=0)throw new Exception("Companion geometry failed");
+        Console.WriteLine("Avalonia companion window reveal: "+CompanionWindowRevealChecks.Run(
+            Path.Combine(directory,"companion-reveal"),args.Contains("--capture"))+" passed");
+        return;
+    }
     if (args.Contains("--theme-reveal"))
     {
         using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "theme-data")));

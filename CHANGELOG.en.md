@@ -9,7 +9,13 @@
 - Switch directly between light and dark in the main chat window on Windows and macOS. The slider moves with your selection. Use the separate monitor button to follow the system, including animated transitions when the system appearance changes.
 - Choose Flow, Ripple, Refraction, or Zipper in Appearance settings. Random is the default, and you can turn transitions off. Each animation has a synchronized sound, with a real recording for Zipper. Sounds are off by default and have a separate volume control.
 - Settings content adapts to the window width, with switches, the animation picker, and volume aligned on the right. Added missing translations in settings, web search, and the setup guide.
-- The theme preview frame fits its three cards. Volume and companion size sliders use round thumbs and show their values while dragging in either theme. Guga appears 10% smaller on the desktop.
+- The theme preview frame fits its three cards. Theme, companion, speech, and size sliders use round thumbs and show their values while dragging in either theme.
+
+### Companions
+
+- The main chat window on Windows and macOS can reveal the next companion with an avatar ripple or a zipper effect once the companion is ready. Choose a companion from the avatar menu. The zipper pulls straight down while the opened edges roll outward.
+- Choose Off, Avatar ripple, Zipper reveal, or Random in the partner settings. The choice applies immediately, defaults to Avatar ripple, and respects the system's reduced-motion setting.
+- Guga's desktop width and height are each 10% smaller at the selected companion size.
 
 ### Scheduled tasks
 

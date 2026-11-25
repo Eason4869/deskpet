@@ -180,7 +180,20 @@ internal sealed class SettingsWindow : Window
             LocalizedUi.Set(description,"Text",()=>(owner.Skin.DisplayDescription));
         }
         owner.Changed += CatalogChanged; Closed += (_, _) => owner.Changed -= CatalogChanged;
-        return SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.text.alternativeB"),selectors,SettingsVisual.Wrap(import,bulk),description,installationStatus),
+        var motion=new ComboBox{Name="CompanionTransitionEffect",MinWidth=145};
+        motion.ItemsSource=CompanionTransitionMotion.Choices.Select(effect=>
+            LocalizedUi.With(new ComboBoxItem{Tag=effect},"Content",()=>CompanionTransitionMotion.Label(effect))).ToArray();
+        void RefreshMotion()=>motion.SelectedIndex=Array.IndexOf(CompanionTransitionMotion.Choices,owner.Settings.CompanionTransitionEffect);
+        RefreshMotion();
+        motion.SelectionChanged+=(_,args)=>{
+            if(args.AddedItems.Count==0||args.AddedItems[0] is not ComboBoxItem{Tag:string effect}||
+                effect==owner.Settings.CompanionTransitionEffect)return;
+            owner.Settings.CompanionTransitionEffect=effect;
+            owner.Save();
+        };
+        owner.Changed+=RefreshMotion;Closed+=(_,_)=>owner.Changed-=RefreshMotion;
+        var motionRow=SettingsVisual.SettingRow(CompanionTransitionMotion.Caption,motion,13,true);
+        return SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.text.alternativeB"),selectors,SettingsVisual.Wrap(import,bulk),description,installationStatus,motionRow),
             SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.field"),prompt,
             LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.partner.text.alternativeC")), () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices, owner.Skin.OfficialCharacterId ?? owner.Skin.BuiltinCharacterId); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
             LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.partner.text.alternativeD")), () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices, owner.Skin.OfficialCharacterId ?? owner.Skin.BuiltinCharacterId); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),

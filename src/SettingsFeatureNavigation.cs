@@ -49,6 +49,7 @@ namespace Dafeiyu
                 new SettingsFeatureDestination(3,2,"ClearAllHistory",TextResources.Get("dataManagement.clearHistory"),TextResources.Get("settingsSearch.clearHistoryAlias")),
                 new SettingsFeatureDestination(3,2,"RestoreDefaultPreferences",TextResources.Get("dataManagement.restorePreferences"),TextResources.Get("settingsSearch.resetAlias")),
                 new SettingsFeatureDestination(0,-1,"CompanionRelationshipSettings",TextResources.Get("relationship.home.settings")),
+                new SettingsFeatureDestination(0,0,"CompanionTransitionEffect",CompanionTransitionMotion.Caption()),
                 new SettingsFeatureDestination(0,-1,"CompanionHomePage",TextResources.Get("relationship.home.title"),TextResources.Get("relationship.home.open"))
             };
         }

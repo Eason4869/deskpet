@@ -163,6 +163,7 @@ jobs:
           set -euo pipefail
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --theme-reveal | tee "$REPORT_ROOT/theme-reveal.log"
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --companion-window-reveal | tee "$REPORT_ROOT/companion-window-reveal.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --notification-sounds | tee "$REPORT_ROOT/notification-sounds.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-host-only | tee "$REPORT_ROOT/proactive-host-only.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --file-compatibility-only | tee "$REPORT_ROOT/attachment-ui.log"

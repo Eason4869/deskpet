@@ -14,12 +14,21 @@ namespace Dafeiyu
         internal readonly Action<double, ILiquidThemeOutline> Reveal;
         internal readonly RefractionThemeShape Refraction;
         internal readonly ZipperThemeShape Zipper;
+        internal readonly CompanionRevealPaths CompanionRipple;
 
-        ThemeRevealPaths(Action<double, ILiquidThemeOutline> reveal, RefractionThemeShape refraction = null, ZipperThemeShape zipper = null)
+        ThemeRevealPaths(Action<double, ILiquidThemeOutline> reveal, RefractionThemeShape refraction = null,
+            ZipperThemeShape zipper = null, CompanionRevealPaths companionRipple = null)
         {
             Reveal = reveal;
             Refraction = refraction;
             Zipper = zipper;
+            CompanionRipple = companionRipple;
+        }
+
+        internal static ThemeRevealPaths ForCompanion(CompanionRevealPaths paths)
+        {
+            return new ThemeRevealPaths(paths.WriteReveal, zipper: paths.Zipper,
+                companionRipple: paths.Zipper == null ? paths : null);
         }
 
         internal static ThemeRevealPaths Create(string effect, double width, double height, double originX, double originY)

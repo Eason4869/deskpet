@@ -7,6 +7,7 @@
   <ItemGroup><Compile Include="../../tests/RelationshipExperienceTests.cs" Link="Tests/RelationshipExperienceTests.cs" /><Compile Include="../../tests/RelationshipTestSupport.cs" Link="Tests/RelationshipTestSupport.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/RelationshipStageArtContractChecks.cs" Link="RelationshipStageArtContractChecks.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/QuietKeepsakeChecks.cs" Link="QuietKeepsakeChecks.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../../tests/CompanionTransitionMotionTests.cs" Link="CompanionTransitionMotionTests.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/HolidayKeepsakeContractChecks.cs" Link="HolidayKeepsakeContractChecks.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/HolidayKeepsakePresentationChecks.cs" Link="HolidayKeepsakePresentationChecks.cs" /></ItemGroup>
 </Project>

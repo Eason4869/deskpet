@@ -98,6 +98,14 @@ internal static class SettingsLazyChecks
             window.SelectSection("text");window.SelectSection("partner");window.SelectSection("voice");Dispatcher.UIThread.RunJobs();
             Check(ReferenceEquals(voice,Named<TextBox>(window,"VoiceName"))&&voice.Text=="unsaved voice name","voice draft survives model and category navigation");
             Check(pages.Cast<object?>().All(x=>x!=null),"every page can be materialized");
+            window.SelectSection("partner");Dispatcher.UIThread.RunJobs();
+            var companionMotion=Named<ComboBox>(window,"CompanionTransitionEffect");
+            Check(companionMotion.Items.Cast<ComboBoxItem>().Select(item=>item.Tag as string)
+                .SequenceEqual(new[]{"off","ripple","zipper","random"}),"partner settings provide the four transition options in order");
+            Check(companionMotion.SelectedIndex==1,"avatar ripple is selected initially");
+            companionMotion.SelectedIndex=3;Dispatcher.UIThread.RunJobs();
+            Check(new SettingsStore(Path.Combine(directory,"settings.json")).Load().CompanionTransitionEffect=="random",
+                "partner motion choice persists independently of the theme");
             var aboutButton=Named<Button>(window,"SettingsAboutAndUpdates");var guideButton=Named<Button>(window,"SettingsGuide");
             Check(guideButton.TranslatePoint(default,window)!.Value.X>aboutButton.TranslatePoint(default,window)!.Value.X,"about and the real configuration guide sit side by side beneath main navigation");
             var captures=Path.GetFullPath(Path.Combine("work","settings-layout-native",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(captures);

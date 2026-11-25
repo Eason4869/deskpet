@@ -23,6 +23,7 @@ namespace Dafeiyu
         internal string CurrentPage {get{return shellPage;}}
         internal bool HasUnsavedMcpEdits {get{return mcpPage!=null&&mcpPage.HasUnsavedEdits;}}
         internal LiquidThemeReveal ThemeReveal { get; private set; }
+        internal CompanionWindowReveal CompanionReveal { get; private set; }
         internal void InitializeAppShell()
         {
             Content=null;
@@ -59,10 +60,20 @@ namespace Dafeiyu
             foreach(var b in new[]{shellHome,shellImages,shellScheduledTasks,shellUsage,shellMcp,shellSettings}){b.Width=b.Height=40;b.Margin=new Thickness(0,3,0,3);railTop.Children.Add(b);}railBody.Children.Add(railTop);
             shellAvatarImage=new Image{Width=30,Height=30,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,30,30),10,10)};RenderOptions.SetBitmapScalingMode(shellAvatarImage,BitmapScalingMode.HighQuality);var profile=ShellIcons.Button("pet",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeK")),OpenProfileMenu);profile.Name="ShellAvatar";profile.Width=profile.Height=40;profile.Content=shellAvatarImage;Grid.SetRow(profile,2);railBody.Children.Add(profile);appRail=new Border{Name="AppIconRail",Background=ThemeManager.Brush("#EDF3F8","#202733"),Child=railBody};body.Children.Add(appRail);
             appPages=new Grid{Name="AppPageHost",Background=ThemeManager.Surface,ClipToBounds=true};homePage=new Grid{Name="AppHomePage"};homePage.Children.Add(workspaceShell);appPages.Children.Add(homePage);
-            var pageFrame=new Border{Name="AppContentFrame",Background=ThemeManager.Surface,CornerRadius=new CornerRadius(16),BorderBrush=Ui.Brush("#E3E7EC"),BorderThickness=new Thickness(1),Child=appPages,ClipToBounds=true};pageFrame.SizeChanged+=delegate{pageFrame.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,pageFrame.ActualWidth),Math.Max(0,pageFrame.ActualHeight)),16,16);};Grid.SetColumn(pageFrame,1);body.Children.Add(pageFrame);Grid.SetRow(body,1);frame.Children.Add(body);
+            var pageFrame=new Border{Name="AppContentFrame",Background=ThemeManager.Surface,CornerRadius=new CornerRadius(16),BorderBrush=Ui.Brush("#E3E7EC"),BorderThickness=new Thickness(1),Child=appPages,ClipToBounds=true};pageFrame.SizeChanged+=delegate{pageFrame.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,pageFrame.ActualWidth),Math.Max(0,pageFrame.ActualHeight)),16,16);};Grid.SetColumn(pageFrame,1);body.Children.Add(pageFrame);
+            var companionHost=new Grid{ClipToBounds=true};
+            companionHost.Children.Add(body);Grid.SetRow(companionHost,1);frame.Children.Add(companionHost);
             var themeHost=new Grid{ClipToBounds=true};themeHost.Children.Add(frame);Content=themeHost;
             ThemeReveal = new LiquidThemeReveal(this,themeHost,frame,themeSwitch,pet.SetThemeMode,LiquidThemeShape.DefaultDuration,
                 ()=>pet.Settings.ThemeTransitionEffect,pet.PlayThemeSound);
+            CompanionReveal=new CompanionWindowReveal(this,companionHost,body,()=>!closed&&IsActive&&shellPage=="home",
+                ()=>pet.Skin.PickerKey,()=>pet.Settings.CompanionTransitionEffect,
+                ()=>profile.IsVisible?profile.TranslatePoint(new Point(profile.ActualWidth/2,profile.ActualHeight/2),body):
+                    new Point(Math.Min(24,body.ActualWidth/2),Math.Max(0,body.ActualHeight-24)),
+                ()=>navigation!=null&&navigation.IsVisible&&!sidebarTemporary?
+                    navigation.TranslatePoint(new Point(navigation.ActualWidth,0),body).X:.23*body.ActualWidth,
+                ThemeReveal.InterruptForCompanion);
+            ThemeReveal.BeforeCapture=CompanionReveal.Cancel;
             sidebarHidden=false;shellReady=true;RecordPage("home");RefreshShellAppearance();
             PreviewKeyDown+=ShellKeyDown;PreviewMouseDown+=delegate(object sender,MouseButtonEventArgs e){if(sidebarTemporary&&!navigation.IsMouseOver&&!shellSidebar.IsMouseOver){sidebarTemporary=false;RefreshWorkspaceLayout();}if(e.ChangedButton==MouseButton.XButton1){e.Handled=true;TravelPage(-1);}else if(e.ChangedButton==MouseButton.XButton2){e.Handled=true;TravelPage(1);}};
             AddHandler(Keyboard.GotKeyboardFocusEvent,new KeyboardFocusChangedEventHandler(delegate(object sender,KeyboardFocusChangedEventArgs e){var element=e.NewFocus as FrameworkElement;if(element!=null&&(element is System.Windows.Controls.Primitives.TextBoxBase||element is PasswordBox)&&element.IsVisible)lastEditingTarget=e.NewFocus;}),true);
@@ -114,6 +125,7 @@ namespace Dafeiyu
         }
         void SetShellPage(string page)
         {
+            if(page!=shellPage&&CompanionReveal!=null)CompanionReveal.Cancel();
             CloseTransientSummary();CloseProfileMenu();shellPage=page;if(companionPage!=null)companionPage.Visibility=page=="companion"?Visibility.Visible:Visibility.Collapsed;if(imagePage!=null)imagePage.Visibility=page=="images"?Visibility.Visible:Visibility.Collapsed;if(scheduledTasksPage!=null)scheduledTasksPage.Visibility=page=="scheduledTasks"?Visibility.Visible:Visibility.Collapsed;homePage.Visibility=page=="home"?Visibility.Visible:Visibility.Collapsed;if(settingsPage!=null)settingsPage.Visibility=page=="settings"?Visibility.Visible:Visibility.Collapsed;if(usagePage!=null)usagePage.Visibility=page=="usage"?Visibility.Visible:Visibility.Collapsed;if(mcpPage!=null)mcpPage.Visibility=page=="mcp"?Visibility.Visible:Visibility.Collapsed;RefreshShellAppearance();if(page=="home")Dispatcher.BeginInvoke(new Action(RefreshWorkspaceLayout));
         }
         void RecordPage(string page)
@@ -156,6 +168,21 @@ namespace Dafeiyu
         void AddProfile(ContextMenu menu,string name,Func<string> label,string icon,Action action){var item=LocalizedUi.With(new MenuItem{Name=name,Header=label(),Icon=ShellIcons.Image(icon)},"Header",label);item.Click+=delegate{menu.IsOpen=false;action();};menu.Items.Add(item);}
         Button FindShellButton(string name){return appRail.Child is Grid?((Grid)appRail.Child).Children.OfType<Button>().First(b=>b.Name==name):null;}
         void CloseProfileMenu(){if(appRail==null)return;var button=FindShellButton("ShellAvatar");if(button!=null&&button.ContextMenu!=null)button.ContextMenu.IsOpen=false;}
+        internal FrameworkElement CompanionInstallationAnchor
+        {
+            get
+            {
+                if(closed||!IsVisible||WindowState==WindowState.Minimized||shellPage!="home"||appRail==null)return null;
+                var avatar=FindShellButton("ShellAvatar");
+                return avatar.IsVisible&&PresentationSource.FromVisual(avatar)!=null?avatar:null;
+            }
+        }
+        internal CompanionWindowReveal PrepareCompanionReveal(long request,string current,string target)
+        {
+            CloseProfileMenu();
+            if(CompanionReveal!=null)CompanionReveal.Prepare(request,current,target);
+            return CompanionReveal;
+        }
         internal void MountLiveContent(FrameworkElement view){liveReturnPage=shellPage;liveReturnSection=settingsPage==null?0:settingsPage.SelectedNavigationIndex;liveReturnHistory=historyIndex;ShowHomePage(false);workspaceShell.Visibility=Visibility.Collapsed;homePage.Children.Add(view);}
         internal void UnmountLiveContent(FrameworkElement view)
         {

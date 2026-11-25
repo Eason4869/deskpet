@@ -31,6 +31,7 @@ namespace Dafeiyu
         bool targetDark;
         bool saveOnFinish;
         TimeSpan? lastRenderingTime;
+        internal Action BeforeCapture { get; set; }
 
         internal LiquidThemeReveal(Window window, Grid host, FrameworkElement content, ThemeTitleSwitch themeSwitch,
             Action<string> commit, TimeSpan duration, Func<string> motion, BeginLiquidThemeSound beginSound = null)
@@ -106,13 +107,14 @@ namespace Dafeiyu
         {
             if (effect == ThemeTransitionMotion.Off || duration <= TimeSpan.Zero || !content.IsVisible || window.WindowState == WindowState.Minimized ||
                 content.ActualWidth < 1 || content.ActualHeight < 1 || HasUncapturableSurface(content)) return;
+            if (BeforeCapture != null) BeforeCapture();
             var origin = new Point(Math.Max(0, content.ActualWidth - 42), 22);
             if (anchor != null && anchor.IsVisible)
             {
                 double originY = effect == ThemeTransitionMotion.Flow ? anchor.ActualHeight - 2 : anchor.ActualHeight / 2;
                 origin = anchor.TranslatePoint(new Point(anchor.ActualWidth / 2, originY), content);
             }
-            var before = Capture();
+            var before = Capture(content);
             if (before == null) return;
             paths = ThemeRevealPaths.Create(effect, content.ActualWidth, content.ActualHeight, origin.X, origin.Y);
             layer = new SnapshotLayer(before, content.RenderSize, paths);
@@ -134,7 +136,7 @@ namespace Dafeiyu
         {
             if (layer == null) return false;
             content.UpdateLayout();
-            var after = Capture();
+            var after = Capture(content);
             if (after == null || !layer.SetAfter(after)) return false;
             targetMode = next;
             targetDark = ThemeManager.IsDark;
@@ -146,7 +148,7 @@ namespace Dafeiyu
             return true;
         }
 
-        BitmapSource Capture()
+        internal static BitmapSource Capture(FrameworkElement content)
         {
             try
             {
@@ -166,14 +168,18 @@ namespace Dafeiyu
             catch (OutOfMemoryException) { return null; }
         }
 
-        static bool HasUncapturableSurface(Visual visual)
+        internal static bool HasUncapturableSurface(Visual visual)
         {
             var element = visual as UIElement;
             if (element != null && !element.IsVisible) return false;
             var image = visual as Image;
             var popup = visual as Popup;
+            var control = visual as FrameworkElement;
+            var combo = visual as ComboBox;
             if (visual is HwndHost || visual is MediaElement ||
-                (image != null && image.Source is D3DImage) || (popup != null && popup.IsOpen)) return true;
+                (image != null && image.Source is D3DImage) || (popup != null && popup.IsOpen) ||
+                (control != null && control.ContextMenu != null && control.ContextMenu.IsOpen) ||
+                (combo != null && combo.IsDropDownOpen)) return true;
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(visual); i++)
             {
                 var child = VisualTreeHelper.GetChild(visual, i) as Visual;
@@ -263,6 +269,12 @@ namespace Dafeiyu
             paths = null;
         }
 
+        internal void InterruptForCompanion()
+        {
+            Finish();
+            ClearLayer();
+        }
+
         void Closed(object sender, EventArgs args) { Dispose(); }
 
         public void Dispose()
@@ -301,23 +313,24 @@ namespace Dafeiyu
             public void Close() { }
         }
 
-        sealed class SnapshotLayer : FrameworkElement
+        internal sealed class SnapshotLayer : FrameworkElement
         {
             static readonly Brush[] zipperBrushes = CreateZipperBrushes();
             readonly VisualCollection visuals;
             readonly DrawingVisual after = new DrawingVisual();
             readonly DrawingVisual[] refraction;
             readonly DrawingVisual zipper;
+            readonly DrawingVisual[] rings;
             readonly Rect viewport;
             readonly int pixelWidth, pixelHeight;
 
-            internal SnapshotLayer(BitmapSource before, Size size, ThemeRevealPaths paths)
+            internal SnapshotLayer(BitmapSource before, Size size, ThemeRevealPaths paths, string name = "LiquidThemeOverlay")
             {
                 visuals = new VisualCollection(this);
                 viewport = new Rect(size);
                 pixelWidth = before.PixelWidth;
                 pixelHeight = before.PixelHeight;
-                Name = "LiquidThemeOverlay";
+                Name = name;
                 IsHitTestVisible = false;
                 ClipToBounds = true;
                 var old = new DrawingVisual();
@@ -348,6 +361,17 @@ namespace Dafeiyu
                     zipper = new DrawingVisual();
                     visuals.Add(zipper);
                 }
+                if (paths.CompanionRipple != null)
+                {
+                    rings = new DrawingVisual[CompanionRevealPaths.RingCount];
+                    for (int i = 0; i < rings.Length; i++)
+                    {
+                        rings[i] = new DrawingVisual { Clip = Geometry.Empty };
+                        var brush = Ui.FixedBrush(i == 0 ? "#BDF5FF" : "#62CCFF");
+                        using (var drawing = rings[i].RenderOpen()) drawing.DrawRectangle(brush, null, viewport);
+                        visuals.Add(rings[i]);
+                    }
+                }
             }
 
             internal bool SetAfter(BitmapSource bitmap)
@@ -373,6 +397,17 @@ namespace Dafeiyu
                 var reveal = ClipAt(paths.Reveal, progress);
                 reveal.Freeze();
                 after.Clip = reveal;
+                if (rings != null)
+                {
+                    for (int i = 0; i < rings.Length; i++)
+                    {
+                        var ring = new StreamGeometry { FillRule = FillRule.Nonzero };
+                        using (var geometry = ring.Open()) paths.CompanionRipple.WriteRing(progress, i, new ClipOutline(geometry));
+                        ring.Freeze();
+                        rings[i].Clip = ring;
+                        rings[i].Opacity = CompanionRevealPaths.RingOpacity(progress, i, ThemeManager.IsDark);
+                    }
+                }
                 if (refraction != null)
                 {
                     for (int i = 0; i < refraction.Length; i++)

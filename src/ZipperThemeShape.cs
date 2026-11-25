@@ -9,19 +9,30 @@ namespace Dafeiyu
         internal const double OpeningProgress = .10;
         internal const double PullExitProgress = .82;
         readonly double width, height, originX, originY, scale;
+        readonly bool companion;
 
-        internal ZipperThemeShape(double width, double height, double originX, double originY)
+        internal ZipperThemeShape(double width, double height, double originX, double originY, bool companion = false)
         {
             this.width = width;
             this.height = height;
             this.originX = Math.Max(0, Math.Min(width, originX));
             this.originY = Math.Max(0, Math.Min(height, originY));
             scale = Math.Max(.65, Math.Min(1.4, height / 700));
+            this.companion = companion;
         }
 
         internal void WriteOutline(double progress, ILiquidThemeOutline outline)
         {
             if (progress <= 0) return;
+            if (companion && progress >= 1)
+            {
+                outline.MoveTo(0, 0);
+                outline.LineTo(width, 0);
+                outline.LineTo(width, height);
+                outline.LineTo(0, height);
+                outline.Close();
+                return;
+            }
             var frame = At(progress);
             outline.MoveTo(frame.Left.Top, frame.Top);
             outline.LineTo(frame.Right.Top, frame.Top);
@@ -41,6 +52,14 @@ namespace Dafeiyu
                     double lip = (2.5 + 8 * frame.Open) * scale;
                     Lining(outline, frame, frame.Left, -lip);
                     Lining(outline, frame, frame.Right, lip);
+                    if (companion && frame.Pull < height)
+                    {
+                        outline.MoveTo(originX - scale, frame.Pull);
+                        outline.LineTo(originX + scale, frame.Pull);
+                        outline.LineTo(originX + scale, height);
+                        outline.LineTo(originX - scale, height);
+                        outline.Close();
+                    }
                     break;
                 case ZipperPart.Rim:
                     Lining(outline, frame, frame.Left, -1.4 * scale);
@@ -62,6 +81,16 @@ namespace Dafeiyu
 
         Frame At(double progress)
         {
+            if (companion)
+            {
+                double pull = height * Math.Min(1, progress / .68);
+                double introduction = Smooth(progress / .08);
+                double open = Smooth(progress);
+                double spread = Smooth((progress - .68) / .32);
+                return new Frame(0, pull, pull, open,
+                    Side(-1, originX, introduction, open, spread),
+                    Side(1, width - originX, introduction, open, spread));
+            }
             double tip = originY + (height + 25 * scale - originY) *
                 Smooth((progress - .022) / (PullExitProgress - .022));
             double growth = Smooth(progress / .09);
@@ -121,7 +150,7 @@ namespace Dafeiyu
         void Teeth(ILiquidThemeOutline outline, Frame frame, double progress)
         {
             double pitch = Math.Max(8.5 * scale, height / 90);
-            double seamEnd = originY + (height - originY) * Smooth(progress / .24);
+            double seamEnd = companion ? height : originY + (height - originY) * Smooth(progress / .24);
             double openEnd = Math.Min(height, frame.Pull - 8 * scale);
             double first = frame.Top + pitch / 2;
             for (double y = first; y < openEnd; y += pitch)
