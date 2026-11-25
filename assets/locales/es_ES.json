@@ -4932,7 +4932,7 @@
   "webSearch.auto": "Detección automática",
   "webSearch.disabled": "La búsqueda web está desactivada.",
   "webSearch.enabled": "Activar búsqueda web",
-  "webSearch.errorPrefix": "Error de búsqueda: ",
+  "webSearch.errorPrefix": "Error: ",
   "webSearch.help": "Disponible en la conversación, el chat rápido y el modo de trabajo. La búsqueda nativa usa el modelo actual. Los servicios externos usan sus propias claves y el proxy del modelo. El modelo debe admitir llamadas a herramientas. Las búsquedas y las llamadas al modelo pueden cobrarse por separado.",
   "webSearch.invalidQuery": "Introduce una consulta de entre 1 y 1000 caracteres. DeepSeek admite hasta 128 y Doubao, hasta 100.",
   "webSearch.invalidResponse": "El servicio de búsqueda devolvió una respuesta no válida.",

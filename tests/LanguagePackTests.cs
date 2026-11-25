@@ -18,7 +18,7 @@ namespace Dafeiyu.Tests
         static readonly string[] Names={"简体中文","繁體中文","English","日本語","한국어","Français (France)","Deutsch (Deutschland)","हिन्दी (भारत)","Bahasa Indonesia","Italiano (Italia)","Português (Brasil)","Español (Latinoamérica)","Español (España)"};
         static readonly string[] MenuLabels={"语言","語言","Language","言語","언어","Langue","Sprache","भाषा","Bahasa","Lingua","Idioma","Idioma","Idioma"};
         static readonly string[] CompanionLabels={"桌面伙伴","桌面夥伴","Desktop Companion","デスクトップコンパニオン","데스크톱 동반자","Compagnon de bureau","Desktopbegleiter","डेस्कटॉप साथी","Teman desktop","Compagno desktop","Companhia de desktop","Compañía de escritorio","Compañero de escritorio"};
-        static readonly string[] Hashes={"df9ed8e9127cd93abe7634379f306e57d44dd8c8d27a503f7d45dfec5a9f3510","1e43df5f5b87d539b4ab335de04448bf8a5da91ec2f4033944c709099bc7bccf","0d17fcec76ff9ac2ed565298cc5a5248ef54114918d62118aad1c5f861d76934","f7e9108c8804225534cf5f42371719ff69b2d097081e27ec110f8a11e171dc0b","04c8b64d6e1f030da3fbdf87cbb6ac253204328ce9c921d5a03f9f2d23b6b000","b59d6d4b6ad91bdf06308aa4165cf81e7a8c7120b08744b9586e0d2f80b1700a","ae6d40cc7506f3b50ef2b5812e234aeaf1d55ac3ffa02d65e273b4c71ee44027","8061cdf31b86ca46839475f1768fcdb3ad43ddd5aac99368c81131dc9848f94b","2825114466da7fb64e4c58f825bc497745084fe2354bbf2ba2c68771f2791742","c40ad50913a2c98d8fe0165c2dc512f38ccde3a2662614961e845b6cd9daf682","671456c32d7e41a5fcd7ccd87c8588ee1971c93d4349e752912c216a0bce3eb6","a09aa9ced26dc65f8f6ca53693956ed0782786f46d4365ce61ce5e1e188cf506","5f51802a0125f33857557aaee6e373376305aae5598fb9004126d3386f6d1f21"};
+        static readonly string[] Hashes={"df9ed8e9127cd93abe7634379f306e57d44dd8c8d27a503f7d45dfec5a9f3510","1e43df5f5b87d539b4ab335de04448bf8a5da91ec2f4033944c709099bc7bccf","0d17fcec76ff9ac2ed565298cc5a5248ef54114918d62118aad1c5f861d76934","f7e9108c8804225534cf5f42371719ff69b2d097081e27ec110f8a11e171dc0b","04c8b64d6e1f030da3fbdf87cbb6ac253204328ce9c921d5a03f9f2d23b6b000","b59d6d4b6ad91bdf06308aa4165cf81e7a8c7120b08744b9586e0d2f80b1700a","ae6d40cc7506f3b50ef2b5812e234aeaf1d55ac3ffa02d65e273b4c71ee44027","8061cdf31b86ca46839475f1768fcdb3ad43ddd5aac99368c81131dc9848f94b","2825114466da7fb64e4c58f825bc497745084fe2354bbf2ba2c68771f2791742","c40ad50913a2c98d8fe0165c2dc512f38ccde3a2662614961e845b6cd9daf682","671456c32d7e41a5fcd7ccd87c8588ee1971c93d4349e752912c216a0bce3eb6","ac4a7ae7f76b8c574d38bf2790bb06ea2cb77e485ae57550ff44caa6dbe01acb","062621f4fd66c3089cbc3b28f4bfe2eff97500b4bb6bb2a7dd281ced6c7445a0"};
         static void Check(bool yes,string why){if(!yes)throw new Exception(why);checks++;Console.WriteLine("PASS "+why);}
         static object Call(Type type,string method,params object[] args)
         {
@@ -67,6 +67,16 @@ namespace Dafeiyu.Tests
                 var rows=((object[])fixture["resources"]).Cast<Dictionary<string,object>>().ToArray();
                 foreach(var row in rows)Check(Catalog("zh_CN").Get((string)row["key"])==(string)row["expected"],"independent feature text "+row["key"]);
                 foreach(string code in Codes){foreach(var row in rows.Where(x=>(bool)x["format"]))Catalog(code).Format((string)row["key"],Enumerable.Range(0,(int)row["argument_count"]).Select(i=>(object)3).ToArray());Check(true,"all independent new feature formats render: "+code);}
+                var settingsCopy = rows.Select(row => (string)row["key"])
+                    .Where(key => key.StartsWith("settingsLayout.", StringComparison.Ordinal))
+                    .Concat(new[] { "webSearch.help", "webSearch.saved", "webSearch.unsupported", "onboarding.search.detail" }).ToArray();
+                var english = Catalog("en_US");
+                foreach (string code in Codes.Where(code => code != "en_US"))
+                {
+                    var translated = Catalog(code);
+                    var copied = settingsCopy.Where(key => translated.Get(key) == english.Get(key)).ToArray();
+                    Check(copied.Length == 0, "settings and search copy is localized: " + code + (copied.Length == 0 ? "" : " (" + String.Join(", ", copied) + ")"));
+                }
             }
         }
         static void ChoicesAndSavedSelection()
