@@ -49,8 +49,11 @@ namespace Dafeiyu.Tests
             var title=All<TextBlock>(pane).Single(label=>label.Name=="SubagentInspectorTitle");
             var back=All<Button>(pane).Single(button=>button.Name=="SubagentInspectorBack");
             Func<FrameworkElement,double> centerY=element=>element.TranslatePoint(new Point(0,element.ActualHeight/2),pane).Y;
-            Check(Math.Abs(centerY(icon)-centerY(title))<1&&Math.Abs(centerY(back)-centerY(title))<1,
-                "subagent detail icon, title and back button share a visual center line");
+            var centers = new[] { centerY(icon), centerY(title), centerY(back) };
+            // WPF rounds each element to device pixels independently.
+            double spread = (centers.Max() - centers.Min()) * VisualTreeHelper.GetDpi(pane).DpiScaleY;
+            Check(spread <= 1.000001, "subagent detail icon, title and back button share a visual center line (" +
+                spread.ToString("F3") + " physical pixel spread)");
         }
         static async Task RunSubagentHeader()
         {
@@ -68,7 +71,8 @@ namespace Dafeiyu.Tests
                 session.History.UpdateAgentTaskSummary(task);
                 using(var pane=new SubagentInspector(session))
                 {
-                    var host=new Window{Width=639,Height=790,Content=pane};
+                    var host = new Window { Content = pane };
+                    Ui.Window(host, "", 639, 790);
                     try
                     {
                         host.Show();

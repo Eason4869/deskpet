@@ -32,18 +32,22 @@ namespace Dafeiyu
             GitWorkspaceChangeSnapshot changes = null;
             using (var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(8)))
             {
-                try { result = await Task.Run(() => WorkSummaryRepository.Read(path, cancel.Token)); }
+                try { result = await Task.Run(() => WorkSummaryRepository.Read(path, cancel.Token)).ConfigureAwait(false); }
                 catch (Exception error) { if (!CanReportGitReadError(error)) throw; }
                 if (result != null)
                 {
-                    try { changes = await Task.Run(() => GitWorkspaceChanges.Read(path, false, cancel.Token)); }
+                    try { changes = await Task.Run(() => GitWorkspaceChanges.Read(path, false, cancel.Token)).ConfigureAwait(false); }
                     catch (Exception error) { if (!CanReportGitReadError(error)) throw; }
                 }
             }
-            if (closed || request != summaryRepositoryRequest || !ReferenceEquals(sourceSession, session) || !String.Equals(path, summaryRepositoryWorkspace, StringComparison.OrdinalIgnoreCase)) return;
-            summaryRepository = result;
-            summaryGitChanges = changes;
-            RefreshWorkSummaryOverviews();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (closed || request != summaryRepositoryRequest || !ReferenceEquals(sourceSession, session) ||
+                    !String.Equals(path, summaryRepositoryWorkspace, StringComparison.OrdinalIgnoreCase)) return;
+                summaryRepository = result;
+                summaryGitChanges = changes;
+                RefreshWorkSummaryOverviews();
+            }));
         }
 
         internal static bool CanReportGitReadError(Exception error)
