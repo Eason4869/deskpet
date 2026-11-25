@@ -42,7 +42,9 @@ namespace Dafeiyu
             DwmSetWindowAttribute(handle,20,ref dark,sizeof(int));
         }
         internal static bool IsDark {get;private set;}
+        internal static string Mode {get{return mode;}}
         internal static event Action Changed;
+        internal static event Action ModeChanged;
         internal static Brush Surface {get{return Brush("#FFFFFF");}}
         internal static SolidColorBrush CardSurface {get{return Brush("#FFFFFF","#2B3545");}}
         internal static SolidColorBrush CardBorder {get{return Brush("#DCE5F4","#52637C");}}
@@ -65,6 +67,7 @@ namespace Dafeiyu
         }
         internal static void Apply(string preference)
         {
+            string previous=mode;
             mode=ThemeColors.Normalize(preference);
             if(!listening&&Application.Current!=null)
             {
@@ -72,6 +75,7 @@ namespace Dafeiyu
                 Application.Current.Exit+=delegate{SystemEvents.UserPreferenceChanged-=OnSystemPreferenceChanged;listening=false;};listening=true;
             }
             RefreshSystemTheme();
+            if(previous!=mode&&ModeChanged!=null)ModeChanged();
         }
         static void OnSystemPreferenceChanged(object sender,UserPreferenceChangedEventArgs args)
         {

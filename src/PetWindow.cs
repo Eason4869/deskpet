@@ -1294,6 +1294,14 @@ namespace Dafeiyu
             try{using(await DataMaintenance.BeginAsync()){do{deferredSettingsSave=false;await Store.SaveExactSnapshotAsync(Settings);}while(deferredSettingsSave);}return "";}
             catch(Exception){deferredSettingsSave=true;return TextResources.Get("dataManagement.pendingSaveFailed");}
         }
+        internal void SetThemeMode(string mode)
+        {
+            mode=ThemeColors.Normalize(mode);
+            bool changed=Settings.ThemeMode!=mode;
+            Settings.ThemeMode=mode;
+            if(ThemeManager.Mode!=mode)ThemeManager.Apply(mode);
+            if(changed)SaveSettings();
+        }
         public void SaveSettings()
         {TrySaveSettings();}
         internal bool TrySaveSettings()

@@ -75,6 +75,7 @@
     <Compile Include="../../src/ApplicationSnapshots.cs;../../src/AttachmentPicker.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ShortcutDefinitions.cs" Link="Shared/ShortcutDefinitions.cs" />
     <Compile Include="../../src/ThemeColors.cs" Link="Shared/ThemeColors.cs" />
+    <Compile Include="../../src/LiquidThemeShape.cs" Link="Shared/LiquidThemeShape.cs" />
     <Compile Include="../../src/OnboardingUpgrade.cs" Link="Shared/OnboardingUpgrade.cs" />
     <Compile Include="../../src/WanderSchedule.cs" Link="Shared/WanderSchedule.cs" />
     <Compile Include="../../src/GitHubUpdates.cs;../../src/GitHubReleaseChannels.cs" Link="Shared/GitHubUpdates.cs" />

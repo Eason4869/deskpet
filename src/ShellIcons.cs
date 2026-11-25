@@ -14,6 +14,7 @@ namespace Dafeiyu
         {
             string shape;
             switch(name){
+                case "theme-light":case "theme-dark":case "theme-system":shape=ThemeSwitch.Icon(name.Substring(6));break;
                 case "image":shape="M3 4h18v16H3z M3 16l5-5 5 5 3-3 5 5 M16 8h.1";break;
                 case "calendar":shape="M5 5h14q2 0 2 2v12q0 2-2 2H5q-2 0-2-2V7q0-2 2-2z M7 3v4 M17 3v4 M3 10h18 M8 14h2 M14 14h2 M8 17h2";break;
                 case "home":shape="M3 11 12 3 21 11 M5 10v10h5v-6h4v6h5V10";break;

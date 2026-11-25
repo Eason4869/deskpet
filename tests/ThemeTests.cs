@@ -18,7 +18,7 @@ namespace Dafeiyu.Tests
             var bmp=new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth),(int)Math.Ceiling(window.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(window);
             var png=new System.Windows.Media.Imaging.PngBitmapEncoder();png.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));using(var file=File.Create(Path.Combine(root,name)))png.Save(file);
         }
-        static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(80)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
+        static void Pump(int milliseconds=80){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(milliseconds)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
         static Color Painted(Brush brush)
         {
             var visual=new DrawingVisual();using(var context=visual.RenderOpen()){context.DrawRectangle(ThemeManager.Surface,null,new Rect(0,0,24,24));context.DrawRectangle(brush,null,new Rect(0,0,24,24));}
@@ -27,11 +27,65 @@ namespace Dafeiyu.Tests
         static double Light(Color color){Func<byte,double> linear=c=>{double v=c/255.0;return v<=.04045?v/12.92:Math.Pow((v+.055)/1.055,2.4);};return .2126*linear(color.R)+.7152*linear(color.G)+.0722*linear(color.B);}
         static double Contrast(Color a,Color b){double x=Light(a),y=Light(b);return (Math.Max(x,y)+.05)/(Math.Min(x,y)+.05);}
         static System.Collections.Generic.IEnumerable<T> All<T>(DependencyObject root) where T:DependencyObject {if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var child in All<T>(VisualTreeHelper.GetChild(root,i)))yield return child;}
-        [STAThread]public static int Main()
+        static void CheckLiquidGeometry()
+        {
+            foreach (var size in new[] { new Size(420, 490), new Size(1280, 820) })
+            {
+                var origin = new Point(size.Width - 160, 40);
+                var shape = new LiquidThemeShape(size.Width, size.Height, origin.X, origin.Y);
+                var stream = Geometry.Parse(shape.PathAt(.14));
+                Check(stream.FillContains(new Point(origin.X, origin.Y + 2)) &&
+                    !stream.FillContains(new Point(5, size.Height - 4)), size + " liquid starts at the button");
+                var rising = Geometry.Parse(shape.PathAt(.62));
+                Check(rising.FillContains(new Point(size.Width / 2, size.Height - 4)) &&
+                    !rising.FillContains(new Point(size.Width / 2, 5)), size + " liquid fills from the bottom");
+                var full = Geometry.Parse(shape.PathAt(1));
+                Check(full.FillContains(new Point(0, 0)) && full.FillContains(new Point(size.Width - 1, size.Height - 1)),
+                    size + " liquid covers the viewport");
+            }
+        }
+        static void Click(Button button){button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}
+        static bool HasOverlay(Window window){return All<FrameworkElement>(window).Any(e=>e.Name=="LiquidThemeOverlay");}
+        static void Preview(ChatWindow chat)
+        {
+            chat.Title="DeskPet Liquid Theme Preview";
+            chat.WindowState=WindowState.Normal;
+            chat.Width=1120;
+            chat.Height=740;
+            chat.Left=50;
+            chat.Top=42;
+            chat.Activate();
+            chat.UpdateLayout();
+            Console.WriteLine("PREVIEW_WINDOW="+new System.Windows.Interop.WindowInteropHelper(chat).Handle.ToInt64());
+            Pump(2000);
+            var button=All<Button>(chat).Single(b=>b.Name=="AppThemeMode");
+            Click(button);
+            Pump(1700);
+            Click(button);
+            if(ThemeManager.IsDark)
+            {
+                Pump(280);
+                Click(button);
+            }
+            Pump(1800);
+        }
+        [STAThread]public static int Main(string[] args)
         {
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;
             try
             {
+                if(args.Contains("--preview"))
+                {
+                    var previewRoot=Path.Combine("work","theme-preview-"+Guid.NewGuid().ToString("N"));
+                    var preview=new PetSettings{ThemeMode="light",UiLanguage="zh_CN",AutoUpdate=false,GreetingEnabled=false,
+                        ReadReplies=false,AgentEnabled=true,OnboardingState="completed",ShowPredictedMessages=false};
+                    foreach(var key in preview.Hotkeys.Keys.ToArray())preview.Hotkeys[key]="";
+                    pet=new PetWindow(null,preview,new SettingsStore(Path.Combine(previewRoot,"settings.json")),null);
+                    pet.ShowChat();
+                    Preview(app.Windows.OfType<ChatWindow>().Single(window=>window.IsVisible));
+                    return 0;
+                }
+                CheckLiquidGeometry();
                 var property=typeof(PetSettings).GetProperty("ThemeMode");
                 Check(property!=null,"theme preference is persisted in settings");
                 var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,ReadReplies=false};
@@ -46,6 +100,7 @@ namespace Dafeiyu.Tests
                 Check(picker!=null,"general settings expose theme selection");
                 var ink=Ui.Ink;Check(ink.Color.R>160,"startup applies saved dark palette");
                 var main=Window.GetWindow(picker);
+                Check(All<Button>(main).Count(button=>button.Name=="AppThemeMode") == 1,"main title bar exposes one persistent theme button");
                 var behavior=All<Border>(main).Single(b=>b.Child is Panel&&((Panel)b.Child).Children.OfType<CheckBox>().Any(c=>c.Name=="QuietMode"));
                 Check(Contrast(Painted(behavior.Background),Painted(ThemeManager.Surface))>=1.18,"dark behavior card visibly separates from the settings page");
                 Check(Contrast(Painted(behavior.BorderBrush),Painted(behavior.Background))>=1.5,"dark behavior card has a visible perimeter");
@@ -58,6 +113,24 @@ namespace Dafeiyu.Tests
                 All<Button>(picker).Single(b=>b.Name=="ThemeChoicelight").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(ink.Color.R<100,"switch to light updates existing brushes");Capture(main,"settings-light.png");
                 All<Button>(picker).Single(b=>b.Name=="ThemeChoicedark").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(ink.Color.R>160,"switch to dark updates existing brushes");
                 Check((string)property.GetValue(store.Load(),null)=="dark","theme selection saves immediately");
+                var titleTheme=All<Button>(main).Single(b=>b.Name=="AppThemeMode");
+                Click(All<Button>(picker).Single(b=>b.Name=="ThemeChoicelight"));Pump();
+                Click(titleTheme);
+                if(SystemParameters.ClientAreaAnimation)
+                {
+                    Check(HasOverlay(main)&&store.Load().ThemeMode=="light","transition retains the previous stored mode while the reveal is active");
+                    Click(titleTheme);
+                    Check(ThemeManager.Mode=="dark","repeat click coalesces into the current reveal");
+                    Pump(1250);
+                }
+                Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&picker.Value=="dark","title switch saves the mode, updates settings and removes the layer");
+                Click(titleTheme);Pump(1250);
+                Check(store.Load().ThemeMode=="system"&&picker.Value=="system","title button reaches follow-system mode");
+                Click(titleTheme);Pump(1250);
+                Check(store.Load().ThemeMode=="light"&&picker.Value=="light","title button cycles back to light");
+                Click(titleTheme);
+                main.Width-=8;main.UpdateLayout();Pump();
+                Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark","resizing settles the requested theme and clears the layer");
                 var settingsPage=All<SettingsPage>(main).Single();settingsPage.SelectNavigation(4);Pump();var about=All<AboutPanel>(main).Single();
                 var updateCard=All<Border>(about).Single(b=>b.Background is LinearGradientBrush&&All<Button>(b).Any(c=>c.Name=="CheckUpdates"));
                 Check(Contrast(Painted(updateCard.Background),Painted(ThemeManager.Surface))>=1.18,"dark about update card visibly separates from its page");

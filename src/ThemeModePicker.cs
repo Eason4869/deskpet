@@ -32,7 +32,7 @@ namespace Dafeiyu
             var row=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
             foreach(string mode in new[]{"system","light","dark"})
             {
-                string selected=mode,title=mode=="system"?TextResources.Get("themeModePicker.themeModePicker.titleModeMode"):mode=="light"?TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeA"):TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeB");
+                string selected=mode,title=ThemeSwitch.Label(mode);
                 var button=new Button{Name="ThemeChoice"+mode,Content=Preview(mode),Width=84,Height=64,Margin=new Thickness(8,0,0,0),Padding=new Thickness(4),Background=Brushes.Transparent,BorderThickness=new Thickness(2),Cursor=System.Windows.Input.Cursors.Hand,ToolTip=title};
                 var border=new FrameworkElementFactory(typeof(Border));border.Name="ThemeChoiceFrame";border.SetValue(Border.CornerRadiusProperty,new CornerRadius(10));
                 border.SetValue(Border.BackgroundProperty,new TemplateBindingExtension(Control.BackgroundProperty));border.SetValue(Border.BorderBrushProperty,new TemplateBindingExtension(Control.BorderBrushProperty));border.SetValue(Border.BorderThicknessProperty,new TemplateBindingExtension(Control.BorderThicknessProperty));border.SetValue(Border.PaddingProperty,new TemplateBindingExtension(Control.PaddingProperty));
@@ -44,7 +44,10 @@ namespace Dafeiyu
             Grid.SetColumn(row,1);layout.Children.Add(row);
             Content=new Border{CornerRadius=new CornerRadius(16),Background=ThemeManager.Brush("#FDFEFF","#2B3545"),BorderBrush=ThemeManager.CardBorder,BorderThickness=new Thickness(1),Padding=new Thickness(14,8,10,8),Child=layout};
             Value=initial;
+            Loaded+=delegate{RefreshMode();ThemeManager.ModeChanged+=RefreshMode;};
+            Unloaded+=delegate{ThemeManager.ModeChanged-=RefreshMode;};
         }
+        void RefreshMode(){Value=ThemeManager.Mode;}
         static FrameworkElement Preview(string mode)
         {
             var grid=new Grid{Width=72,Height=52,Clip=new RectangleGeometry(new Rect(0,0,72,52),6,6)};
