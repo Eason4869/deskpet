@@ -32,6 +32,7 @@ namespace Dafeiyu
     {
         const double RailWidth = 244;
         const double TemplateInset = 6;
+        const double DraftGutter = 20;
         readonly ScheduledTaskRuntime runtime;
         readonly ListBox tasks = new ListBox { Name = "ScheduledTaskList", BorderThickness = new Thickness(0) };
         readonly TextBox search;
@@ -49,8 +50,8 @@ namespace Dafeiyu
 #endif
         UniformGrid starterTemplates;
         double pageWidth;
-        bool showingTemplates;
-        string selectedId, selectedRun;
+        bool showingTemplates, templatesForEmptyList;
+        string selectedId, selectedRun, draftTemplate;
         string draftInput = "";
         string draftError;
         bool rebuilding, drafting, sending, disposed;
@@ -160,26 +161,28 @@ namespace Dafeiyu
             finally { rebuilding = false; }
         }
 
-        void RenderDetails(bool scrollTop)
+        void RenderDetails(bool scrollTop, bool openTemplates = false)
         {
             var snapshots = runtime.List();
             var task = snapshots.FirstOrDefault(item => item.Definition.Id == selectedId);
             bool empty = snapshots.Count == 0;
-            if (empty && showingTemplates && !scrollTop) return;
+            bool templates = task == null && (empty || openTemplates || (showingTemplates && !scrollTop));
+            if (templates && showingTemplates && templatesForEmptyList == empty && !scrollTop) return;
             details.Children.Clear();
             composer.Children.Clear();
-            SetStarterLayout(empty);
+            templatesForEmptyList = empty;
+            SetStarterLayout(templates);
             if (scrollTop) detailScroll.ScrollToHome();
             if (task == null)
             {
-                details.Children.Add(Caption(empty ? (Func<string>)(() => TextResources.Get("scheduledTasks.empty"))
-                    : () => TextResources.Get("scheduledTasks.noSelection"), 25, true));
-                if (empty)
+                if (templates)
                 {
+                    if (empty) details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.empty"), 25, true));
                     details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.emptyHint")));
                     if (starterTemplates == null) starterTemplates = CreateStarterTemplates();
                     details.Children.Add(starterTemplates);
                 }
+                else details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.noSelection"), 25, true));
                 return;
             }
             var definition = task.Definition;
@@ -227,8 +230,10 @@ namespace Dafeiyu
             var railMargin = new Thickness(width < 180 ? 10 : 16, 16, width < 180 ? 10 : 16, 16);
             if (rail.Margin != railMargin) rail.Margin = railMargin;
             double inset = showingTemplates && pageWidth < 540 ? 16 : 26;
-            var contentMargin = new Thickness(inset, 18, inset, 18);
+            double gutter = drafting ? DraftGutter : 0;
+            var contentMargin = new Thickness(inset - gutter, 18, inset, 18);
             if (content.Margin != contentMargin) content.Margin = contentMargin;
+            composer.Margin = new Thickness(gutter, 0, 0, 0);
         }
 
         UniformGrid CreateStarterTemplates()
@@ -270,7 +275,7 @@ namespace Dafeiyu
             if (artwork != null) Row(face, artwork, GridLength.Auto);
             Row(face, title, GridLength.Auto);
             Row(face, description, new GridLength(1, GridUnitType.Star));
-            var card = ButtonFor(heading, name, () => OpenDraft(prompt()));
+            var card = ButtonFor(heading, name, () => OpenDraft(prompt(), name));
             LiveTextBindings.TakeRender(card, "Content", card.Content);
             card.Content = face;
             card.MinHeight = 0;
@@ -336,7 +341,7 @@ namespace Dafeiyu
             }
         }
 
-        void OpenDraft(string seed)
+        void OpenDraft(string seed, string template = null)
         {
             if (seed != null && !sending)
             {
@@ -345,9 +350,59 @@ namespace Dafeiyu
                 prepared = null;
                 draftError = null;
             }
+            draftTemplate = template;
             drafting = true;
             RefreshList();
             RenderDraft(true);
+        }
+
+        void ReturnToTemplates()
+        {
+            drafting = false;
+            var pending = draftCancellation;
+            draftCancellation = null;
+            sending = false;
+            if (pending != null) pending.Cancel();
+            selectedId = selectedRun = null;
+            RefreshList();
+            RenderDetails(true, true);
+            var tiles = starterTemplates.Children.OfType<Button>();
+            var target = tiles.FirstOrDefault(tile => tile.Name == draftTemplate) ?? tiles.First();
+            target.Focus();
+        }
+
+        Grid DraftHeading()
+        {
+            Func<string> label = () => TextResources.Get("common.back");
+#if NET10_0
+            var back = Ui.Button("‹", ReturnToTemplates);
+            back.FontSize = 22;
+            back.Foreground = SettingsVisual.Ink;
+            back.Background = Brushes.Transparent;
+            back.BorderBrush = Brushes.Transparent;
+            LocalizedUi.Automation(back, label);
+#else
+            var back = UiIcons.Button("back", label);
+            back.Click += delegate { ReturnToTemplates(); };
+#endif
+            back.Name = "BackToScheduledTaskTemplates";
+            back.Width = back.Height = back.MinHeight = 26;
+            back.Padding = new Thickness(4, 0, 4, 0);
+            back.Margin = new Thickness(0, 0, 6, 0);
+            back.VerticalAlignment = VerticalAlignment.Center;
+            back.HorizontalContentAlignment = HorizontalAlignment.Center;
+            back.VerticalContentAlignment = VerticalAlignment.Center;
+            LocalizedUi.Tooltip(back, label);
+            var title = Caption(() => TextResources.Get("scheduledTasks.draft"), 25, true);
+            title.Margin = new Thickness(0);
+            title.VerticalAlignment = VerticalAlignment.Center;
+            var heading = new Grid { Margin = new Thickness(0, 0, 0, 7) };
+            heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            heading.ColumnDefinitions.Add(new ColumnDefinition());
+            heading.Children.Add(back);
+            Grid.SetColumn(title, 1);
+            heading.Children.Add(title);
+            return heading;
         }
 
         void RenderDraft(bool focus)
@@ -355,18 +410,20 @@ namespace Dafeiyu
             SetStarterLayout(false);
             details.Children.Clear();
             composer.Children.Clear();
-            details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.draft"), 25, true));
-            if (turns.Count == 0) details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.draftPrompt")));
+            details.Children.Add(DraftHeading());
+            var body = new StackPanel { Margin = new Thickness(DraftGutter, 0, 0, 0) };
+            details.Children.Add(body);
+            if (turns.Count == 0) body.Children.Add(Caption(() => TextResources.Get("scheduledTasks.draftPrompt")));
             foreach (var turn in turns)
             {
                 var bubble = Card(Caption(() => turn.Content));
                 bubble.MaxWidth = 580;
                 bubble.HorizontalAlignment = turn.Role == "user" ? HorizontalAlignment.Right : HorizontalAlignment.Left;
-                details.Children.Add(bubble);
+                body.Children.Add(bubble);
             }
-            if (!String.IsNullOrEmpty(draftError)) details.Children.Add(Caption(() => draftError));
+            if (!String.IsNullOrEmpty(draftError)) body.Children.Add(Caption(() => draftError));
             if (prepared != null)
-                details.Children.Add(ButtonFor(() => TextResources.Get("scheduledTasks.draftReady"), "ReviewScheduledDraft", () => Edit(prepared), true));
+                body.Children.Add(ButtonFor(() => TextResources.Get("scheduledTasks.draftReady"), "ReviewScheduledDraft", () => Edit(prepared), true));
             var input = Input(draftInput, () => TextResources.Get("scheduledTasks.draftPrompt"), "ScheduledTaskDraftInput");
             input.MaxLength = 16000;
             input.AcceptsReturn = true;
@@ -392,25 +449,31 @@ namespace Dafeiyu
             turns.Add(new ChatMessage("user", text));
             draftInput = "";
             sending = true;
-            draftCancellation = new CancellationTokenSource();
+            var request = new CancellationTokenSource();
+            draftCancellation = request;
             RenderDraft(false);
+            bool current;
             try
             {
-                var response = await runtime.DraftAsync(turns.ToArray(), draftCancellation.Token);
-                if (disposed) return;
+                var response = await runtime.DraftAsync(turns.ToArray(), request.Token);
+                if (disposed || draftCancellation != request) return;
                 prepared = response.Definition;
                 if (prepared == null) turns.Add(new ChatMessage("assistant", response.Question));
             }
             catch (OperationCanceledException) { }
-            catch (ApiException exception) { draftError = exception.Message; }
-            catch (Exception) { draftError = TextResources.Get("scheduledTasks.draftError"); }
+            catch (ApiException exception) { if (draftCancellation == request) draftError = exception.Message; }
+            catch (Exception) { if (draftCancellation == request) draftError = TextResources.Get("scheduledTasks.draftError"); }
             finally
             {
-                draftCancellation.Dispose();
-                draftCancellation = null;
-                sending = false;
+                current = draftCancellation == request;
+                if (current)
+                {
+                    draftCancellation = null;
+                    sending = false;
+                }
+                request.Dispose();
             }
-            if (disposed || !drafting) return;
+            if (!current || disposed || !drafting) return;
             RenderDraft(true);
             if (prepared != null && editor == null && IsVisible && FindWindow(this) != null) Edit(prepared);
         }

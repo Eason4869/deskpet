@@ -257,7 +257,30 @@ namespace Dafeiyu.Tests
             Click(scheduled);
             Check(chat.CurrentPage=="scheduledTasks"&&All<FrameworkElement>(chat).Any(element=>element.Name=="ScheduledTasksPage"&&element.IsVisible),"calendar opens the scheduled tasks page in the shell");
             Check(!String.IsNullOrEmpty(System.Windows.Automation.AutomationProperties.GetItemStatus(scheduled)),"calendar has a selected state on the scheduled tasks page");
-            chat.UpdateLayout();CreateScheduledReminder(chat);
+            chat.UpdateLayout();
+            var taskList=All<ListBox>(chat).Single(list=>list.Name=="ScheduledTaskList");
+            int originalTaskCount=taskList.Items.Count;
+            Click(Button(chat,"DraftScheduledTask"));chat.UpdateLayout();
+            Click(Button(chat,"BackToScheduledTaskTemplates"));chat.UpdateLayout();
+            var tile=Button(chat,"PlanningTaskTemplate");
+            Click(tile);chat.UpdateLayout();
+            var draftBack=Button(chat,"BackToScheduledTaskTemplates");
+            var scheduleDraft=All<TextBox>(chat).Single(box=>box.Name=="ScheduledTaskDraftInput");
+            Check(draftBack.IsVisible&&draftBack.Focusable&&draftBack.TranslatePoint(new Point(),chat).X<scheduleDraft.TranslatePoint(new Point(),chat).X,
+                "schedule draft has a focusable back button in the header gutter");
+            scheduleDraft.Text="保留定时任务草稿";
+            Click(draftBack);chat.UpdateLayout();
+            Check(ReferenceEquals(tile,Button(chat,"PlanningTaskTemplate"))&&tile.IsVisible&&tile.IsKeyboardFocused,
+                "draft Back restores the existing template gallery and focus");
+            Click(Button(chat,"DraftScheduledTask"));chat.UpdateLayout();
+            Check(All<TextBox>(chat).Single(box=>box.Name=="ScheduledTaskDraftInput").Text=="保留定时任务草稿",
+                "draft Back keeps unsent text available when reopened");
+            Click(Button(chat,"BackToScheduledTaskTemplates"));chat.UpdateLayout();
+            CreateScheduledReminder(chat);
+            Click(Button(chat,"DraftScheduledTask"));chat.UpdateLayout();
+            Click(Button(chat,"BackToScheduledTaskTemplates"));chat.UpdateLayout();
+            Check(Button(chat,"PlanningTaskTemplate").IsVisible&&taskList.Items.Count==originalTaskCount+1,
+                "draft Back also shows the templates when scheduled tasks exist");
             Click(back);Check(chat.CurrentPage=="home"&&String.IsNullOrEmpty(System.Windows.Automation.AutomationProperties.GetItemStatus(scheduled)),"back clears the calendar selection");
             Click(forward);Check(chat.CurrentPage=="scheduledTasks","forward returns to scheduled tasks");Click(back);
             Click(Button(chat,"ShellSettings"));await Task.Delay(100);Check(app.Windows.OfType<Window>().Count(w=>w.IsVisible&&!(w is PetWindow))==1&&!app.Windows.OfType<SettingsWindow>().Any(w=>w.IsVisible),"settings opens inside the existing main window");Check(All<FrameworkElement>(chat).Any(e=>e.Name=="SettingsPage"&&e.IsVisible),"settings is its own full page");

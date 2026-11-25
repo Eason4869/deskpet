@@ -119,8 +119,15 @@ internal static class FeatureNavigationUiChecks
                 Check(draftInput.Text == prompt && draftInput.IsFocused
                     && !scheduling.GetLogicalDescendants().Contains(templates),
                     "native starter opens the focused prefilled draft " + suffix);
-                scheduling.ShowTask(null!);
+                chat.UpdateLayout();
+                var draftBack = Named<Button>(scheduling, "BackToScheduledTaskTemplates");
+                Check(draftBack.Focusable && draftBack.TranslatePoint(default, chat)!.Value.X < draftInput.TranslatePoint(default, chat)!.Value.X,
+                    "native Back fits in the draft header gutter " + suffix);
+                if (suffix == "Plan") Capture(chat, "scheduled-draft-back");
+                Click(draftBack);
                 Dispatcher.UIThread.RunJobs();
+                Check(scheduling.GetLogicalDescendants().Contains(templates) && button.IsFocused,
+                    "native Back restores the original template and keyboard focus " + suffix);
             }
             var createTask = Named<Button>(scheduling, "NewScheduledTask");
             DesktopTheme.Apply("dark");
