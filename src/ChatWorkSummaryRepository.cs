@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace Dafeiyu
 {
@@ -40,14 +41,16 @@ namespace Dafeiyu
                     catch (Exception error) { if (!CanReportGitReadError(error)) throw; }
                 }
             }
-            Dispatcher.BeginInvoke(new Action(() =>
+            var publication = Dispatcher.InvokeAsync(() =>
             {
                 if (closed || request != summaryRepositoryRequest || !ReferenceEquals(sourceSession, session) ||
                     !String.Equals(path, summaryRepositoryWorkspace, StringComparison.OrdinalIgnoreCase)) return;
                 summaryRepository = result;
                 summaryGitChanges = changes;
                 RefreshWorkSummaryOverviews();
-            }));
+            });
+            try { await publication.Task.ConfigureAwait(false); }
+            catch (TaskCanceledException) { if (publication.Status != DispatcherOperationStatus.Aborted) throw; }
         }
 
         internal static bool CanReportGitReadError(Exception error)
