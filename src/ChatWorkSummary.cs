@@ -90,7 +90,7 @@ namespace Dafeiyu
             readonly ChatWindow owner;
             readonly ConversationSession conversation;
             readonly Button changes, workers, allSources, repository, linkGitHub;
-            readonly TextBlock changeLabel, added, removed, workerLabel, repositoryLabel, localBranch;
+            readonly TextBlock changeLabel, added, removed, workerLabel, repositoryLabel, localBranch, noTask;
             readonly StackPanel sideChats, sourceRows;
             string linkedRepository;
             WorkSummarySource[] sources;
@@ -162,6 +162,10 @@ namespace Dafeiyu
                     owner.OpenDetailTab(() => TextResources.Get("webSearch.sources"), Ui.Scroll(content));
                 };
                 sourceSection.Children.Add(allSources);
+                noTask = LocalizedUi.Text(() => TextResources.Get("chatWorkspaceLayout.summaryPreview.text.alternativeA"), 11, Ui.Muted);
+                noTask.Margin = new Thickness(6, 2, 6, 4);
+                LocalizedUi.Tooltip(noTask, () => TextResources.Get("chatWorkspaceLayout.summaryEmpty.text"));
+                Children.Add(noTask);
             }
 
             bool IsCurrent { get { return !owner.closed && ReferenceEquals(conversation, owner.session); } }
@@ -169,6 +173,7 @@ namespace Dafeiyu
             internal void Refresh(AgentTaskState task, AgentChangeSummaryData summary, SideChatPane[] chats, WorkSummarySource[] nextSources)
             {
                 if (!IsCurrent) return;
+                noTask.Visibility = task == null ? Visibility.Visible : Visibility.Collapsed;
                 var git = owner.summaryRepository;
                 var project = owner.SummaryProject;
                 linkGitHub.Visibility = project == null ? Visibility.Collapsed : Visibility.Visible;
