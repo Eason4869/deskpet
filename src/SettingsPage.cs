@@ -106,7 +106,7 @@ namespace Dafeiyu
             pause=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeF")),pet.Paused,delegate(bool value) { if(!refreshing) pet.SetPaused(value); }); pause.Name="Pause"; behavior.Children.Add(pause);
             var sizeRow=new DockPanel { Margin=new Thickness(0,10,0,8) };
             sizeLabel=Ui.Text("",12,Ui.Blue); DockPanel.SetDock(sizeLabel,Dock.Right); sizeRow.Children.Add(sizeLabel); sizeRow.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeL")),12)); behavior.Children.Add(sizeRow);
-            size=new Slider { Name="SizeSlider",Minimum=.75,Maximum=2.25,Value=pet.Settings.Scale,TickFrequency=.05,IsSnapToTickEnabled=true,SmallChange=.05,LargeChange=.25,Margin=new Thickness(0,0,0,4) };
+            size=SettingsSurface.StyleSlider(new Slider { Name="SizeSlider",Minimum=.75,Maximum=2.25,Value=pet.Settings.Scale,TickFrequency=.05,IsSnapToTickEnabled=true,SmallChange=.05,LargeChange=.25,Margin=new Thickness(0,0,0,4) },2);
             bool draggingSize=false;
             size.ValueChanged+=delegate { sizeLabel.Text=Math.Round(size.Value*100)+"%"; if(!refreshing) { pet.PreviewScale(size.Value);pet.RequestScaleSave(); } }; behavior.Children.Add(size);
             size.AddHandler(System.Windows.Controls.Primitives.Thumb.DragStartedEvent,new System.Windows.Controls.Primitives.DragStartedEventHandler(delegate{if(!draggingSize){pet.BeginPreferenceEdit();draggingSize=true;}}));

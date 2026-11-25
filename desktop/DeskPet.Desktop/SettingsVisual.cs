@@ -18,6 +18,47 @@ internal static class SettingsVisual
     internal static IBrush Ink => DesktopTheme.Brush("#203754");
     internal static IBrush Muted => DesktopTheme.Brush("#61738B");
     internal static IBrush Accent => DesktopTheme.Brush("#357FF5");
+    internal static Slider StyleSlider(Slider slider,int precision=0)
+    {
+        var fill=DesktopTheme.Brush("#126BC4","#73AAFF");
+        var rail=DesktopTheme.Brush("#85858A","#65758C");
+        slider.Resources["SliderTrackThemeHeight"]=4d;
+        slider.Resources["SliderHorizontalThumbWidth"]=16d;
+        slider.Resources["SliderHorizontalThumbHeight"]=16d;
+        slider.Resources["SliderThumbCornerRadius"]=new CornerRadius(8);
+        foreach(var state in new[]{"","PointerOver","Pressed"})
+        {
+            slider.Resources["SliderTrackValueFill"+state]=fill;
+            slider.Resources["SliderTrackFill"+state]=rail;
+            slider.Resources["SliderThumbBackground"+state]=fill;
+        }
+        slider.TemplateApplied+=(_,e)=>
+        {
+            if(e.NameScope.Find<Track>("PART_Track")?.Thumb is not Thumb thumb)return;
+            thumb.BorderBrush=DesktopTheme.Surface;
+            thumb.BorderThickness=new Thickness(2);
+            var text=new TextBlock{Foreground=Ink,FontSize=12};
+            text.Bind(TextBlock.TextProperty,new Binding(nameof(Slider.Value)){Source=slider,StringFormat="{0:F"+precision+"}"});
+            var tooltip=new ToolTip
+            {
+                Content=text,Background=DesktopTheme.Surface,Foreground=Ink,BorderBrush=DesktopTheme.CardBorder,
+                BorderThickness=new Thickness(1),Padding=new Thickness(8,4),CornerRadius=new CornerRadius(6)
+            };
+            ToolTip.SetPlacement(thumb,PlacementMode.Top);
+            ToolTip.SetVerticalOffset(thumb,-4);
+            thumb.DragStarted+=(_,_)=>
+            {
+                ToolTip.SetTip(thumb,tooltip);
+                ToolTip.SetIsOpen(thumb,true);
+            };
+            thumb.DragCompleted+=(_,_)=>
+            {
+                ToolTip.SetIsOpen(thumb,false);
+                ToolTip.SetTip(thumb,null);
+            };
+        };
+        return slider;
+    }
     internal static TextBlock Text(string text,double size=14,bool muted=false) => new() {Text=text,FontSize=size,Foreground=muted?Muted:Ink,TextWrapping=TextWrapping.Wrap};
     internal static Control Icon(string kind,double size=22)
     {

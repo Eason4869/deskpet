@@ -240,8 +240,8 @@ internal sealed class SettingsWindow : Window
             owner.RefreshNotificationSounds();
             owner.Save();
         },"ThemeTransitionSoundEnabled");
-        var themeVolume=new Slider{Name="ThemeTransitionSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,
-            IsSnapToTickEnabled=true,Value=s.ThemeTransitionSoundVolume,Width=145};
+        var themeVolume=SettingsVisual.StyleSlider(new Slider{Name="ThemeTransitionSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,
+            IsSnapToTickEnabled=true,Value=s.ThemeTransitionSoundVolume,Width=145});
         LocalizedUi.Automation(themeVolume,()=>TextResources.Get("themeTransition.sound.volume"));
         themeVolume.ValueChanged+=(_,_) =>
         {
@@ -255,7 +255,7 @@ internal sealed class SettingsWindow : Window
             theme,themeEffectRow,themeSound,SettingsVisual.SettingRow(()=>TextResources.Get("themeTransition.sound.volume"),themeVolume,12,true),language);
         var imageMotion=SettingsVisual.CheckRow(()=>TextResources.Get("settingsWindow.behavior.check.alternativeI"),s.ImageGenerationMotionEnabled,v=>{s.ImageGenerationMotionEnabled=v;owner.Save();},"ImageGenerationMotionEnabled");
         var notificationSounds=SettingsVisual.CheckRow(()=>TextResources.Get("notificationSounds.enabled"),s.NotificationSoundsEnabled,v=>{s.NotificationSoundsEnabled=v;if(!v)owner.StopNotificationSounds();owner.Save();},"NotificationSoundsEnabled");
-        var operationVolume=new Slider{Name="CompanionOperationSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,IsSnapToTickEnabled=true,Value=s.CompanionOperationSoundVolume};LocalizedUi.Automation(operationVolume,()=>TextResources.Get("operationSounds.volume"));operationVolume.ValueChanged+=(_,_)=>{s.CompanionOperationSoundVolume=(int)operationVolume.Value;owner.RefreshCompanionSoundSettings();owner.Save();};
+        var operationVolume=SettingsVisual.StyleSlider(new Slider{Name="CompanionOperationSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,IsSnapToTickEnabled=true,Value=s.CompanionOperationSoundVolume});LocalizedUi.Automation(operationVolume,()=>TextResources.Get("operationSounds.volume"));operationVolume.ValueChanged+=(_,_)=>{s.CompanionOperationSoundVolume=(int)operationVolume.Value;owner.RefreshCompanionSoundSettings();owner.Save();};
         Button Preview(CompanionOperationCue cue,Func<string> label){var button=LocalizedUi.Button(label,()=>owner.PreviewCompanionOperation(cue));button.Name="PreviewCompanion"+cue;LocalizedUi.Automation(button,label);return button;}
         var operationPreviews=SettingsVisual.Wrap(Preview(CompanionOperationCue.Appear,()=>TextResources.Get("operationSounds.appear")),Preview(CompanionOperationCue.Switch,()=>TextResources.Get("operationSounds.switch")),Preview(CompanionOperationCue.Hide,()=>TextResources.Get("operationSounds.hide")));
         var concurrency=new NumericUpDown{Name="ImageGenerationConcurrency",Minimum=1,Maximum=4,Increment=1,Value=s.ImageGenerationConcurrency};concurrency.ValueChanged+=(_,_)=>{if(concurrency.Value.HasValue){s.ImageGenerationConcurrency=(int)concurrency.Value.Value;owner.Save();}};
@@ -274,7 +274,7 @@ internal sealed class SettingsWindow : Window
     private Control CompanionBehavior()
     {
         var s=owner.Settings;void Apply(){owner.Pet.ApplySettings();owner.Save();}
-        var scale=new Slider{Minimum=.5,Maximum=2.5,Value=s.Scale,TickFrequency=.1};scale.ValueChanged+=(_,_)=>{s.Scale=scale.Value;Apply();};
+        var scale=SettingsVisual.StyleSlider(new Slider{Name="SizeSlider",Minimum=.5,Maximum=2.5,Value=s.Scale,TickFrequency=.1},2);scale.ValueChanged+=(_,_)=>{s.Scale=scale.Value;Apply();};
         return SettingsVisual.Page(SettingsVisual.Text(()=>TextResources.Get("settingsLayout.instantSave"),12,true),
             SettingsVisual.Group(()=>TextResources.Get("settingsWindow.behavior.text"),LocalizedUi.Field(()=>TextResources.Get("settingsWindow.behavior.field"),scale),
                 SettingsVisual.CheckRow(()=>TextResources.Get("settingsWindow.behavior.check"),s.Topmost,v=>{s.Topmost=v;Apply();}),
@@ -306,7 +306,7 @@ internal sealed class SettingsWindow : Window
     private Control Voice()
     {
         var s = owner.Settings;
-        var volume = new Slider { Minimum = 0, Maximum = 100, Value = s.Volume };
+        var volume = SettingsVisual.StyleSlider(new Slider { Name="VoiceVolume", Minimum = 0, Maximum = 100, Value = s.Volume });
         volume.ValueChanged += (_, _) => { if(refreshingPreferences)return;s.Volume = (int)volume.Value; owner.Session.SetVolume(s.Volume); owner.Live.SetVolume(s.Volume);owner.RefreshProactiveGreetingSpeech(); owner.Save(); };
         refreshVolume=()=>volume.Value=s.Volume;
         var speech = Ui.Input(s.VoiceName);speech.Name="VoiceName"; var live = Ui.Input(s.LiveVoice);live.Name="LiveVoiceName";

@@ -21,7 +21,7 @@ internal static class DesktopTheme
     // Same explicit card layer as WPF, retained across live theme switches.
     internal static SolidColorBrush CardSurface => Brush("#FFFFFF", "#2B3545");
     internal static SolidColorBrush CardBorder => Brush("#DCE5F4", "#52637C");
-    private static SolidColorBrush Brush(string light,string dark)
+    internal static SolidColorBrush Brush(string light,string dark)
     {
         string identity=light+"|"+dark;
         if(!pairedColors.TryGetValue(identity,out var entry)){entry=(light,dark,new SolidColorBrush(Color.Parse(IsDark?dark:light)));pairedColors.Add(identity,entry);}

@@ -9,6 +9,7 @@
 - Switch directly between light and dark in the main chat window on Windows and macOS. The slider moves with your selection. Use the separate monitor button to follow the system, including animated transitions when the system appearance changes.
 - Choose Flow, Ripple, Refraction, or Zipper in Appearance settings. Random is the default, and you can turn transitions off. Each animation has a synchronized sound, with a real recording for Zipper. Sounds are off by default and have a separate volume control.
 - Settings content adapts to the window width, with switches, the animation picker, and volume aligned on the right. Added missing translations in settings, web search, and the setup guide.
+- The theme preview frame fits its three cards. Volume and companion size sliders use round thumbs and show their values while dragging in either theme. Guga appears 10% smaller on the desktop.
 
 ### Scheduled tasks
 

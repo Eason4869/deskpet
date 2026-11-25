@@ -642,6 +642,12 @@ namespace Dafeiyu.Tests
                     foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
                     previous=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);
                     Check(previous.Skin.BuiltinCharacterId==id&&previous.Skin.Id==alias&&previous.Skin.Source==cache,"thin upgrade retains native-validated canonical old cache and persona alias for "+id);
+                    double renderFactor=id=="gugugaga"?.9:1;
+                    Check(Math.Abs(previous.Width-192*settings.Scale*renderFactor)<.001&&Math.Abs(previous.Height-208*settings.Scale*renderFactor)<.001,
+                        "startup applies the official companion size to the desktop window for "+id);
+                    previous.PreviewScale(1.25);
+                    Check(settings.Scale==1.25&&Math.Abs(previous.Width-240*renderFactor)<.001&&Math.Abs(previous.Height-260*renderFactor)<.001,
+                        "desktop geometry uses the same companion size factor without changing the chosen scale for "+id);
                     Check(!previous.Skin.Embedded&&!previous.Skin.Bundled&&!previous.Skin.IsPlaceholder&&String.IsNullOrEmpty(settings.PendingOfficialCompanionId),"old default cache stays manifest-owned usable source without premature fallback for "+id);
                     Check(previous.Skin.Load().HasGaze&&SkinCatalog.GetPreview(previous.Skin).PixelWidth==480,"retained old cache native gaze and preview remain readable for "+id);
                     Check(Field("officialDownloads").GetValue(previous)==null,"loading canonical cache needs no metadata or download for "+id);

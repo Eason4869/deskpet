@@ -52,8 +52,8 @@ namespace Dafeiyu
             });
             themeSound.Name="ThemeTransitionSoundEnabled";
             appearance.Children.Add(themeSound);
-            themeVolume=new Slider{Name="ThemeTransitionSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,
-                IsSnapToTickEnabled=true,Value=pet.Settings.ThemeTransitionSoundVolume,Width=180};
+            themeVolume=SettingsSurface.StyleSlider(new Slider{Name="ThemeTransitionSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,
+                IsSnapToTickEnabled=true,Value=pet.Settings.ThemeTransitionSoundVolume,Width=180});
             LocalizedUi.Automation(themeVolume,()=>TextResources.Get("themeTransition.sound.volume"));
             themeVolume.ValueChanged+=delegate
             {
@@ -69,7 +69,7 @@ namespace Dafeiyu
             var behavior=new StackPanel{Margin=new Thickness(0,8,0,0)};
             quiet=SettingsSurface.Toggle(()=>(TextResources.Get("quietPanel.quietPanel.toggle.alternativeA")),pet.Settings.QuietMode,delegate(bool enabled){if(!refreshing)pet.SetQuietMode(enabled);});quiet.Name="QuietMode";behavior.Children.Add(quiet);behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("quietPanel.quietPanel.text.alternativeB")),12,Ui.Muted));
             notificationSounds=SettingsSurface.Toggle(()=>TextResources.Get("notificationSounds.enabled"),pet.Settings.NotificationSoundsEnabled,delegate(bool enabled){if(!refreshing){pet.Settings.NotificationSoundsEnabled=enabled;if(!enabled)pet.StopNotificationSounds();pet.SaveSettings();}});notificationSounds.Name="NotificationSoundsEnabled";behavior.Children.Add(notificationSounds);behavior.Children.Add(LocalizedUi.Text(()=>TextResources.Get("operationSounds.help"),12,Ui.Muted));
-            operationVolume=new Slider{Name="CompanionOperationSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,IsSnapToTickEnabled=true,Value=pet.Settings.CompanionOperationSoundVolume,MinWidth=180};LocalizedUi.Automation(operationVolume,()=>TextResources.Get("operationSounds.volume"));operationVolume.ValueChanged+=delegate{if(!refreshing){pet.Settings.CompanionOperationSoundVolume=(int)operationVolume.Value;pet.RefreshCompanionSoundSettings();pet.SaveSettings();}};LocalizedUi.Label(behavior,()=>TextResources.Get("operationSounds.volume"),operationVolume);
+            operationVolume=SettingsSurface.StyleSlider(new Slider{Name="CompanionOperationSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,IsSnapToTickEnabled=true,Value=pet.Settings.CompanionOperationSoundVolume,MinWidth=180});LocalizedUi.Automation(operationVolume,()=>TextResources.Get("operationSounds.volume"));operationVolume.ValueChanged+=delegate{if(!refreshing){pet.Settings.CompanionOperationSoundVolume=(int)operationVolume.Value;pet.RefreshCompanionSoundSettings();pet.SaveSettings();}};LocalizedUi.Label(behavior,()=>TextResources.Get("operationSounds.volume"),operationVolume);
             var previews=new WrapPanel();
             AddOperationPreview(previews,CompanionOperationCue.Appear,()=>TextResources.Get("operationSounds.appear"));AddOperationPreview(previews,CompanionOperationCue.Switch,()=>TextResources.Get("operationSounds.switch"));AddOperationPreview(previews,CompanionOperationCue.Hide,()=>TextResources.Get("operationSounds.hide"));behavior.Children.Add(previews);
             fullscreen=SettingsSurface.Toggle(()=>(TextResources.Get("quietPanel.quietPanel.toggle.alternativeB")),pet.Settings.HideOnFullscreen,delegate(bool enabled){if(!refreshing){pet.Settings.HideOnFullscreen=enabled;pet.ApplySettings();}});fullscreen.Name="HideOnFullscreen";behavior.Children.Add(fullscreen);behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("quietPanel.quietPanel.text.alternativeC")),12,Ui.Muted));

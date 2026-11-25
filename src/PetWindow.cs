@@ -270,7 +270,7 @@ namespace Dafeiyu
             LocalizedUi.Set(this,"Title",()=>(TextResources.Format("petWindow.petWindow.titleSkinName",Skin.DisplayName)));Icon=Ui.ApplicationIcon(); AllowsTransparency=true; WindowStyle=WindowStyle.None;
             ResizeMode=ResizeMode.NoResize; Background=Brushes.Transparent; ShowInTaskbar=false;
             ShowActivated=false; Focusable=false; Topmost=Settings.Topmost;
-            Width=192*Settings.Scale; Height=208*Settings.Scale;
+            ApplyScaleGeometry(false);
             image=new HolidayPetImage { Stretch=Stretch.Fill,Cursor=Cursors.Hand };
             clickTimer=new DispatcherTimer(DispatcherPriority.Input) {Interval=TimeSpan.FromMilliseconds(Forms.SystemInformation.DoubleClickTime)};
             clickTimer.Tick+=delegate {clickTimer.Stop();if(!closing && IsPetVisible && !Paused && !dragging && !IsUpdating){PlayUserInteraction(pendingHeadClick ? "petting" : "poked");NotifyGuideInteraction("click");}};
@@ -727,6 +727,7 @@ namespace Dafeiyu
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
                 Relationships.InvalidateFeedback();if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();System.Threading.Volatile.Write(ref activeProactiveCompanionId,"");atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);ProactiveCompanionChanged(skin.Id);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
+                ApplyScaleGeometry(false);
                 motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);MergeOfficialHoliday(Skin);RefreshHoliday(); UpdateFrame();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
                 LocalizedUi.Set(this,"Title",()=>(TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName))); tray.Text=Title;
                 if(quick!=null){var wasVisible=quick.IsVisible;quick.Close();if(wasVisible)ShowQuickChat();}

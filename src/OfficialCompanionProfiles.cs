@@ -89,5 +89,7 @@ namespace Dafeiyu
             return null;
         }
         public static bool IsOfficialId(string id) { return Find(id) != null; }
+        public static double DesktopScale(string officialId,double preferredScale)
+        {return officialId=="gugugaga"?preferredScale*.9:preferredScale;}
     }
 }

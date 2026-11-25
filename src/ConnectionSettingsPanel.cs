@@ -54,7 +54,7 @@ namespace Dafeiyu
             var sound=new StackPanel{Margin=new Thickness(0,16,0,0)};
             sound.Children.Add(Ui.ReplySpeechToggle(pet,true));
             volumeLabel=LocalizedUi.Text(()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.template",pet.Settings.Volume)),12,Ui.Blue);sound.Children.Add(volumeLabel);
-            volume=new Slider{Name="VoiceVolume",Minimum=0,Maximum=100,TickFrequency=5,IsSnapToTickEnabled=true,Value=pet.Settings.Volume,Margin=new Thickness(0,8,0,12)};
+            volume=SettingsSurface.StyleSlider(new Slider{Name="VoiceVolume",Minimum=0,Maximum=100,TickFrequency=5,IsSnapToTickEnabled=true,Value=pet.Settings.Volume,Margin=new Thickness(0,8,0,12)});
             bool draggingVolume=false;
             volume.ValueChanged+=delegate {if(refreshingVolume)return;int value=(int)Math.Round(volume.Value);LocalizedUi.Set(volumeLabel,"Text",()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",value)));pet.Settings.Volume=value;pet.UpdateVoiceVolume(value);pet.RequestVolumeSave();};sound.Children.Add(volume);synthesis.Extras.Children.Add(sound);
             volume.AddHandler(System.Windows.Controls.Primitives.Thumb.DragStartedEvent,new System.Windows.Controls.Primitives.DragStartedEventHandler(delegate{if(!draggingVolume){pet.BeginPreferenceEdit();draggingVolume=true;}}));

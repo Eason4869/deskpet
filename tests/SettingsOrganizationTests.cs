@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -43,6 +44,28 @@ namespace Dafeiyu.Tests
                 "theme preview frame hugs its cards with balanced padding");
             Check(Math.Abs(Right(picker,page)-Right(language,page))<2,"theme preview frame aligns with the language control");
             Check(Math.Abs(Right(motion,page)-Right(language,page))<2&&Math.Abs(Right(volume,page)-Right(language,page))<2,"theme motion and volume align with the language control");
+            var operationVolume=Named<Slider>(page,"CompanionOperationSoundVolume");
+            Check(volume.AutoToolTipPlacement==AutoToolTipPlacement.TopLeft&&ReferenceEquals(volume.Template,operationVolume.Template),
+                "theme and operation volume share the styled slider and drag value");
+            var trackControl=(Track)volume.Template.FindName("PART_Track",volume);
+            var knob=trackControl.Thumb;
+            var savedValue=volume.Value;
+            string originalMode=ThemeManager.Mode;
+            ThemeManager.Apply("light");
+            volume.Value=53;
+            knob.RaiseEvent(new DragStartedEventArgs(0,0){RoutedEvent=Thumb.DragStartedEvent});
+            var tooltip=knob.ToolTip as ToolTip;
+            Check(tooltip!=null&&tooltip.IsOpen&&Equals(tooltip.Content,"53"),"dragging the volume thumb shows the live number");
+            var light=(SolidColorBrush)volume.Foreground;
+            var lightColor=light.Color;
+            var lightPopup=((SolidColorBrush)tooltip.Background).Color;
+            ThemeManager.Apply("dark");
+            Check(light.Color!=lightColor&&((SolidColorBrush)tooltip.Background).Color!=lightPopup&&tooltip.Foreground==Ui.Ink,
+                "slider progress and value popup follow the active theme");
+            knob.RaiseEvent(new DragCompletedEventArgs(0,0,false){RoutedEvent=Thumb.DragCompletedEvent});
+            Check(!tooltip.IsOpen,"releasing the thumb hides the value popup");
+            volume.Value=savedValue;
+            ThemeManager.Apply(originalMode);
             Check(track.TranslatePoint(new Point(),sound).X>sound.ActualWidth/2,"theme sound keeps its switch at the trailing edge");
             Capture(host,"settings-general-wide");
             host.Width=560;Pump();

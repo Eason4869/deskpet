@@ -3,10 +3,13 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.LogicalTree;
+using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Dafeiyu;
@@ -109,10 +112,27 @@ internal static class SettingsLazyChecks
                     var language=Named<Button>(window,"SettingsLanguage");
                     var effect=Named<ComboBox>(window,"ThemeTransitionEffect");
                     var volume=Named<Slider>(window,"ThemeTransitionSoundVolume");
+                    var picker=Named<ThemeModePicker>(window,"ThemeModePicker");
                     var themeSound=Named<CheckBox>(window,"ThemeTransitionSoundEnabled");
                     var imageMotion=Named<CheckBox>(window,"ImageGenerationMotionEnabled");
                     Check(Math.Abs(Right(effect)-Right(language))<1&&Math.Abs(Right(volume)-Right(language))<1,
                         "language, animation and volume controls share a right edge "+theme+" "+width);
+                    Check(picker.Bounds.Width<=291&&Math.Abs(Right(picker)-Right(language))<1,"theme frame fits its cards at the trailing edge "+theme+" "+width);
+                    var track=volume.GetVisualDescendants().OfType<Track>().Single();
+                    var thumb=track.Thumb!;
+                    var expectedColor=Color.Parse(theme=="dark"?"#73AAFF":"#126BC4");
+                    Check(thumb.Bounds.Width==16&&((ISolidColorBrush)thumb.Background!).Color==expectedColor,
+                        "volume thumb uses the current palette and round sizing "+theme+" "+width);
+                    if(width==960){
+                        var previousVolume=volume.Value;volume.Value=53;
+                        thumb.RaiseEvent(new VectorEventArgs{RoutedEvent=Thumb.DragStartedEvent});Dispatcher.UIThread.RunJobs();
+                        var tip=ToolTip.GetTip(thumb) as ToolTip;
+                        Check(ToolTip.GetIsOpen(thumb)&&tip?.Content is TextBlock number&&number.Text=="53"&&tip.Background==DesktopTheme.Surface,
+                            "dragging shows a theme-matched value "+theme);
+                        thumb.RaiseEvent(new VectorEventArgs{RoutedEvent=Thumb.DragCompletedEvent});Dispatcher.UIThread.RunJobs();
+                        Check(!ToolTip.GetIsOpen(thumb),"releasing closes the drag value "+theme);
+                        volume.Value=previousVolume;
+                    }
                     Check(themeSound.Content==null&&imageMotion.Content==null&&Math.Abs(Right(themeSound)-Right(language))<1&&Math.Abs(Right(imageMotion)-Right(language))<1,
                         "theme sound and image animation retain named toggles on the right "+theme+" "+width);
                 }
