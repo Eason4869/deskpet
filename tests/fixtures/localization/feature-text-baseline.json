@@ -2342,8 +2342,20 @@
       "argument_count": 0
     },
     {
+      "key": "themeTransition.motion.refraction",
+      "expected": "折光",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "themeTransition.motion.ripple",
       "expected": "涟漪",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.zipper",
+      "expected": "拉链",
       "format": false,
       "argument_count": 0
     },
