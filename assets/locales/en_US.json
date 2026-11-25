@@ -5100,5 +5100,18 @@
   "releaseNotes.details": "Details ↗",
   "releaseNotes.full": "View full changelog",
   "releaseNotes.dismiss": "Got it",
-  "releaseNotes.empty": "See the release page for the notes for this version."
+  "releaseNotes.empty": "See the release page for the notes for this version.",
+  "workSummary.newSideChat": "New side chat",
+  "workSummary.sideChats": "Side chats",
+  "workSummary.workers": "Subagents",
+  "workSummary.workerCounts": "{0} running · {1} queued · {2} total",
+  "workSummary.noWorkers": "No subagents",
+  "workSummary.sideChatNumber": "Side chat {0}",
+  "workSummary.replying": "Replying",
+  "workSummary.noSideChats": "No side chats",
+  "workSummary.allSources": "View source list",
+  "workSummary.noSources": "No attachments or links",
+  "workSummary.linkGitHub": "Link GitHub repository",
+  "workSummary.gitHubHint": "Enter owner/repo or a GitHub repository URL. Clear the field and save to use automatic detection.",
+  "workSummary.localBranch": "Local branch · {0}"
 }

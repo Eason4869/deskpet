@@ -155,10 +155,13 @@ namespace Dafeiyu
         }
         string AttachmentPath(ChatAttachment file)
         {
-            if(!String.IsNullOrWhiteSpace(file.SourcePath) && File.Exists(file.SourcePath))return file.SourcePath;string directory=Path.Combine(Path.GetTempPath(),"DeskPet-attachments");Directory.CreateDirectory(directory);string safe=Path.GetFileName(file.Name??"attachment");if(String.IsNullOrWhiteSpace(safe))safe="attachment";string path=Path.Combine(directory,Guid.NewGuid().ToString("N")+"-"+safe);byte[] bytes=AttachmentBytes(file);File.WriteAllBytes(path,bytes);return path;
+            if(!String.IsNullOrWhiteSpace(file.SourcePath) && File.Exists(file.SourcePath))return file.SourcePath;
+            return WriteAttachmentCopy(file,file.Name);
         }
+        internal static string WriteAttachmentCopy(ChatAttachment file,string name)
+        {string directory=Path.Combine(Path.GetTempPath(),"DeskPet-attachments");Directory.CreateDirectory(directory);string safe=Path.GetFileName(name??"attachment");if(String.IsNullOrWhiteSpace(safe))safe="attachment";string path=Path.Combine(directory,Guid.NewGuid().ToString("N")+"-"+safe);File.WriteAllBytes(path,AttachmentBytes(file));return path;}
         string EnsureAttachmentPath(ChatAttachment file){return AttachmentPath(file);}
-        byte[] AttachmentBytes(ChatAttachment file)
+        static byte[] AttachmentBytes(ChatAttachment file)
         {
             if(!String.IsNullOrEmpty(file.Data))return Convert.FromBase64String(file.Data);return System.Text.Encoding.UTF8.GetBytes(file.Text??"");
         }

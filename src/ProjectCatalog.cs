@@ -20,6 +20,7 @@ namespace Dafeiyu
     [DataContract] public sealed class ProjectDefinition
     {
         [DataMember] public string Id="",Name="",Workspace="",Goal="",SectionId="projects";
+        [DataMember(EmitDefaultValue=false)] public string GitHubRepositoryLink;
         [DataMember] public bool IsQuickChatDefault,Pinned;
         [DataMember] public bool FullAccess=true,BackupFiles=true,PlanMode=false,CommandsEnabled=false;
         [DataMember] public string CommandRecipes="[]";

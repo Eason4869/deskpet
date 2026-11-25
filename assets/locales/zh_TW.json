@@ -5100,5 +5100,18 @@
   "releaseNotes.details": "詳細資料 ↗",
   "releaseNotes.full": "查看完整更新內容",
   "releaseNotes.dismiss": "知道了",
-  "releaseNotes.empty": "這個版本的更新說明可在發行頁面查看。"
+  "releaseNotes.empty": "這個版本的更新說明可在發行頁面查看。",
+  "workSummary.newSideChat": "新增側邊聊天",
+  "workSummary.sideChats": "側邊聊天",
+  "workSummary.workers": "子代理程式",
+  "workSummary.workerCounts": "{0} 執行中 · {1} 排隊 · 共 {2} 個",
+  "workSummary.noWorkers": "目前沒有子代理程式",
+  "workSummary.sideChatNumber": "側邊聊天 {0}",
+  "workSummary.replying": "回覆中",
+  "workSummary.noSideChats": "目前沒有側邊聊天",
+  "workSummary.allSources": "查看來源清單",
+  "workSummary.noSources": "目前沒有附件或連結",
+  "workSummary.linkGitHub": "連結 GitHub 儲存庫",
+  "workSummary.gitHubHint": "輸入 owner/repo 或 GitHub 儲存庫網址。清空後儲存可恢復自動辨識。",
+  "workSummary.localBranch": "本機分支 · {0}"
 }

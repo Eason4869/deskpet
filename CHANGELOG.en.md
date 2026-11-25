@@ -5,6 +5,9 @@
 ## 1.0.6 · Production release
 
 - A scrollable release notes dialog opens the first time DeskPet starts after an upgrade. Stable and development preview builds show their own release notes. When the previous version is known, the dialog includes the relevant versions skipped during the upgrade. Chinese and English notes are bundled for offline reading.
+- The Windows work summary shows net file changes, side chats for the current conversation, subagent status and sources. Open a diff, switch or create a side chat, browse sent attachments and reply links, or add an attachment from the summary.
+- After the first completed side-chat reply, the configured chat model generates a title for the tab and work summary.
+- The work summary detects the GitHub repository and current branch from the project's Git checkout. Specify a repository for the project and open it from the summary.
 - The Windows work agent stores execution logs per task and migrates older logs automatically. It tracks completion, failure, cancellation and restart interruption separately, preserves confirmed results when a task resumes, and prompts for review when an outcome is uncertain.
 - The work task panel shows model request counts and recorded token usage, with controls to stop or resume a task.
 - Work agent reply fragments, tool progress and result summaries are saved as encrypted events. Reopening an interrupted conversation restores those details and marks the turn as incomplete in Windows and macOS. Replay makes no model or tool calls.

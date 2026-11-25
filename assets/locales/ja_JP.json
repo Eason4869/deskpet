@@ -5100,5 +5100,18 @@
   "releaseNotes.details": "詳細 ↗",
   "releaseNotes.full": "変更履歴をすべて表示",
   "releaseNotes.dismiss": "確認しました",
-  "releaseNotes.empty": "このバージョンの変更内容はリリースページで確認できます。"
+  "releaseNotes.empty": "このバージョンの変更内容はリリースページで確認できます。",
+  "workSummary.newSideChat": "サイドチャットを作成",
+  "workSummary.sideChats": "サイドチャット",
+  "workSummary.workers": "サブエージェント",
+  "workSummary.workerCounts": "実行中 {0} · 待機中 {1} · 合計 {2}",
+  "workSummary.noWorkers": "サブエージェントはありません",
+  "workSummary.sideChatNumber": "サイドチャット {0}",
+  "workSummary.replying": "返信中",
+  "workSummary.noSideChats": "サイドチャットはありません",
+  "workSummary.allSources": "ソース一覧を表示",
+  "workSummary.noSources": "添付ファイルやリンクはありません",
+  "workSummary.linkGitHub": "GitHub リポジトリをリンク",
+  "workSummary.gitHubHint": "owner/repo または GitHub リポジトリの URL を入力してください。空欄で保存すると自動検出に戻ります。",
+  "workSummary.localBranch": "ローカルブランチ · {0}"
 }

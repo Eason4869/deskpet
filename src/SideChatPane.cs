@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,8 +37,13 @@ namespace Dafeiyu
         readonly Button send=LocalizedUi.Button(()=>(TextResources.Get("sideChatPane.send.text")),true),stop=LocalizedUi.Button(()=>(TextResources.Get("sideChatPane.send.text.alternativeA")));
         readonly ScrollViewer scroll;
         readonly MessageUpdatePump updates;
-        bool disposed;
+        readonly CancellationTokenSource titleLifetime = new CancellationTokenSource();
+        readonly TextBlock title;
+        bool disposed,titleGenerating;
+        string firstQuestion="",generatedTitle="",attemptedTitleTurn;
         internal ConversationSession Session{get;private set;}
+        internal event Action SummaryChanged;
+        internal string SummaryTitle {get{return generatedTitle.Length==0?firstQuestion:generatedTitle;}}
 
         internal SideChatPane(PetWindow pet,Window host,PetSettings settings,string projectName,IConversationApi api=null,ConversationSession parent=null,bool allowProjectRead=true)
         {
@@ -54,7 +60,7 @@ namespace Dafeiyu
             try{avatar=SkinCatalog.GetAvatar(pet.Skin);}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is ArgumentException||error is InvalidOperationException||error is NotSupportedException))throw;}
             Name="SideChatPane";Background=Ui.Brush("#F8F9FB");
             RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});RowDefinitions.Add(new RowDefinition());RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var heading=new StackPanel{Margin=new Thickness(18,14,18,10)};var title=LocalizedUi.Text(()=>(TextResources.Get("sideChatPane.sideChatPane.text")),16,AgentUi.Ink);title.FontWeight=FontWeights.SemiBold;heading.Children.Add(title);
+            var heading=new StackPanel{Margin=new Thickness(18,14,18,10)};title=LocalizedUi.Text(TitleText,16,AgentUi.Ink);title.Name="SideChatTitle";title.FontWeight=FontWeights.SemiBold;heading.Children.Add(title);
             var projectLabel=Ui.Text(project,12,AgentUi.Muted);projectLabel.Name="SideChatProjectName";projectLabel.TextTrimming=TextTrimming.CharacterEllipsis;projectLabel.ToolTip=snapshot.AgentWorkspace;projectLabel.Margin=new Thickness(0,4,0,4);heading.Children.Add(projectLabel);
             var detail=LocalizedUi.Text(()=>(TextResources.Get("sideChatPane.contextHint")),11,AgentUi.Muted);detail.TextWrapping=TextWrapping.Wrap;heading.Children.Add(detail);Children.Add(heading);
             scroll=Ui.Scroll(messages);scroll.Name="SideChatHistory";Grid.SetRow(scroll,1);Children.Add(scroll);
@@ -70,6 +76,31 @@ namespace Dafeiyu
         {
             if(disposed)throw new ObjectDisposedException("SideChatPane");
             await Session.SendTextAsync(text,snapshot,companionName,steeringContext:parent.SnapshotPublicContext());
+            GenerateTitle();
+        }
+
+        string TitleText(){return SummaryTitle.Length==0?TextResources.Get("sideChatPane.sideChatPane.text"):SummaryTitle;}
+        void NotifySummaryChanged(){if(SummaryChanged!=null)SummaryChanged();}
+
+        async void GenerateTitle()
+        {
+            if(disposed||titleGenerating||generatedTitle.Length!=0)return;
+            var reply=Session.History.Messages.LastOrDefault(item=>item.Role=="assistant"&&item.Status=="complete"&&!String.IsNullOrWhiteSpace(item.Content));
+            if(reply==null||reply.TurnId==attemptedTitleTurn)return;
+            attemptedTitleTurn=reply.TurnId;titleGenerating=true;
+            try
+            {
+                using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(titleLifetime.Token))
+                {
+                    cancel.CancelAfter(TimeSpan.FromSeconds(30));
+                    string result=await Session.GenerateTitleForTurnAsync(snapshot,cancel.Token,reply.TurnId);
+                    if(disposed||cancel.IsCancellationRequested||String.IsNullOrWhiteSpace(result))return;
+                    generatedTitle=result;LocalizedUi.Set(title,"Text",TitleText);NotifySummaryChanged();
+                }
+            }
+            catch(OperationCanceledException){}
+            catch(Exception error){System.Diagnostics.Trace.WriteLine("Side chat title: "+error.GetType().Name);}
+            finally{titleGenerating=false;}
         }
         async Task SendDraftAsync()
         {
@@ -90,10 +121,17 @@ namespace Dafeiyu
                 row=new MessageRow{Body=new MarkdownView{Name="SideChatMessage",FontSize=13},State=Ui.Text("",10,AgentUi.Muted)};body.Children.Add(new Border{Child=row.Body,Background=user?Ui.Brush("#EDF4FF"):Brushes.Transparent,CornerRadius=new CornerRadius(10),Padding=user?new Thickness(10,7,10,7):new Thickness(0)});body.Children.Add(row.State);Grid.SetColumn(body,1);line.Children.Add(body);messages.Children.Add(line);rendered.Add(message.Id,row);
             }
             row.Body.Text=message.Content;LocalizedUi.Set(row.State,"Text",()=>(message.Status=="pending"?TextResources.Get("sideChatPane.messageAdded.statusMessageStatus"):message.Status=="cancelled"||message.Status=="interrupted"?TextResources.Get("sideChatPane.messageAdded.statusMessageStatus.alternativeA"):message.Status=="error"?TextResources.Get("sideChatPane.messageAdded.statusMessageStatus.alternativeB"):""));row.State.Visibility=String.IsNullOrEmpty(row.State.Text)?Visibility.Collapsed:Visibility.Visible;
+            if(message.Role=="user"&&firstQuestion.Length==0)
+            {
+                firstQuestion=(message.Content??"").Replace('\r',' ').Replace('\n',' ').Trim();
+                if(firstQuestion.Length>40)firstQuestion=firstQuestion.Substring(0,40).Trim();
+                LocalizedUi.Set(title,"Text",TitleText);NotifySummaryChanged();
+            }
             if(follow)Dispatcher.BeginInvoke(new Action(delegate{if(!disposed)scroll.ScrollToEnd();}));
         }
         void StateChanged()
-        {if(disposed||Dispatcher.HasShutdownStarted)return;if(Dispatcher.CheckAccess())RefreshState();else Dispatcher.BeginInvoke(new Action(RefreshState));}
+        {if(disposed||Dispatcher.HasShutdownStarted)return;if(Dispatcher.CheckAccess())RefreshStateAndSummary();else Dispatcher.BeginInvoke(new Action(RefreshStateAndSummary));}
+        void RefreshStateAndSummary(){if(disposed)return;RefreshState();NotifySummaryChanged();}
         void RefreshState()
         {if(disposed)return;bool busy=Session.IsBusy;send.IsEnabled=!busy&&!String.IsNullOrWhiteSpace(input.Text);stop.Visibility=busy?Visibility.Visible:Visibility.Collapsed;status.Text=busy?TextResources.Get("sideChatPane.refreshState.busyStringIsNullOrEmpty"):String.IsNullOrEmpty(Session.LastNotice)?TextResources.Get("sideChatPane.refreshState.busyStringIsNullOrEmpty.alternativeA"):Session.LastNotice;}
         void ShowError(Exception error){if(disposed)return;LocalizedUi.Set(status,"Text",()=>(error is OperationCanceledException?TextResources.Get("sideChatPane.showError.invalidOperationExceptionErrorMessage"):error is ApiException||error is InvalidOperationException?error.Message:TextResources.Get("sideChatPane.showError.invalidOperationExceptionErrorMessage.alternativeA")));}
@@ -104,7 +142,8 @@ namespace Dafeiyu
             if(disposed)return;disposed=true;host.Closed-=HostClosed;Session.MessageAdded-=MessageAdded;Session.StateChanged-=StateChanged;updates.Dispose();
             // Cancel synchronously, but never wait for a network continuation on
             // the dispatcher that the request may need in order to finish.
-            try{ObserveStop(Session.StopAsync());}finally{Session.Dispose();}
+            try{titleLifetime.Cancel();}
+            finally{titleLifetime.Dispose();try{ObserveStop(Session.StopAsync());}finally{Session.Dispose();}}
         }
     }
 }

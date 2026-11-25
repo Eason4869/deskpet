@@ -5100,5 +5100,18 @@
   "releaseNotes.details": "विवरण ↗",
   "releaseNotes.full": "सभी बदलाव देखें",
   "releaseNotes.dismiss": "समझ गया",
-  "releaseNotes.empty": "इस संस्करण की जानकारी रिलीज़ पृष्ठ पर उपलब्ध है।"
+  "releaseNotes.empty": "इस संस्करण की जानकारी रिलीज़ पृष्ठ पर उपलब्ध है।",
+  "workSummary.newSideChat": "नई साइड चैट",
+  "workSummary.sideChats": "साइड चैट",
+  "workSummary.workers": "उप-एजेंट",
+  "workSummary.workerCounts": "{0} चालू · {1} प्रतीक्षा में · कुल {2}",
+  "workSummary.noWorkers": "कोई उप-एजेंट नहीं",
+  "workSummary.sideChatNumber": "साइड चैट {0}",
+  "workSummary.replying": "उत्तर दिया जा रहा है",
+  "workSummary.noSideChats": "कोई साइड चैट नहीं",
+  "workSummary.allSources": "स्रोत सूची देखें",
+  "workSummary.noSources": "कोई अटैचमेंट या लिंक नहीं",
+  "workSummary.linkGitHub": "GitHub रिपॉज़िटरी लिंक करें",
+  "workSummary.gitHubHint": "owner/repo या GitHub रिपॉज़िटरी URL दर्ज करें। स्वतः पहचान के लिए फ़ील्ड खाली करके सहेजें।",
+  "workSummary.localBranch": "स्थानीय शाखा · {0}"
 }

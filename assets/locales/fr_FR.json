@@ -5100,5 +5100,18 @@
   "releaseNotes.details": "Détails ↗",
   "releaseNotes.full": "Voir le journal complet",
   "releaseNotes.dismiss": "Compris",
-  "releaseNotes.empty": "Les notes de cette version sont disponibles sur la page de publication."
+  "releaseNotes.empty": "Les notes de cette version sont disponibles sur la page de publication.",
+  "workSummary.newSideChat": "Nouvelle discussion latérale",
+  "workSummary.sideChats": "Discussions latérales",
+  "workSummary.workers": "Sous-agents",
+  "workSummary.workerCounts": "{0} actifs · {1} en attente · {2} au total",
+  "workSummary.noWorkers": "Aucun sous-agent",
+  "workSummary.sideChatNumber": "Discussion latérale {0}",
+  "workSummary.replying": "Réponse en cours",
+  "workSummary.noSideChats": "Aucune discussion latérale",
+  "workSummary.allSources": "Voir la liste des sources",
+  "workSummary.noSources": "Aucune pièce jointe ni lien",
+  "workSummary.linkGitHub": "Lier un dépôt GitHub",
+  "workSummary.gitHubHint": "Saisissez owner/repo ou l’URL du dépôt GitHub. Effacez le champ et enregistrez pour utiliser la détection automatique.",
+  "workSummary.localBranch": "Branche locale · {0}"
 }

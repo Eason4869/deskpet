@@ -5100,5 +5100,18 @@
   "releaseNotes.details": "Details ↗",
   "releaseNotes.full": "Vollständiges Änderungsprotokoll anzeigen",
   "releaseNotes.dismiss": "Verstanden",
-  "releaseNotes.empty": "Die Hinweise zu dieser Version stehen auf der Release-Seite."
+  "releaseNotes.empty": "Die Hinweise zu dieser Version stehen auf der Release-Seite.",
+  "workSummary.newSideChat": "Neuer Seitenchat",
+  "workSummary.sideChats": "Seitenchats",
+  "workSummary.workers": "Unteragenten",
+  "workSummary.workerCounts": "{0} aktiv · {1} vorgemerkt · {2} gesamt",
+  "workSummary.noWorkers": "Keine Unteragenten",
+  "workSummary.sideChatNumber": "Seitenchat {0}",
+  "workSummary.replying": "Antwortet",
+  "workSummary.noSideChats": "Keine Seitenchats",
+  "workSummary.allSources": "Quellenliste anzeigen",
+  "workSummary.noSources": "Keine Anhänge oder Links",
+  "workSummary.linkGitHub": "GitHub-Repository verknüpfen",
+  "workSummary.gitHubHint": "owner/repo oder eine GitHub-Repository-URL eingeben. Feld leeren und speichern, um die automatische Erkennung zu verwenden.",
+  "workSummary.localBranch": "Lokaler Branch · {0}"
 }

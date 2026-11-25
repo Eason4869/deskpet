@@ -512,11 +512,13 @@ namespace Dafeiyu
             string id=PersonaId;var op=Begin(settings,ConversationStage.Thinking);try{if(taskStore!=null){await taskStore.ClearAsync(id,settings.AgentWorkspace);if(taskStore.HasWarning(id,settings.AgentWorkspace))throw new InvalidOperationException(TextResources.Get("conversationSession.clearAgentTaskAsync.text"));}lock(gate)agentTasks.Remove(id);var changed=AgentTaskChanged;if(changed!=null)changed();}finally{End(op);}
         }
         public async Task RetryAgentTaskSaveAsync(){using(Maintenance.EnterActivity()){if(taskStore==null)return;await taskStore.RetryPendingAsync();if(!disposed && StateChanged!=null)StateChanged();}}
-        public async Task<string> GenerateTitleAsync(PetSettings settings,CancellationToken cancel)
+        public Task<string> GenerateTitleAsync(PetSettings settings,CancellationToken cancel)
+        {return GenerateTitleForTurnAsync(settings,cancel,null);}
+        internal async Task<string> GenerateTitleForTurnAsync(PetSettings settings,CancellationToken cancel,string turnId)
         {using(Maintenance.EnterActivity()){
             using(UsageTracking.BeginScope("title",kernelSession==null?null:kernelSession.ConversationId,kernelSession==null?null:kernelSession.ProjectId))
             {
-            if(settings==null)throw new ArgumentNullException("settings");var source=History.Messages.Where(m=>m.Role=="user"||m.Role=="assistant").Take(2).ToList();if(source.Count==0)return TextResources.Get("conversationSession.generateTitleAsync.text");
+            if(settings==null)throw new ArgumentNullException("settings");var source=History.Messages.Where(m=>(turnId==null||m.TurnId==turnId)&&(m.Role=="user"||m.Role=="assistant")).Take(2).ToList();if(source.Count==0)return TextResources.Get("conversationSession.generateTitleAsync.text");
             var request=new List<ChatMessage>{new ChatMessage("system",ReplyLanguagePolicy.Apply(""))};foreach(var message in source)request.Add(new ChatMessage(message.Role,message.Content));request.Add(new ChatMessage("user","请根据上面的对话生成一个简短会话标题。最多 24 个汉字或 12 个英文单词，不加引号、标点、前缀或解释，只输出标题。"));
             string raw=await api.ChatAsync(settings.Text.Copy(),request,cancel).ConfigureAwait(false);return NormalizeTitle(raw,source.FirstOrDefault(m=>m.Role=="user"));
 

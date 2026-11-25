@@ -6,7 +6,7 @@ A desktop companion for interactions, conversation and project work.
 
 **Source version 1.0.6 (stable)** · [Download the latest published stable release](https://github.com/Eason4869/deskpet/releases/latest) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Version 1.0.6 adds post-update release notes, improves work agent records and interrupted conversation recovery, and adds a Windows uninstall wizard. See the [1.0.6 changelog](CHANGELOG.en.md#106--production-release).
+Version 1.0.6 adds post-update release notes, an updated Windows work summary with a GitHub repository shortcut, improved work agent recovery and a Windows uninstall wizard. See the [1.0.6 changelog](CHANGELOG.en.md#106--production-release).
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
@@ -72,6 +72,10 @@ Organize conversations into sections, rename, pin, archive, drag to reorder or m
 
 The Agent's public progress explanations remain in the reply body. Later tool calls do not move already displayed text into the thinking section. Tool records, changes and delivered files have their own entries. Queue follow-up instructions, or **Steer** at the next adjustable boundary. Completed changes are not automatically undone.
 
+Reopen an interrupted work conversation to review saved replies, tool progress and result summaries. On Windows, the task panel shows request counts and recorded token usage. Review completed operations before choosing **Resume task**.
+
+Open **Work summary** at the top of the conversation for the current task’s net file changes, side chats, subagents and recent sources. Use it to open a change, switch to a side chat, browse sent attachments and reply links, start a side chat or add an attachment. When the project's Git `origin` points to GitHub, the summary shows the repository and branch. Click the repository to open it in your default browser. Use **Link GitHub repository** next to File changes to specify the repository for a named project.
+
 ### Web search and source citations
 
 Open **Settings → Tools and connections → Web search**, enable it, choose native model search, an external search provider or a custom endpoint with a compatible API format, then save. Native search requires support from the selected model service. External providers use separate addresses and credentials and may incur additional charges. Ordinary chat, quick chat and work mode can use web search. Enable **Show source citations** to include retrieved sources at the bottom of replies.
@@ -97,6 +101,8 @@ File cards preview HTML, Markdown and source, and support opening, revealing, co
 ![Temporary side chat using the owning main conversation's public context](previews/release-1.0.0/side-chat.png)
 
 Open a temporary side chat from the main composer's **`/` menu**, window menu or tool tabs. Each request reads the **owning main conversation's public history**, alongside the side chat's own temporary messages. Switching main conversations does not rebind it to another context.
+
+After the first completed reply, the side chat's configured model generates a short title for the tab and work summary. An excerpt of the first question appears while the title is generated.
 
 When a valid project is bound and the model supports tools, side chat can inspect that project through read-only tools. It cannot edit files or execute commands. Its model and project settings are captured when opened. Its independent history is not saved to conversation storage; closing its tab cancels its own request. Use it to clarify a term, check an implementation or discuss another approach.
 

@@ -18,10 +18,19 @@ namespace Dafeiyu.Tests
         sealed class FakeApi:IConversationApi,IAgentConversationApi
         {
             internal readonly List<IList<ChatMessage>> Requests=new List<IList<ChatMessage>>();
+            internal readonly List<IList<ChatMessage>> TitleRequests=new List<IList<ChatMessage>>();
             internal readonly List<ConnectionSettings> Models=new List<ConnectionSettings>();
             internal bool Block,Cancelled,Disposed;internal int AgentCalls;
+            internal bool BlockTitle;
+            internal readonly TaskCompletionSource<bool> TitleCancelled=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public async Task<string> ChatAsync(ConnectionSettings settings,IList<ChatMessage> messages,CancellationToken cancel)
             {
+                if(messages.Last().Content.Contains("只输出标题"))
+                {
+                    TitleRequests.Add(messages.Select(m=>m.Copy()).ToArray());
+                    if(BlockTitle)try{await Task.Delay(Timeout.Infinite,cancel).ConfigureAwait(false);}catch(OperationCanceledException){TitleCancelled.TrySetResult(true);throw;}
+                    return "标题：摘要 " + messages.First(m=>m.Role=="user").Content;
+                }
                 Models.Add(settings.Copy());Requests.Add(messages.Select(m=>m.Copy()).ToArray());
                 if(Block)try{await Task.Delay(Timeout.Infinite,cancel).ConfigureAwait(false);}catch(OperationCanceledException){Cancelled=true;throw;}
                 return "**临时回复**："+messages.Last().Content;
@@ -56,11 +65,16 @@ namespace Dafeiyu.Tests
                 pet.Conversation.AddLiveTurn(pet.Conversation.PersonaId,"main-private-input","main-private-reply");await pet.Conversation.FlushHistoryAsync();string main=pet.Conversation.ExportHistory();int workspaceCount=pet.Workspaces.OpenCount;string disk=DiskSnapshot(root);
                 File.WriteAllText(Path.Combine(root,"project-note.txt"),"PROJECT_FILE_CONTENT");disk=DiskSnapshot(root);
                 var apiA=new FakeApi();var apiB=new FakeApi();first=Create(pet,host,cfg,"测试项目",apiA);second=Create(pet,host,cfg,"另一个项目",apiB);
+                var preview=new PreviewWorkspace(()=>{},()=>{});preview.AddPage("Fixture side chat","chat",(SideChatPane)first);
                 Check(!Object.ReferenceEquals(Session(first),Session(second))&&!Object.ReferenceEquals(Session(first),pet.Conversation),"panes own sessions separate from each other and main chat");
                 cfg.AgentWorkspace=Path.Combine(root,"changed-after-open");cfg.AgentSystemPrompt="changed-prompt";cfg.Text.Model="changed-model";cfg.ReadReplies=true;cfg.AgentEnabled=true;
                 await Send(first,"side-alpha");
                 pet.Conversation.AddLiveTurn(pet.Conversation.PersonaId,"latest-main-input","latest-main-reply");var latest=pet.Conversation.History.Messages.Last();pet.Conversation.History.Update(latest.Id,latest.Content,"complete",reasoning:"PRIVATE_REASONING");main=pet.Conversation.ExportHistory();
                 await Send(second,"side-beta");await Send(first,"side-followup");await Task.Delay(100);
+                Check(apiA.TitleRequests.Count==1&&apiB.TitleRequests.Count==1&&((SideChatPane)first).SummaryTitle=="摘要 side-alpha"&&((SideChatPane)second).SummaryTitle=="摘要 side-beta","each side chat uses one LLM title based on its own first completed turn");
+                Check(apiA.TitleRequests[0].Any(m=>m.Content=="side-alpha")&&!apiA.TitleRequests[0].Any(m=>m.Content.Contains("main-private-input")||m.Content.Contains("side-beta")),"title requests omit inherited main and sibling chat history");
+                preview.Measure(new Size(600,800));preview.Arrange(new Rect(0,0,600,800));preview.UpdateLayout();
+                Check(All<Border>(preview).Any(item=>item.Name=="PreviewTab"&&Object.Equals(item.ToolTip,"摘要 side-alpha")),"LLM title refreshes the existing side-chat tab");
                 Check(apiA.AgentCalls==2&&apiB.AgentCalls==1,"project-bound side chat uses tools to read its project");
                 Check(apiA.Requests[0].Any(m=>m.Content=="main-private-input")&&apiA.Requests[0].Any(m=>m.Content=="main-private-reply"),"first request inherits the owning main conversation history");
                 Check(!apiA.Requests[0].Any(m=>m.Content=="latest-main-input")&&apiA.Requests[1].Any(m=>m.Content=="latest-main-input")&&apiA.Requests[1].All(m=>String.IsNullOrEmpty(m.Reasoning)&&!m.Content.Contains("PRIVATE_REASONING")),"each send refreshes parent context without copying reasoning");
@@ -80,7 +94,15 @@ namespace Dafeiyu.Tests
                 Check(All<MarkdownView>((DependencyObject)first).Any(v=>v.Text.Contains("临时回复")&&v.HasFormatting),"assistant replies render using the Markdown view");
                 var waiting=new FakeApi{Block=true};blocked=Create(pet,host,cfg,"取消项目",waiting);Task pending=Send(blocked,"wait-for-close");Check(Session(blocked).IsBusy,"fake in-flight request is active before close");((IDisposable)blocked).Dispose();bool cancelled=false;try{await pending;}catch(OperationCanceledException){cancelled=true;}
                 Check(cancelled&&waiting.Cancelled&&waiting.Disposed&&!Session(blocked).IsBusy,"closing cancels the in-flight request and releases its transport");
-                ((IDisposable)first).Dispose();((IDisposable)first).Dispose();((IDisposable)second).Dispose();
+                var titleWait=new FakeApi{BlockTitle=true};
+                using(var titlePane=new SideChatPane(pet,host,cfg,"取消命名",titleWait,allowProjectRead:false))
+                {
+                    await titlePane.SendAsync("temporary title");
+                    Check(titlePane.SummaryTitle=="temporary title"&&titleWait.TitleRequests.Count==1,"the first question stays visible while a title request is pending");
+                    titlePane.Dispose();
+                    Check(await Task.WhenAny(titleWait.TitleCancelled.Task,Task.Delay(3000))==titleWait.TitleCancelled.Task,"closing a side chat cancels its pending title request");
+                }
+                preview.Dispose();((IDisposable)first).Dispose();((IDisposable)second).Dispose();
                 Check(apiA.Disposed&&apiB.Disposed&&DiskSnapshot(root)==disk,"closing is idempotent and creates no history, project or other files");
                 Check(pet.Conversation.ExportHistory()==main,"main history remains unchanged after all temporary panes close");
                 Console.WriteLine("Side chat tests: "+checks+" passed");

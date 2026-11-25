@@ -5100,5 +5100,18 @@
   "releaseNotes.details": "자세히 ↗",
   "releaseNotes.full": "전체 변경 내역 보기",
   "releaseNotes.dismiss": "확인",
-  "releaseNotes.empty": "이 버전의 변경 사항은 릴리스 페이지에서 확인할 수 있습니다."
+  "releaseNotes.empty": "이 버전의 변경 사항은 릴리스 페이지에서 확인할 수 있습니다.",
+  "workSummary.newSideChat": "새 사이드 채팅",
+  "workSummary.sideChats": "사이드 채팅",
+  "workSummary.workers": "하위 에이전트",
+  "workSummary.workerCounts": "실행 중 {0}개 · 대기 중 {1}개 · 총 {2}개",
+  "workSummary.noWorkers": "하위 에이전트 없음",
+  "workSummary.sideChatNumber": "사이드 채팅 {0}",
+  "workSummary.replying": "응답 중",
+  "workSummary.noSideChats": "사이드 채팅 없음",
+  "workSummary.allSources": "출처 목록 보기",
+  "workSummary.noSources": "첨부 파일 또는 링크 없음",
+  "workSummary.linkGitHub": "GitHub 저장소 연결",
+  "workSummary.gitHubHint": "owner/repo 또는 GitHub 저장소 URL을 입력하세요. 입력란을 비워 저장하면 자동으로 감지합니다.",
+  "workSummary.localBranch": "로컬 브랜치 · {0}"
 }

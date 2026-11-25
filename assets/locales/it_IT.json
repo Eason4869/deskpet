@@ -5100,5 +5100,18 @@
   "releaseNotes.details": "Dettagli ↗",
   "releaseNotes.full": "Vedi il registro completo",
   "releaseNotes.dismiss": "Ho capito",
-  "releaseNotes.empty": "Le note di questa versione sono disponibili nella pagina di rilascio."
+  "releaseNotes.empty": "Le note di questa versione sono disponibili nella pagina di rilascio.",
+  "workSummary.newSideChat": "Nuova chat laterale",
+  "workSummary.sideChats": "Chat laterali",
+  "workSummary.workers": "Sottoagenti",
+  "workSummary.workerCounts": "{0} attivi · {1} in coda · {2} totali",
+  "workSummary.noWorkers": "Nessun sottoagente",
+  "workSummary.sideChatNumber": "Chat laterale {0}",
+  "workSummary.replying": "Risposta in corso",
+  "workSummary.noSideChats": "Nessuna chat laterale",
+  "workSummary.allSources": "Vedi elenco fonti",
+  "workSummary.noSources": "Nessun allegato o link",
+  "workSummary.linkGitHub": "Collega repository GitHub",
+  "workSummary.gitHubHint": "Inserisci owner/repo o l’URL del repository GitHub. Per usare il rilevamento automatico, svuota il campo e salva.",
+  "workSummary.localBranch": "Ramo locale · {0}"
 }

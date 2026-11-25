@@ -3570,6 +3570,84 @@
       "expected": "已更新到 v{0}",
       "format": true,
       "argument_count": 1
+    },
+    {
+      "key": "workSummary.allSources",
+      "expected": "查看来源列表",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHubHint",
+      "expected": "输入 owner/repo 或 GitHub 仓库地址。清空后保存可恢复自动识别。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.linkGitHub",
+      "expected": "链接 GitHub 仓库",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.localBranch",
+      "expected": "本地分支 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.newSideChat",
+      "expected": "新建侧边聊天",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.noSideChats",
+      "expected": "暂无侧边聊天",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.noSources",
+      "expected": "暂无附件或链接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.noWorkers",
+      "expected": "暂无子智能体",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.replying",
+      "expected": "回复中",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.sideChatNumber",
+      "expected": "侧边聊天 {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.sideChats",
+      "expected": "侧边聊天",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.workerCounts",
+      "expected": "{0} 运行中 · {1} 排队 · 共 {2} 个",
+      "format": true,
+      "argument_count": 3
+    },
+    {
+      "key": "workSummary.workers",
+      "expected": "子智能体",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }
