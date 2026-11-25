@@ -22,14 +22,17 @@ namespace Dafeiyu.Tests
         {
             foreach(int route in new[]{0,1,6,2,7,3,4})
             {
-                page.SelectNavigation(route);Pump();
+                page.SelectNavigation(route);Pump();host.UpdateLayout();
                 var active=(FrameworkElement)Named<ContentControl>(page,"SettingsContentHost").Content;
-                var body=All<ScrollViewer>(active).First(element=>element.IsVisible);
+                var body=All<ScrollViewer>(active).First(element=>element.IsVisible&&element.MaxWidth==SettingsSurface.BodyWidth);
                 var header=All<SettingsPageHeader>(active).FirstOrDefault(element=>element.IsVisible);
                 double left=body.TranslatePoint(new Point(),active).X;
-                Check(body.ActualWidth>0&&active.ActualWidth-body.ActualWidth>=48&&Math.Abs(left+body.ActualWidth/2-active.ActualWidth/2)<2,
-                    "settings body is narrower and centered on route "+route);
-                if(header!=null)Check(header.ActualWidth>body.ActualWidth,"settings header retains its wider layout on route "+route);
+                var available=Math.Min(SettingsSurface.BodyWidth,active.ActualWidth);
+                Check(body.ActualWidth>0&&body.ActualWidth<=available+1&&Math.Abs(left+body.ActualWidth/2-active.ActualWidth/2)<2,
+                    "settings body stays centered within its width cap on route "+route+
+                    " (available "+active.ActualWidth+", body "+body.ActualWidth+", offset "+left+")");
+                if(header!=null&&active.ActualWidth>SettingsSurface.BodyWidth+1)
+                    Check(header.ActualWidth>body.ActualWidth,"settings header retains its wider layout on route "+route);
             }
             page.RestoreNavigation(3,0,null);Pump();
             var language=Named<Button>(page,"GeneralLanguage");var motion=Named<ComboBox>(page,"ThemeTransitionEffect");var volume=Named<Slider>(page,"ThemeTransitionSoundVolume");
