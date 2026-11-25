@@ -54,5 +54,55 @@
       "keyCount": 4507,
       "valuesSha256": "3f456ed0e341d8687884875a45d2fc8a6251807af80584550757cf5a08f7abdf"
     }
-  }
+  },
+  "historicalCorrections": [
+    {
+      "locale": "id_ID",
+      "key": "mcpSettingsPanel.renderRows.text.alternativeE",
+      "expected": "Ubah",
+      "reason": "Replace the inherited English action label with Indonesian interface wording."
+    },
+    {
+      "locale": "id_ID",
+      "key": "mcpSettingsPanel.show.selectedNullSavedConfiguration",
+      "expected": "Ubah server",
+      "reason": "Replace the inherited English action label with Indonesian interface wording."
+    },
+    {
+      "locale": "id_ID",
+      "key": "menus.groups.edit",
+      "expected": "Ubah",
+      "reason": "Replace the inherited English action label with Indonesian interface wording."
+    },
+    {
+      "locale": "id_ID",
+      "key": "modelConfigurationUi.openModelEditor.window",
+      "expected": "Ubah model",
+      "reason": "Replace the inherited English action label with Indonesian interface wording."
+    },
+    {
+      "locale": "id_ID",
+      "key": "textProviderEditor.modelContent.uiIcons",
+      "expected": "Ubah model",
+      "reason": "Replace the inherited English action label with Indonesian interface wording."
+    },
+    {
+      "locale": "id_ID",
+      "key": "workSettingsView.workSettingsView.text.alternativeE",
+      "expected": "Atur ulang",
+      "reason": "Replace the inherited English action label with Indonesian interface wording."
+    },
+    {
+      "locale": "pt_BR",
+      "key": "composerPermissions.tryExecutePermissionCommand.status.alternativeB",
+      "expected": "Digite /permissions ask|auto|full",
+      "reason": "Use a localized typing instruction while preserving the exact command syntax."
+    },
+    {
+      "locale": "pt_BR",
+      "key": "composerPermissions.tryExecutePermissionCommand.status.alternativeC",
+      "expected": "Digite /sandbox on|off",
+      "reason": "Use a localized typing instruction while preserving the exact command syntax."
+    }
+  ]
 }

@@ -195,7 +195,8 @@ def feature_resources(catalog, baseline):
             return result
         protected,contract,provenance=[json.loads((ROOT/path).read_text(encoding='utf8'),object_pairs_hook=evidence_pairs) for path in paths]
         if any(data.get('schemaVersion')!=1 for data in (protected,contract,provenance)):raise ValueError('unknown evidence schema')
-        if set(protected)!={'schemaVersion','baseCommit','catalogs'} or set(contract)!={'schemaVersion','resources'}:raise ValueError('unknown independent contract field')
+        protected_fields={'schemaVersion','baseCommit','catalogs'}
+        if set(protected)-{'historicalCorrections'}!=protected_fields or set(contract)!={'schemaVersion','resources'}:raise ValueError('unknown independent contract field')
         if set(provenance)!={'schemaVersion','protectedBaseCommit','resourceCommit','translationMethod','nativeHumanReview','technicalReview','resources','sourceExclusions'}:raise ValueError('unknown or missing provenance field')
         if provenance['translationMethod'] not in ('assistant-authored','mixed-assistant-and-google-translate') or provenance['nativeHumanReview']!='not_performed' or provenance['technicalReview']!='pending_parent_review':raise ValueError('unsupported review declaration; do not invent review approval')
         cache={}
@@ -222,12 +223,29 @@ def feature_resources(catalog, baseline):
         if immutable_rows(old_inventory)!=immutable_rows(inventory):raise ValueError('historical migration provenance changed')
         locales={'zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES'}
         if set(protected['catalogs'])!=locales:raise ValueError('protected locale set changed')
+        corrections=collections.defaultdict(dict)
+        correction_rows=protected.get('historicalCorrections',[])
+        if not isinstance(correction_rows,list):raise ValueError('invalid historical translation corrections')
+        for row in correction_rows:
+            if not isinstance(row,dict) or set(row)!={'locale','key','expected','reason'}:
+                raise ValueError('invalid historical translation correction')
+            if any(not isinstance(value,str) or not value.strip() for value in row.values()):
+                raise ValueError('empty historical translation correction field')
+            locale,key=row['locale'],row['key']
+            if locale not in locales or locale in ('zh_CN','en_US') or key not in base_keys or key in corrections[locale]:
+                raise ValueError('invalid or duplicate historical translation target: '+locale+' '+key)
+            corrections[locale][key]=row['expected']
         current={};anchored={}
         for locale in sorted(locales):
             path='assets/locales/'+locale+'.json';old=json_at(original,path);entry=protected['catalogs'][locale]
             if set(old)!=base_keys or entry!={'keyCount':len(old),'valuesSha256':canonical_digest(old)}:raise ValueError('invalid protected snapshot '+locale)
             current[locale]=load_catalog((ROOT/path).read_text(encoding='utf8'));anchored[locale]=load_catalog(at(source_commit,path))
-            if canonical_digest({key:current[locale].get(key) for key in base_keys})!=entry['valuesSha256']:errors.append(prefix+'original translation drift: '+locale)
+            historical={key:current[locale].get(key) for key in base_keys}
+            for key,expected in corrections[locale].items():
+                if expected==old[key] or historical[key]!=expected or anchored[locale].get(key)!=expected:
+                    errors.append(prefix+'historical translation drift: '+locale+' '+key)
+                historical[key]=old[key]
+            if canonical_digest(historical)!=entry['valuesSha256']:errors.append(prefix+'original translation drift: '+locale)
             if set(current[locale])!=set(catalog):errors.append(prefix+'locale key set differs: '+locale)
         def indexed(rows,label):
             result={}

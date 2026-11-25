@@ -144,6 +144,28 @@ class FeatureProvenanceTests(unittest.TestCase):
         self.write('assets/locales/ja_JP.json', {'ui.old':'Changed','ui.new':'New {0} ja_JP'})
         self.assertFalse(self.check()['success'])
 
+    def test_approved_historical_translation_requires_the_exact_anchored_value(self):
+        fixture = 'tests/fixtures/localization/protected-originals.json'
+        protected = json.loads((self.root / fixture).read_text(encoding='utf8'))
+        protected['historicalCorrections'] = [
+            {'locale': 'ja_JP', 'key': 'ui.old', 'expected': 'Corrected Japanese', 'reason': 'Localize existing action'}
+        ]
+        self.write(fixture, protected)
+        self.write('assets/locales/ja_JP.json', {'ui.old': 'Corrected Japanese', 'ui.new': 'New {0} ja_JP'})
+        self.provenance['resourceCommit'] = self.commit('correct historical translation')
+        self.write('docs/localization/feature-resource-provenance.json', self.provenance)
+        result = self.check()
+        self.assertTrue(result['success'], result['errors'])
+
+        self.write('assets/locales/de_DE.json', {'ui.old': 'Unapproved', 'ui.new': 'New {0} de_DE'})
+        self.assertIn('Feature provenance: original translation drift: de_DE', self.check()['errors'])
+        self.write('assets/locales/de_DE.json', {'ui.old': 'Original de_DE', 'ui.new': 'New {0} de_DE'})
+
+        protected['historicalCorrections'][0]['expected'] = 'Unanchored Japanese'
+        self.write(fixture, protected)
+        self.write('assets/locales/ja_JP.json', {'ui.old': 'Unanchored Japanese', 'ui.new': 'New {0} ja_JP'})
+        self.assertIn('Feature provenance: historical translation drift: ja_JP ui.old', self.check()['errors'])
+
     def test_forged_origin_or_source_commit_is_rejected(self):
         for field in ['resourceCommit','originCommit']:
             changed = copy.deepcopy(self.provenance)

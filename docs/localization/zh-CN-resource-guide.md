@@ -39,6 +39,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File Build.ps1 -Target ReplyL
 历史迁移目录和 `text-baseline.json` 继续保护原有文字及审核来源。新功能在旧 C# 中没有历史中文原句，因此不补造 `decision=migrate`、历史提交或母语人工审阅。
 
 - 固定原始保护提交为 `fde04835ffce544c334205d881a232c579ded4df`，不是可由证据 JSON 互相改写的“最新基线”。`protected-originals.json` 逐语言保存原 4507 个值的规范哈希，并与该提交、原始键集合、原独立文本基线及迁移记录逐项核对。历史记录只允许给确已替换的旧排除上下文补充 `retired_reason`；原值、哈希、来源、分类和原审核标记保持不变。
+- 已确认需要校订的历史译文逐项记在 `protected-originals.json` 的 `historicalCorrections` 中，注明语言、资源键、完整预期译文和原因。检查器同时核对工作树和 `resourceCommit` 中的译文，并继续用原始提交验证其他历史译文的哈希。
 - `tests/fixtures/localization/feature-text-baseline.json` 是独立维护的新功能中文预期和 Get/Format 占位符合同。必须精确覆盖所有非历史键，重复、缺失、额外字段/记录和占位符漂移均失败。语言检查同时验证新旧 Format 合同；运行时测试嵌入独立新合同，不能仅用当前资源与自己比较。
 - `feature-resource-provenance.json` 将每个新键绑定到真实先前功能快照的 `originCommit/originKey/originValueSha256`、最终中文哈希、13 种语言的值哈希，以及具体生产文件/源码行上下文/出现次数。`resourceCommit` 必须是实际包含最终资源与调用点的提交，存在且为当前 HEAD 祖先；逐项读取提交内容校验。`originCommit` 表示来源快照，不冒称第一次引入或历史迁移。只有六项明确的 first_meeting→firstMeeting、best_friend→bestFriend 资源映射可更换源键；保存的阶段 ID 不改名。
 - 先提交产品与版本，再以该实际提交绑定来源元数据，避免自引用 SHA。源码/译文后续有变化，需要新的源码提交与重新审阅的精确来源记录。CI 必须检出完整历史；缺失对象不视作通过。
