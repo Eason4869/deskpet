@@ -164,10 +164,10 @@ namespace Dafeiyu
                 SetDock(model, Dock.Right);
                 row.Children.Add(model);
             }
-            AddIcon(row, agent);
-            var title = LocalizedUi.Text(() => DisplayName(agent), 13, Ui.Ink);
+            AddIcon(row, agent, true);
+            var title = LocalizedUi.InlineText(() => DisplayName(agent), 13, Ui.Ink);
+            title.Name = "SubagentInspectorTitle";
             title.FontWeight = FontWeights.SemiBold;
-            title.VerticalAlignment = VerticalAlignment.Center;
             row.Children.Add(title);
             header.Child = row;
             header.Visibility = Visibility.Visible;
@@ -218,11 +218,13 @@ namespace Dafeiyu
             return new DockPanel { LastChildFill = true };
         }
 
-        static void AddIcon(DockPanel row, AgentChildResult agent)
+        static void AddIcon(DockPanel row, AgentChildResult agent, bool header = false)
         {
-            var icon = ShellIcons.Image("target", IsActive(agent) ? Ui.Blue : Ui.Muted, 15);
-            icon.Margin = new Thickness(0, 0, 8, 0);
-            icon.VerticalAlignment = VerticalAlignment.Top;
+            var icon = UiIcons.Image("target", IsActive(agent) ? Ui.Blue : Ui.Muted);
+            icon.Width = icon.Height = 15;
+            icon.Margin = new Thickness(0, header ? 0 : 2, 8, 0);
+            icon.VerticalAlignment = header ? VerticalAlignment.Center : VerticalAlignment.Top;
+            if (header) icon.Name = "SubagentInspectorHeaderIcon";
             SetDock(icon, Dock.Left);
             row.Children.Add(icon);
         }

@@ -42,6 +42,46 @@ namespace Dafeiyu.Tests
         }
         sealed class BrokenView:Border,IDisposable{public void Dispose(){throw new IOException("cleanup fixture");}}
         sealed class ReleasedView:Border,IDisposable{internal bool Released;public void Dispose(){Released=true;}}
+        static void CheckSubagentHeader(SubagentInspector pane)
+        {
+            pane.UpdateLayout();
+            var icon=All<Viewbox>(pane).Single(image=>image.Name=="SubagentInspectorHeaderIcon");
+            var title=All<TextBlock>(pane).Single(label=>label.Name=="SubagentInspectorTitle");
+            var back=All<Button>(pane).Single(button=>button.Name=="SubagentInspectorBack");
+            Func<FrameworkElement,double> centerY=element=>element.TranslatePoint(new Point(0,element.ActualHeight/2),pane).Y;
+            Check(Math.Abs(centerY(icon)-centerY(title))<1&&Math.Abs(centerY(back)-centerY(title))<1,
+                "subagent detail icon, title and back button share a visual center line");
+        }
+        static async Task RunSubagentHeader()
+        {
+            Directory.CreateDirectory(Path.Combine("work","permissions"));
+            var transport=new ApiClient();
+            using(var session=new ConversationSession(transport,
+                new SpeechOutput(transport,Path.Combine("work","permissions"),app.Dispatcher),null))
+            {
+                var task=new AgentTaskState{Workspace=Directory.GetCurrentDirectory(),Status="complete"};
+                var started=DateTime.UtcNow.AddMinutes(-3);
+                task.Children.Add(new AgentChildResult{Id="fixture-child",Status="completed",Input="检查项目",
+                    Result="已读完项目中的说明",Model="fixture-model",StartedUtc=started,FinishedUtc=started.AddSeconds(24)});
+                session.History.Commit("检查项目","任务已处理");
+                session.History.LinkAgentTask(session.History.Messages.Last().Id,task.Id);
+                session.History.UpdateAgentTaskSummary(task);
+                using(var pane=new SubagentInspector(session))
+                {
+                    var host=new Window{Width=639,Height=790,Content=pane};
+                    try
+                    {
+                        host.Show();
+                        await Task.Delay(60);
+                        All<Button>(pane).Single(button=>button.Name=="SubagentInspectorRow").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        CheckSubagentHeader(pane);
+                        Capture(pane,"workspace-subagents-result.png");
+                    }
+                    finally{host.Close();}
+                }
+            }
+            Console.WriteLine("Subagent header tests: "+checks+" passed");
+        }
         static async Task Run()
         {
             string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","sidebar-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);WriteRepository(root);string file=Path.Combine(root,"README.md");File.WriteAllText(file,"# 测试预览\n\n侧栏支持拖动与独立标签。");var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=root,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,ShowPredictedMessages=false,OnboardingState="completed"};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"data","settings.json")),null);
@@ -164,6 +204,7 @@ namespace Dafeiyu.Tests
             Check(All<TextBlock>(workerPane).Single(t=>t.Name=="SubagentInspectorResult").Text=="已读完项目中的说明"&&
                 All<TextBlock>(workerPane).Any(t=>t.Text=="fixture-model")&&All<TextBlock>(workerPane).Any(t=>t.Text=="用时 0:00:24"),
                 "worker details show the actual result, model, and elapsed time");
+            CheckSubagentHeader(workerPane);
             Capture(workerPane,"workspace-subagents-result.png");
             All<Button>(workerPane).Single(b=>b.Name=="SubagentInspectorBack").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(60);
             Check(All<Button>(workerPane).Any(b=>b.Name=="SubagentInspectorRow"),
@@ -209,6 +250,6 @@ namespace Dafeiyu.Tests
             Check(project.GitHubRepositoryLink=="example/override"&&pet.ProjectStore.Load().Projects.Single(p=>p.Id==project.Id).GitHubRepositoryLink=="example/override","a linked GitHub repository is stored with the named project");
             definition.Name=new string('长',70)+" 标题";full.RefreshAppearance();full.MinWidth=normalMinWidth;full.Width=950;await Task.Delay(100);CheckWidth(full,950);All<Button>(full).Single(b=>b.Name=="BackToConversation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(100);Check(title.Text==definition.Name&&title.ActualWidth>0&&title.ActualWidth<600,"long conversation title remains bounded in compact header");definition.Name="检查侧栏布局与交互";full.RefreshAppearance();full.MinWidth=2300;full.Width=2300;await Task.Delay(100);CheckWidth(full,2300);All<Thumb>(full).Single(t=>t.Name=="PreviewDivider").RaiseEvent(new DragDeltaEventArgs(shell.ColumnDefinitions[6].ActualWidth-640,0){RoutedEvent=Thumb.DragDeltaEvent});await Task.Delay(100);Capture(full,"workspace-sidebar-final.png");full.OpenBlankTab();await Task.Delay(120);Capture(full,"workspace-new-tab.png");var broken=new BrokenView();area.AddPage("清理失败夹具","file",broken);area.Close(broken);Check(workspace.Session.LastNotice.Contains("清理"),"failed tab cleanup reports a notice without escaping into global exception");area.AddPage("再次失败","file",new BrokenView());var released=new ReleasedView();area.AddPage("释放夹具","file",released);full.MinWidth=normalMinWidth;full.Close();Check(released.Released,"window close continues releasing sibling tabs after one cleanup fails");Console.WriteLine("Sidebar workspace tests: "+checks+" passed");
         }
-        [STAThread]public static int Main(){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.DispatcherUnhandledException+=delegate(object sender,System.Windows.Threading.DispatcherUnhandledExceptionEventArgs error){Console.Error.WriteLine(error.Exception.GetType().FullName+" "+error.Exception.Message);Console.Error.WriteLine(error.Exception.StackTrace);error.Handled=true;app.Shutdown(1);};app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run();result=0;}catch(Exception e){Console.Error.WriteLine(e.GetType().FullName+" "+e.Message);Console.Error.WriteLine(e.StackTrace);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));return app.Run()==0?result:1;}
+        [STAThread]public static int Main(string[] args){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.DispatcherUnhandledException+=delegate(object sender,System.Windows.Threading.DispatcherUnhandledExceptionEventArgs error){Console.Error.WriteLine(error.Exception.GetType().FullName+" "+error.Exception.Message);Console.Error.WriteLine(error.Exception.StackTrace);error.Handled=true;app.Shutdown(1);};app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--subagent-header-only"))await RunSubagentHeader();else await Run();result=0;}catch(Exception e){Console.Error.WriteLine(e.GetType().FullName+" "+e.Message);Console.Error.WriteLine(e.StackTrace);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));return app.Run()==0?result:1;}
     }
 }
