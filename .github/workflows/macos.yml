@@ -85,10 +85,12 @@ jobs:
         include:
           - arch: arm64
             runner: macos-15
+            timeout: 50
           - arch: x86_64
             runner: macos-15-intel
+            timeout: 75
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 50
+    timeout-minutes: ${{ matrix.timeout }}
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
