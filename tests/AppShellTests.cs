@@ -260,9 +260,9 @@ namespace Dafeiyu.Tests
             chat.UpdateLayout();
             var taskList=All<ListBox>(chat).Single(list=>list.Name=="ScheduledTaskList");
             int originalTaskCount=taskList.Items.Count;
-            Click(Button(chat,"DraftScheduledTask"));chat.UpdateLayout();
-            Click(Button(chat,"BackToScheduledTaskTemplates"));chat.UpdateLayout();
             var tile=Button(chat,"PlanningTaskTemplate");
+            Check(originalTaskCount>0&&tile.IsVisible&&taskList.SelectedItem==null,
+                "the scheduling route defaults to the templates even when saved tasks exist");
             Click(tile);chat.UpdateLayout();
             var draftBack=Button(chat,"BackToScheduledTaskTemplates");
             var scheduleDraft=All<TextBox>(chat).Single(box=>box.Name=="ScheduledTaskDraftInput");
@@ -277,12 +277,27 @@ namespace Dafeiyu.Tests
                 "draft Back keeps unsent text available when reopened");
             Click(Button(chat,"BackToScheduledTaskTemplates"));chat.UpdateLayout();
             CreateScheduledReminder(chat);
+            chat.UpdateLayout();
+            var detailBack=Button(chat,"BackToScheduledTaskTemplates");
+            var selectedTask=(ListBoxItem)taskList.SelectedItem;
+            var selectedSurface=All<Border>(selectedTask).Single(border=>border.Name=="ScheduledTaskItemSurface");
+            Check(selectedSurface.CornerRadius.TopLeft==9&&selectedTask.FocusVisualStyle==null&&
+                ((SolidColorBrush)selectedSurface.Background).Color==ThemeManager.Brush("#EDF3FF").Color,
+                "saved task selection uses a rounded theme highlight");
+            selectedTask.Focus();chat.UpdateLayout();
+            Check(((SolidColorBrush)selectedSurface.BorderBrush).Color==Ui.Blue.Color,
+                "the rounded selection visibly identifies keyboard focus");
+            Save(chat,"app-shell-scheduled-task-details.png");
+            Click(detailBack);chat.UpdateLayout();
+            Check(Button(chat,"PlanningTaskTemplate").IsVisible&&taskList.SelectedItem==null&&taskList.Items.Count==originalTaskCount+1,
+                "saved task Back restores the templates and keeps the saved list");
             Click(Button(chat,"DraftScheduledTask"));chat.UpdateLayout();
             Click(Button(chat,"BackToScheduledTaskTemplates"));chat.UpdateLayout();
             Check(Button(chat,"PlanningTaskTemplate").IsVisible&&taskList.Items.Count==originalTaskCount+1,
                 "draft Back also shows the templates when scheduled tasks exist");
             Click(back);Check(chat.CurrentPage=="home"&&String.IsNullOrEmpty(System.Windows.Automation.AutomationProperties.GetItemStatus(scheduled)),"back clears the calendar selection");
-            Click(forward);Check(chat.CurrentPage=="scheduledTasks","forward returns to scheduled tasks");Click(back);
+            Click(forward);chat.UpdateLayout();
+            Check(chat.CurrentPage=="scheduledTasks"&&Button(chat,"PlanningTaskTemplate").IsVisible,"forward returns to the scheduling templates");Click(back);
             Click(Button(chat,"ShellSettings"));await Task.Delay(100);Check(app.Windows.OfType<Window>().Count(w=>w.IsVisible&&!(w is PetWindow))==1&&!app.Windows.OfType<SettingsWindow>().Any(w=>w.IsVisible),"settings opens inside the existing main window");Check(All<FrameworkElement>(chat).Any(e=>e.Name=="SettingsPage"&&e.IsVisible),"settings is its own full page");
             var settingsNav=All<ListBox>(chat).Single(l=>l.Name=="SettingsNavigation");Check(settingsNav.Items.OfType<ListBoxItem>().Any(i=>i.Content as string=="通用")&&!settingsNav.Items.OfType<ListBoxItem>().Any(i=>(i.Content as string??"").Contains("MCP")),"settings uses General and no longer embeds MCP navigation");
             var settingsInput=All<TextBox>(chat).FirstOrDefault(e=>e.Name=="PersonaPrompt");if(settingsInput!=null)settingsInput.Text="暂存未保存的设置文字";

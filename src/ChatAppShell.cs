@@ -109,7 +109,8 @@ namespace Dafeiyu
             }
             SetShellPage("scheduledTasks");
             RecordPage("scheduledTasks");
-            if(!String.IsNullOrEmpty(taskId))scheduledTasksPage.ShowTask(taskId,runId);
+            if(String.IsNullOrEmpty(taskId))scheduledTasksPage.ShowTemplates();
+            else scheduledTasksPage.ShowTask(taskId,runId);
         }
         void SetShellPage(string page)
         {

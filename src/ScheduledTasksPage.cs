@@ -32,9 +32,9 @@ namespace Dafeiyu
     {
         const double RailWidth = 244;
         const double TemplateInset = 6;
-        const double DraftGutter = 20;
+        const double HeadingGutter = 20;
         readonly ScheduledTaskRuntime runtime;
-        readonly ListBox tasks = new ListBox { Name = "ScheduledTaskList", BorderThickness = new Thickness(0) };
+        readonly ListBox tasks = new ListBox { Name = "ScheduledTaskList", Background = Brushes.Transparent, BorderThickness = new Thickness(0) };
         readonly TextBox search;
         readonly StackPanel details = new StackPanel();
         readonly StackPanel composer = new StackPanel();
@@ -47,10 +47,32 @@ namespace Dafeiyu
         readonly List<ChatMessage> turns = new List<ChatMessage>();
 #if NET10_0
         readonly List<Bitmap> templateImages = new List<Bitmap>();
+#else
+        static readonly Lazy<ControlTemplate> TaskItemTemplate = new Lazy<ControlTemplate>(() =>
+            (ControlTemplate)ThemeManager.Parse(@"
+<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                 xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ListBoxItem'>
+    <Border x:Name='ScheduledTaskItemSurface' CornerRadius='9' Background='Transparent'
+            BorderBrush='Transparent' BorderThickness='1' Padding='{TemplateBinding Padding}'>
+        <ContentPresenter VerticalAlignment='Center' HorizontalAlignment='{TemplateBinding HorizontalContentAlignment}'/>
+    </Border>
+    <ControlTemplate.Triggers>
+        <Trigger Property='IsMouseOver' Value='True'>
+            <Setter TargetName='ScheduledTaskItemSurface' Property='Background' Value='#E8EBF0'/>
+        </Trigger>
+        <Trigger Property='IsSelected' Value='True'>
+            <Setter TargetName='ScheduledTaskItemSurface' Property='Background' Value='#EDF3FF'/>
+            <Setter TargetName='ScheduledTaskItemSurface' Property='BorderBrush' Value='#DCE5F4'/>
+        </Trigger>
+        <Trigger Property='IsKeyboardFocusWithin' Value='True'>
+            <Setter TargetName='ScheduledTaskItemSurface' Property='BorderBrush' Value='#456DE6'/>
+        </Trigger>
+    </ControlTemplate.Triggers>
+</ControlTemplate>"));
 #endif
         UniformGrid starterTemplates;
         double pageWidth;
-        bool showingTemplates, templatesForEmptyList;
+        bool showingTemplates, templatesForEmptyList, hasBackHeading;
         string selectedId, selectedRun, draftTemplate;
         string draftInput = "";
         string draftError;
@@ -65,6 +87,7 @@ namespace Dafeiyu
             this.runtime = runtime;
             Name = "ScheduledTasksPage";
             search = Input("", () => TextResources.Get("scheduledTasks.search"), "ScheduledTaskSearch");
+            LocalizedUi.Automation(tasks, () => TextResources.Get("scheduledTasks.noSelection"));
             search.TextChanged += delegate { RefreshList(); };
             tasks.SelectionChanged += delegate
             {
@@ -153,7 +176,7 @@ namespace Dafeiyu
                     var captions = new StackPanel();
                     captions.Children.Add(Caption(() => task.Definition.Title, 14, true));
                     captions.Children.Add(Caption(() => NextText(task.Next(DateTimeOffset.UtcNow, TimeZoneInfo.Local)), 11));
-                    items.Add(new ListBoxItem { Tag = task.Definition.Id, Content = captions });
+                    items.Add(TaskItem(task.Definition.Id, captions));
                 }
                 tasks.ItemsSource = items;
                 tasks.SelectedItem = items.FirstOrDefault(item => (string)item.Tag == selectedId && !drafting);
@@ -161,41 +184,50 @@ namespace Dafeiyu
             finally { rebuilding = false; }
         }
 
-        void RenderDetails(bool scrollTop, bool openTemplates = false)
+        static ListBoxItem TaskItem(string id, Element content)
+        {
+            var item = new ListBoxItem { Tag = id, Content = content, Padding = new Thickness(8, 4, 8, 4),
+                Margin = new Thickness(0, 2, 0, 2), HorizontalContentAlignment = HorizontalAlignment.Stretch };
+#if NET10_0
+            SettingsVisual.NavigationItem(item);
+#else
+            item.Template = TaskItemTemplate.Value;
+            item.FocusVisualStyle = null;
+#endif
+            return item;
+        }
+
+        void RenderDetails(bool scrollTop)
         {
             var snapshots = runtime.List();
             var task = snapshots.FirstOrDefault(item => item.Definition.Id == selectedId);
             bool empty = snapshots.Count == 0;
-            bool templates = task == null && (empty || openTemplates || (showingTemplates && !scrollTop));
+            bool templates = task == null;
             if (templates && showingTemplates && templatesForEmptyList == empty && !scrollTop) return;
             details.Children.Clear();
             composer.Children.Clear();
             templatesForEmptyList = empty;
-            SetStarterLayout(templates);
+            SetDetailLayout(templates, !templates);
             if (scrollTop) detailScroll.ScrollToHome();
             if (task == null)
             {
-                if (templates)
-                {
-                    if (empty) details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.empty"), 25, true));
-                    details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.emptyHint")));
-                    if (starterTemplates == null) starterTemplates = CreateStarterTemplates();
-                    details.Children.Add(starterTemplates);
-                }
-                else details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.noSelection"), 25, true));
+                if (empty) details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.empty"), 25, true));
+                details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.emptyHint"), empty ? 14 : 18, !empty));
+                if (starterTemplates == null) starterTemplates = CreateStarterTemplates();
+                details.Children.Add(starterTemplates);
                 return;
             }
             var definition = task.Definition;
-            details.Children.Add(Caption(() => definition.Title, 25, true));
-            details.Children.Add(Caption(() => definition.Content));
-            details.Children.Add(Caption(() => NextText(task.Next(DateTimeOffset.UtcNow, TimeZoneInfo.Local))));
+            var taskBody = AddBackHeading(() => definition.Title);
+            taskBody.Children.Add(Caption(() => definition.Content));
+            taskBody.Children.Add(Caption(() => NextText(task.Next(DateTimeOffset.UtcNow, TimeZoneInfo.Local))));
             var delete = ButtonFor(() => TextResources.Get("common.delete"), "DeleteScheduledTask", () => DeleteTask(definition));
             delete.IsEnabled = !task.Runs.Any(run => run.State == ScheduledRunState.Running);
-            details.Children.Add(Actions(ButtonFor(() => TextResources.Get("scheduledTasks.edit"), "EditScheduledTask", () => Edit(definition)),
+            taskBody.Children.Add(Actions(ButtonFor(() => TextResources.Get("scheduledTasks.edit"), "EditScheduledTask", () => Edit(definition)),
                 ButtonFor(definition.Enabled ? (Func<string>)(() => TextResources.Get("scheduledTasks.pause")) : () => TextResources.Get("scheduledTasks.enable"),
                     "ToggleScheduledTask", () => TryAction(() => runtime.SetEnabled(definition.Id, !definition.Enabled))), delete));
-            details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.history"), 18, true));
-            if (task.Runs.Count == 0) details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.noHistory")));
+            taskBody.Children.Add(Caption(() => TextResources.Get("scheduledTasks.history"), 18, true));
+            if (task.Runs.Count == 0) taskBody.Children.Add(Caption(() => TextResources.Get("scheduledTasks.noHistory")));
             foreach (var run in task.Runs)
             {
                 var row = new StackPanel();
@@ -212,14 +244,15 @@ namespace Dafeiyu
                     result.Content = body;
                     row.Children.Add(result);
                 }
-                details.Children.Add(Card(row));
+                taskBody.Children.Add(Card(row));
             }
         }
 
-        void SetStarterLayout(bool show)
+        void SetDetailLayout(bool showTemplates, bool backHeading)
         {
-            showingTemplates = show;
-            details.MaxWidth = show ? 760 : Double.PositiveInfinity;
+            showingTemplates = showTemplates;
+            hasBackHeading = backHeading;
+            details.MaxWidth = showTemplates ? 760 : Double.PositiveInfinity;
             ResizeRail();
         }
 
@@ -230,7 +263,7 @@ namespace Dafeiyu
             var railMargin = new Thickness(width < 180 ? 10 : 16, 16, width < 180 ? 10 : 16, 16);
             if (rail.Margin != railMargin) rail.Margin = railMargin;
             double inset = showingTemplates && pageWidth < 540 ? 16 : 26;
-            double gutter = drafting ? DraftGutter : 0;
+            double gutter = hasBackHeading ? HeadingGutter : 0;
             var contentMargin = new Thickness(inset - gutter, 18, inset, 18);
             if (content.Margin != contentMargin) content.Margin = contentMargin;
             composer.Margin = new Thickness(gutter, 0, 0, 0);
@@ -356,8 +389,9 @@ namespace Dafeiyu
             RenderDraft(true);
         }
 
-        void ReturnToTemplates()
+        internal void ShowTemplates()
         {
+            if (showingTemplates) return;
             drafting = false;
             var pending = draftCancellation;
             draftCancellation = null;
@@ -365,13 +399,19 @@ namespace Dafeiyu
             if (pending != null) pending.Cancel();
             selectedId = selectedRun = null;
             RefreshList();
-            RenderDetails(true, true);
+            RenderDetails(true);
+        }
+
+        void ReturnToTemplates()
+        {
+            string previousTile = drafting ? draftTemplate : null;
+            ShowTemplates();
             var tiles = starterTemplates.Children.OfType<Button>();
-            var target = tiles.FirstOrDefault(tile => tile.Name == draftTemplate) ?? tiles.First();
+            var target = tiles.FirstOrDefault(tile => tile.Name == previousTile) ?? tiles.First();
             target.Focus();
         }
 
-        Grid DraftHeading()
+        StackPanel AddBackHeading(Func<string> caption)
         {
             Func<string> label = () => TextResources.Get("common.back");
 #if NET10_0
@@ -393,7 +433,7 @@ namespace Dafeiyu
             back.HorizontalContentAlignment = HorizontalAlignment.Center;
             back.VerticalContentAlignment = VerticalAlignment.Center;
             LocalizedUi.Tooltip(back, label);
-            var title = Caption(() => TextResources.Get("scheduledTasks.draft"), 25, true);
+            var title = Caption(caption, 25, true);
             title.Margin = new Thickness(0);
             title.VerticalAlignment = VerticalAlignment.Center;
             var heading = new Grid { Margin = new Thickness(0, 0, 0, 7) };
@@ -402,17 +442,18 @@ namespace Dafeiyu
             heading.Children.Add(back);
             Grid.SetColumn(title, 1);
             heading.Children.Add(title);
-            return heading;
+            details.Children.Add(heading);
+            var body = new StackPanel { Margin = new Thickness(HeadingGutter, 0, 0, 0) };
+            details.Children.Add(body);
+            return body;
         }
 
         void RenderDraft(bool focus)
         {
-            SetStarterLayout(false);
+            SetDetailLayout(false, true);
             details.Children.Clear();
             composer.Children.Clear();
-            details.Children.Add(DraftHeading());
-            var body = new StackPanel { Margin = new Thickness(DraftGutter, 0, 0, 0) };
-            details.Children.Add(body);
+            var body = AddBackHeading(() => TextResources.Get("scheduledTasks.draft"));
             if (turns.Count == 0) body.Children.Add(Caption(() => TextResources.Get("scheduledTasks.draftPrompt")));
             foreach (var turn in turns)
             {

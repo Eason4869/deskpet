@@ -8,6 +8,11 @@ internal sealed partial class ChatWindow
     CompanionHomePage? companionPage;
     private ScheduledTasksPage? scheduledTasksPage;
     internal void ShowCompanionPage()=>Navigate("companion");
+    private void ShowScheduledTemplates()
+    {
+        Navigate(ScheduledTasksRoute);
+        scheduledTasksPage!.ShowTemplates();
+    }
     internal void ShowScheduledTask(string taskId, string runId)
     {
         Navigate(ScheduledTasksRoute);
@@ -25,6 +30,7 @@ internal sealed partial class ChatWindow
                 scheduledTasksPage = new ScheduledTasksPage(owner.ScheduledTasks);
                 scheduledTasksPage.ShowMissedRequested += owner.ShowScheduledMissed;
             }
+            scheduledTasksPage.ShowTemplates();
             return scheduledTasksPage;
         }
         return CurrentPage=="images"?imageWorkspace:chatPage;

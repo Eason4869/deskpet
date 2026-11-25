@@ -169,7 +169,7 @@ internal sealed partial class ChatWindow : Window
         foreach (var button in new[] { routeBack, routeForward, chatNav, imagesNav }) nav.Children.Add(button);
         if (!compactNavigation)
         {
-            scheduledTasksNav = LocalizedUi.Button(() => TextResources.Get("scheduledTasks.title"), () => Navigate(ScheduledTasksRoute));
+            scheduledTasksNav = LocalizedUi.Button(() => TextResources.Get("scheduledTasks.title"), ShowScheduledTemplates);
             scheduledTasksNav.Name = "ScheduledTasksNavigation";
             nav.Children.Add(scheduledTasksNav);
         }

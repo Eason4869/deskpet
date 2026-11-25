@@ -11,6 +11,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Dafeiyu;
 using Dafeiyu.Maintenance;
 using DeskPet.Desktop;
@@ -226,6 +227,24 @@ internal static class FeatureNavigationUiChecks
                 Click(Named<Button>(secondNotice, "OpenTrayNotification"));
                 Check(!ReferenceEquals(firstNotice, secondNotice) && (list.SelectedItem as ListBoxItem)?.Tag as string == pending[1].TaskId,
                     "native second reminder notification opens its own task");
+                destination.UpdateLayout();
+                var selected = (ListBoxItem)list.SelectedItem!;
+                var selection = selected.GetVisualDescendants().OfType<Border>().Single(border => border.CornerRadius.TopLeft == 9);
+                Check(selection.Background is ISolidColorBrush fill && fill.Color == DesktopTheme.Brush("#EDF3FF").Color,
+                    "native saved task has the rounded theme selection");
+                selected.Focus();
+                Check(selection.BorderBrush is ISolidColorBrush stroke && stroke.Color == ((ISolidColorBrush)SettingsVisual.Accent).Color,
+                    "native task selection keeps a rounded keyboard focus border");
+                Click(Named<Button>(destination, "BackToScheduledTaskTemplates"));
+                Check(Named<UniformGrid>(destination, "ScheduledTaskTemplates").Children.Count == 6 &&
+                    list.SelectedItem == null && list.Items.Count == 2,
+                    "native saved task Back restores templates while retaining both tasks");
+                list.SelectedIndex = 0;
+                Click(Named<Button>(destination, "ImagesNavigation"));
+                Click(Named<Button>(destination, "ScheduledTasksNavigation"));
+                Check(Named<UniformGrid>(destination, "ScheduledTaskTemplates").Children.Count == 6 &&
+                    list.SelectedItem == null && list.Items.Count == 2,
+                    "native scheduling opens the templates when saved tasks exist");
             }
             finally
             {
