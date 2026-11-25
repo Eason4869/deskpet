@@ -86,8 +86,9 @@ namespace Dafeiyu
             string workspacePath = project.Workspace;
             string projectId = project.Id;
             string configuredLink = project.GitHubRepositoryLink;
-            string token = action == GitHubWorkspaceAction.PullRequest ? GitHubAppConnection.ReadToken(pet.Settings) : null;
-            if (token != null && token.Length == 0)
+            bool requiresGitHub = action == GitHubWorkspaceAction.PullRequest;
+            var connection = requiresGitHub ? pet.Settings.Copy() : null;
+            if (requiresGitHub && !GitHubAppConnection.IsConnected(connection))
             {
                 CloseTransientSummary();
                 ReportGitHubNotice(sourceSession, TextResources.Get("workSummary.gitHub.noToken"));
@@ -107,7 +108,7 @@ namespace Dafeiyu
                     cancel.CancelAfter(TimeSpan.FromSeconds(20));
                     var git = new GitHubAppGit();
                     var snapshot = await Task.Run(() => git.Inspect(workspacePath, repository, action, cancel.Token), cancel.Token);
-                    using (var client = token == null ? null : GitHubClient.ForApp(snapshot.Repository, token))
+                    using (var client = requiresGitHub ? GitHubClient.ForConnection(snapshot.Repository, connection) : null)
                     {
                         string baseBranch = client == null ? null : await client.GetDefaultBranchAsync(cancel.Token);
                         cancel.CancelAfter(Timeout.InfiniteTimeSpan);
@@ -121,7 +122,7 @@ namespace Dafeiyu
                             var current = SummaryProject;
                             if (closed || !ReferenceEquals(sourceSession, session) || current == null || current.Id != projectId ||
                                 current.Workspace != workspacePath || current.GitHubRepositoryLink != configuredLink ||
-                                (client != null && token != GitHubAppConnection.ReadToken(pet.Settings)))
+                                (client != null && !GitHubAppConnection.SameConnection(connection, pet.Settings)))
                             {
                                 ReportGitHubNotice(sourceSession, TextResources.Get("workSummary.gitHub.changed"));
                                 return;
@@ -149,7 +150,7 @@ namespace Dafeiyu
                         }
                     }
                 }
-                catch (GitHubAppGitException error) { ReportGitHubNotice(sourceSession, GitFailure(error.Key)); }
+                catch (GitHubAppGitException error) { ReportGitHubNotice(sourceSession, error.LocalizedMessage()); }
                 catch (OperationCanceledException) { ReportGitHubNotice(sourceSession, MutationFailure(action, attemptedMutation)); }
                 catch (Exception error)
                 {
@@ -170,20 +171,6 @@ namespace Dafeiyu
             if (attempted && action == GitHubWorkspaceAction.PullRequest) return TextResources.Get("workSummary.gitHub.pullFailed");
             if (attempted && action == GitHubWorkspaceAction.Push) return TextResources.Get("workSummary.gitHub.pushFailed");
             return TextResources.Get("workSummary.gitHub.operationFailed");
-        }
-
-        static string GitFailure(string key)
-        {
-            switch (key)
-            {
-                case "workSummary.gitHub.invalidWorktree": return TextResources.Get("workSummary.gitHub.invalidWorktree");
-                case "workSummary.gitHub.changed": return TextResources.Get("workSummary.gitHub.changed");
-                case "workSummary.gitHub.noStaged": return TextResources.Get("workSummary.gitHub.noStaged");
-                case "workSummary.gitHub.invalidInput": return TextResources.Get("workSummary.gitHub.invalidInput");
-                case "workSummary.gitHub.incompatiblePush": return TextResources.Get("workSummary.gitHub.incompatiblePush");
-                case "workSummary.gitHub.pushFailed": return TextResources.Get("workSummary.gitHub.pushFailed");
-                default: return TextResources.Get("workSummary.gitHub.operationFailed");
-            }
         }
 
         void ReportGitHubNotice(ConversationSession source, string message)

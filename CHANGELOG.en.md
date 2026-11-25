@@ -18,7 +18,8 @@
 
 - The Windows work summary groups Git changes, plans, goals, and subagents. Completed subagents stay available, with details in the right pane. Approval prompts and questions appear above the composer.
 - In Windows Work conversations, use `+` or `@` to set a goal or start a plan. Confirm to leave plan mode and execute the selected plan.
-- The Windows Plugins page adds GitHub and Gmail. Connect GitHub to commit, push, and open pull requests from the workspace. Gmail access is read-only, and one-click authorization depends on DeskPet's Google OAuth configuration and approval.
+- On Windows, connect through your existing GitHub CLI login or open device authorization from DeskPet. Fine-grained personal access tokens remain available. With workspace approvals, the agent can create repositories, commit selected files, push branches, and open pull requests. New repositories default to private.
+- The Windows Plugins page adds read-only Gmail access. One-click authorization depends on DeskPet's Google OAuth configuration and approval.
 
 Upgrading from 1.0.5 also brings the post-update release notes, work task recovery, and uninstall wizard improvements listed under the 1.0.6 source tag below.
 

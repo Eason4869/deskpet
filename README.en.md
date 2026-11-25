@@ -76,6 +76,12 @@ Reopen an interrupted work conversation to review saved replies, tool progress a
 
 Open **Work summary** at the top of the conversation for the current task’s net file changes, side chats, subagents and recent sources. Use it to open a change, switch to a side chat, browse sent attachments and reply links, start a side chat or add an attachment. When the project's Git `origin` points to GitHub, the summary shows the repository and branch. Click the repository to open it in your default browser. Use **Link GitHub repository** next to File changes to specify the repository for a named project.
 
+### Work with GitHub from a workspace conversation
+
+Windows can use your existing GitHub CLI login. After installing GitHub CLI, open **Plugins → GitHub → Manage connection**. Choose **Open device authorization**, approve it on GitHub, then choose **Connect with GitHub CLI**. If CLI is already signed in, connect directly. Fine-grained personal access tokens are also available as a fallback.
+
+Ask the Work agent to create a repository, link the current workspace to it, commit selected files, push the current branch, or open a pull request. The agent follows the workspace approval flow. Repositories start private by default, and commits preserve unrelated staged files. Push both branches to the same repository before creating a pull request.
+
 ### Web search and source citations
 
 Open **Settings → Tools and connections → Web search**, enable it, choose native model search, an external search provider or a custom endpoint with a compatible API format, then save. Native search requires support from the selected model service. External providers use separate addresses and credentials and may incur additional charges. Ordinary chat, quick chat and work mode can use web search. Enable **Show source citations** to include retrieved sources at the bottom of replies.

@@ -65,6 +65,16 @@ namespace Dafeiyu
             accountActions.Children.Add(connect);
             accountActions.Children.Add(createToken);
             details.Children.Add(accountActions);
+            var cliActions = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
+            var connectCli = LocalizedUi.Button(() => TextResources.Get("gitHubApp.cliConnect"), true);
+            connectCli.Name = "ConnectGitHubCli";
+            connectCli.Click += async delegate { await ConnectCliAsync(); };
+            var loginCli = LocalizedUi.Button(() => TextResources.Get("gitHubApp.cliLogin"));
+            loginCli.Name = "AuthorizeGitHubCli";
+            loginCli.Click += delegate { OpenCliLogin(); };
+            cliActions.Children.Add(connectCli);
+            cliActions.Children.Add(loginCli);
+            details.Children.Add(cliActions);
 
             repository.Name = "GitHubAppDefaultRepository";
             repository.MaxLength = 300;
@@ -106,16 +116,19 @@ namespace Dafeiyu
 
         void Refresh()
         {
-            bool connected = GitHubAppConnection.ReadToken(pet.Settings).Length > 0;
+            bool connected = GitHubAppConnection.IsConnected(pet.Settings);
+            string account = GitHubClient.UsesCli(pet.Settings) ? pet.Settings.GitHubCliAccount : login;
             LocalizedUi.Set(connection, "Text", () => !connected ? TextResources.Get("gitHubApp.disconnected") :
-                String.IsNullOrEmpty(login) ? TextResources.Get("gitHubApp.connected") : TextResources.Format("gitHubApp.connectedAs", login));
+                String.IsNullOrEmpty(account) ? TextResources.Get("gitHubApp.connected") : TextResources.Format("gitHubApp.connectedAs", account));
             disconnect.Visibility = connected ? Visibility.Visible : Visibility.Collapsed;
-            using (var value = token.SecurePassword) connect.IsEnabled = value.Length > 0;
+            using (var value = token.SecurePassword) connect.IsEnabled = value.Length > 0 ||
+                (GitHubClient.UsesCli(pet.Settings) && GitHubAppConnection.ReadToken(pet.Settings).Length > 0);
         }
 
         async Task ConnectAsync()
         {
             string value = token.Password.Trim();
+            if (value.Length == 0 && GitHubClient.UsesCli(pet.Settings)) value = GitHubAppConnection.ReadToken(pet.Settings);
             if (!Regex.IsMatch(value, @"\Agithub_pat_[A-Za-z0-9_]{20,500}\z"))
             {
                 ShowStatus(() => TextResources.Get("gitHubApp.invalidToken"));
@@ -127,17 +140,59 @@ namespace Dafeiyu
                     confirmedLogin = await client.GetAuthenticatedLoginAsync(cancel);
                 cancel.ThrowIfCancellationRequested();
                 var connectionSettings = new ConnectionSettings { BaseUrl = GitHubClient.PublicApi, Protocol = "github", ApiKey = value };
-                if (!await pet.PersistSettingsAsync(settings => settings.GitHub = connectionSettings.Copy())) return false;
+                if (!await pet.PersistSettingsAsync(settings => {
+                    settings.GitHub = connectionSettings.Copy(); settings.GitHubCliAccount = null;
+                })) return false;
                 login = confirmedLogin;
                 token.Clear();
                 return true;
             });
         }
 
+        async Task ConnectCliAsync()
+        {
+            var cli = GitHubCliTransport.Find();
+            if (cli == null) { ShowStatus(() => TextResources.Get("gitHubApp.cliUnavailable")); return; }
+            await RunAsync("connectGitHubCli", async cancel => {
+                string account;
+                using (var client = GitHubClient.ForCli(null, "", cli))
+                    account = await client.GetAuthenticatedLoginAsync(cancel);
+                cancel.ThrowIfCancellationRequested();
+                return await pet.PersistSettingsAsync(settings => {
+                    var previous = settings.GitHub;
+                    var connectionSettings = new ConnectionSettings { BaseUrl = GitHubClient.PublicApi, Protocol = GitHubClient.CliProtocol };
+                    if (previous != null && GitHubClient.IsPublicEndpoint(previous.BaseUrl))
+                        connectionSettings.EncryptedKey = previous.EncryptedKey;
+                    settings.GitHub = connectionSettings;
+                    settings.GitHubCliAccount = account;
+                });
+            });
+        }
+
+        void OpenCliLogin()
+        {
+            if (pending != null || disposed) return;
+            var cli = GitHubCliTransport.Find();
+            if (cli == null) { ShowStatus(() => TextResources.Get("gitHubApp.cliUnavailable")); return; }
+            try
+            {
+                cli.OpenLogin();
+                ShowStatus(() => TextResources.Get("gitHubApp.cliLoginPending"));
+            }
+            catch (Exception error)
+            {
+                if (!GitHubAppConnection.IsOperationError(error)) throw;
+                ShowStatus(() => TextResources.Get("gitHubApp.failed"));
+            }
+        }
+
         async Task DisconnectAsync()
         {
             await RunAsync("disconnectGitHub", async cancel => {
-                if (!await pet.PersistSettingsAsync(settings => settings.GitHub = new ConnectionSettings { BaseUrl = GitHubClient.PublicApi, Protocol = "github" })) return false;
+                if (!await pet.PersistSettingsAsync(settings => {
+                    settings.GitHub = new ConnectionSettings { BaseUrl = GitHubClient.PublicApi, Protocol = "github" };
+                    settings.GitHubCliAccount = null;
+                })) return false;
                 login = null;
                 token.Clear();
                 return true;
@@ -200,8 +255,20 @@ namespace Dafeiyu
         internal static string ReadToken(PetSettings settings)
         {
             var github = settings.GitHub;
-            if (github == null || !String.Equals((github.BaseUrl ?? "").TrimEnd('/'), GitHubClient.PublicApi.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)) return "";
+            if (github == null || !GitHubClient.IsPublicEndpoint(github.BaseUrl)) return "";
             return github.ApiKey;
+        }
+
+        internal static bool IsConnected(PetSettings settings)
+        {
+            return GitHubClient.UsesCli(settings) ? GitHubCliTransport.Find() != null : ReadToken(settings).Length != 0;
+        }
+
+        internal static bool SameConnection(PetSettings previous, PetSettings current)
+        {
+            if (previous.GitHub == null || current.GitHub == null) return false;
+            return previous.GitHub.Protocol == current.GitHub.Protocol && previous.GitHub.BaseUrl == current.GitHub.BaseUrl &&
+                previous.GitHub.EncryptedKey == current.GitHub.EncryptedKey && previous.GitHubCliAccount == current.GitHubCliAccount;
         }
 
         internal static bool IsOperationError(Exception error)

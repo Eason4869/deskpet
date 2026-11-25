@@ -127,6 +127,8 @@ namespace Dafeiyu
             cfg.ImageDescriptionOverride=Definition.ImageDescriptionOverride==null?null:Definition.ImageDescriptionOverride.Copy();
             if(project.Id!=ProjectCatalogStore.UnassignedProjectId && project.Id!=ProjectCatalogStore.QuickProjectId){
                 cfg.AgentWorkspace=project.Workspace;cfg.AgentFullAccess=project.FullAccess;cfg.AgentBackupFiles=project.BackupFiles;cfg.AgentPlanMode=project.PlanMode;
+                string repository=WorkSummaryRepository.Normalize(project.GitHubRepositoryLink);
+                if(repository.Length>0)cfg.GitHubRepository=repository;
 #if PORTABLE
                 cfg.AgentGoal=project.Goal;
 #endif

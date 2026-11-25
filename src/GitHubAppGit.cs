@@ -10,6 +10,27 @@ namespace Dafeiyu
 {
     internal enum GitHubWorkspaceAction { Commit, Push, PullRequest }
 
+    internal sealed class GitHubPushAuthentication
+    {
+        internal string Login, CliExecutable, Token;
+
+        internal void Configure(List<string> options, Dictionary<string, string> environment)
+        {
+            if (!String.IsNullOrEmpty(CliExecutable))
+            {
+                string command = "'" + CliExecutable.Replace('\\', '/').Replace("'", "'\\''") + "' auth git-credential";
+                options.AddRange(new[] { "-c", "credential.https://github.com.username=" + Login,
+                    "-c", "credential.https://github.com.helper=!" + command });
+            }
+            else if (!String.IsNullOrEmpty(Token))
+            {
+                const string key = "DESKPET_GITHUB_GIT_AUTHORIZATION";
+                options.Add("--config-env=http.https://github.com/.extraHeader=" + key);
+                environment[key] = "Authorization: Basic " + Convert.ToBase64String(new UTF8Encoding(false).GetBytes(Login + ":" + Token));
+            }
+        }
+    }
+
     internal sealed class GitHubAppGit
     {
         internal sealed class Snapshot
@@ -21,7 +42,10 @@ namespace Dafeiyu
         internal delegate CommandResult RunCommand(string directory, string[] arguments, bool isolated, CancellationToken token);
         readonly RunCommand run;
 
-        internal GitHubAppGit(RunCommand run = null) { this.run = run ?? RunWindows; }
+        internal GitHubAppGit(RunCommand run = null, GitHubPushAuthentication authentication = null)
+        {
+            this.run = run ?? ((directory, arguments, isolated, token) => RunWindows(directory, arguments, isolated, token, authentication));
+        }
 
         internal Snapshot Inspect(string directory, string repository, GitHubWorkspaceAction action, CancellationToken token)
         {
@@ -88,7 +112,7 @@ namespace Dafeiyu
             if (result.ExitCode != 0) throw Problem("operationFailed");
         }
 
-        internal void Push(Snapshot confirmed, CancellationToken token)
+        internal void Push(Snapshot confirmed, CancellationToken token, Action beforePush = null)
         {
             Verify(confirmed, GitHubWorkspaceAction.Push, token);
             string source = confirmed.Directory;
@@ -108,6 +132,7 @@ namespace Dafeiyu
                 var alternate = Path.Combine(scratch, "objects", "info", "alternates");
                 File.WriteAllText(alternate, objects.Replace('\\', '/') + "\n", new UTF8Encoding(false));
                 if (File.Exists(shallow)) File.Copy(shallow, Path.Combine(scratch, "shallow"));
+                if (beforePush != null) beforePush();
                 var result = Execute(scratch, true, token, "push", "--no-verify", "--no-follow-tags", "--no-signed", "--",
                     confirmed.Remote, confirmed.Revision + ":refs/heads/" + confirmed.Branch);
                 if (result.ExitCode != 0) throw Problem("pushFailed");
@@ -177,14 +202,36 @@ namespace Dafeiyu
 
         internal static CommandResult RunWindows(string directory, string[] arguments, bool isolated, CancellationToken token)
         {
+            return RunWindows(directory, arguments, isolated, token, null);
+        }
+
+        internal static CommandResult RunProjectGit(string directory, string[] arguments, CancellationToken token)
+        {
+            return RunWindows(directory, arguments, false, token, null, true);
+        }
+
+        static CommandResult RunWindows(string directory, string[] arguments, bool isolated, CancellationToken token,
+            GitHubPushAuthentication authentication, bool projectConfigOnly = false)
+        {
             var options = new List<string> { "--no-pager", "-c", "core.hooksPath=NUL", "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-c", "core.longpaths=true",
                 "-c", "color.ui=false", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "-c", "submodule.recurse=false", "-c", "push.recurseSubmodules=no",
                 "-c", "protocol.allow=never", "-c", "credential.helper=", "-c", "commit.gpgSign=false" };
             var environment = new Dictionary<string, string> { { "GIT_TERMINAL_PROMPT", "0" }, { "GIT_NO_LAZY_FETCH", "1" } };
+            if (projectConfigOnly)
+            {
+                environment["GIT_CONFIG_NOSYSTEM"] = "1";
+                environment["GIT_CONFIG_GLOBAL"] = "NUL";
+                environment["GIT_ATTR_NOSYSTEM"] = "1";
+                options.AddRange(new[] { "-c", "core.attributesFile=NUL" });
+            }
             if (isolated)
             {
                 options.AddRange(new[] { "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "-c", "http.followRedirects=false",
-                    "-c", "credential.helper=manager", "-c", "credential.interactive=false" });
+                    "-c", "credential.interactive=false" });
+                bool authenticatePush = authentication != null && arguments.Length >= 6 && arguments[0] == "push" &&
+                    arguments[5].StartsWith("https://github.com/", StringComparison.OrdinalIgnoreCase);
+                if (authenticatePush) authentication.Configure(options, environment);
+                else options.AddRange(new[] { "-c", "credential.helper=manager" });
                 environment["GIT_CONFIG_NOSYSTEM"] = "1";
                 environment["GIT_CONFIG_GLOBAL"] = "NUL";
                 environment["GCM_INTERACTIVE"] = "Never";
@@ -208,5 +255,21 @@ namespace Dafeiyu
     {
         internal GitHubAppGitException(string key) { Key = key; }
         internal string Key { get; private set; }
+
+        internal string LocalizedMessage()
+        {
+            switch (Key)
+            {
+                case "workSummary.gitHub.invalidWorktree": return TextResources.Get("workSummary.gitHub.invalidWorktree");
+                case "workSummary.gitHub.changed": return TextResources.Get("workSummary.gitHub.changed");
+                case "workSummary.gitHub.noStaged": return TextResources.Get("workSummary.gitHub.noStaged");
+                case "workSummary.gitHub.invalidInput": return TextResources.Get("workSummary.gitHub.invalidInput");
+                case "workSummary.gitHub.incompatiblePush": return TextResources.Get("workSummary.gitHub.incompatiblePush");
+                case "workSummary.gitHub.pushFailed": return TextResources.Get("workSummary.gitHub.pushFailed");
+                case "workSummary.gitHub.selectedCommitFailedAfterPreparation":
+                    return TextResources.Get("workSummary.gitHub.selectedCommitFailedAfterPreparation");
+                default: return TextResources.Get("workSummary.gitHub.operationFailed");
+            }
+        }
     }
 }

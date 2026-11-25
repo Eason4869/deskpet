@@ -70,6 +70,12 @@ namespace Dafeiyu.Tests
                 host.Width=360;Pump();
                 var appsScroll=Control<ScrollViewer>(page,"ManagedAppsScroll");
                 Check(appsScroll.ExtentWidth<=appsScroll.ViewportWidth+1,"Apps fits the narrow plugin page");
+                Click(page,"ManageGitHubApp");
+                Check(Control<Button>(page,"ConnectGitHubCli").IsVisible&&Control<Button>(page,"AuthorizeGitHubCli").IsVisible&&
+                    Control<PasswordBox>(page,"GitHubAppToken").IsVisible&&String.IsNullOrEmpty(pet.Settings.GitHubCliAccount),
+                    "GitHub management keeps CLI device authorization and PAT available without signing in automatically");
+                Check(appsScroll.ExtentWidth<=appsScroll.ViewportWidth+1,"GitHub connection controls fit the narrow plugin page");
+                Click(page,"ManageGitHubApp");
                 host.Width=1050;Pump();
                 Click(page,"PluginsMcpTab");
                 Check(ReferenceEquals(Control<TextBox>(page,"McpServerName"),mcpName)&&mcpName.Text=="unsaved plugin fixture",

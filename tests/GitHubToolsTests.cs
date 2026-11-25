@@ -22,6 +22,9 @@ namespace Dafeiyu.Tests
                 if(request.Content!=null)Body=request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 string json=path.Contains("/contents/")?"{\"type\":\"file\",\"encoding\":\"base64\",\"content\":\"" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("hello github")) + "\"}":path.Contains("/issues")?"{\"number\":7,\"title\":\"bug\",\"body\":\"body\"}":"{\"ok\":true}";
                 if(path=="/user" && request.Headers.UserAgent.Count>0)json="{\"login\":\"fixture-user\"}";
+                if(path=="/user/repos")json="{\"full_name\":\"fixture-user/new-repo\",\"default_branch\":\"main\",\"private\":true,\"html_url\":\"https://example.test/untrusted\"}";
+                if(path=="/repos/fixture-user/new-repo")json="{\"full_name\":\"fixture-user/new-repo\",\"default_branch\":\"main\"}";
+                if(path=="/repos/fixture-user/new-repo/pulls")json="{\"number\":18}";
                 if(path=="/repos/fixture/sample")json="{\"default_branch\":\"trunk\"}";
                 if(path=="/repos/fixture/sample/pulls")json="{\"number\":17,\"html_url\":\"https://example.test/untrusted\"}";
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK){Content=new StringContent(json)});
@@ -62,6 +65,9 @@ namespace Dafeiyu.Tests
                 var web=client.ExecuteAsync("fetch_url",new Dictionary<string,object>{{"url","https://example.test/page"}},CancellationToken.None).GetAwaiter().GetResult();
                 Check(web.Length>0 && handler.Requests.Count>=3,"FetchUrl returns bounded readable web text");
                 GitHubAppApi();
+                CreateRepositoryWithoutAnExistingBinding();
+                AuthenticatedTransportChecksAccountBeforeWriting();
+                AgentGitHubWorkflow();
                 GitHubAppWorkspace();
                 GitWorkspaceChangesRead();
                 foreach(string tool in new[]{"fetch_url","github_read_issue"})foreach(string mode in new[]{"http","network","body","timeout"})
@@ -103,6 +109,144 @@ namespace Dafeiyu.Tests
                     payload["title"]=="Fix tests" && payload["body"]=="Details" && payload["head"]=="feature/check" && payload["base"]=="trunk",
                     "GitHub app sends the confirmed pull request and opens its canonical GitHub URL");
             }
+        }
+
+        static void CreateRepositoryWithoutAnExistingBinding()
+        {
+            var handler = new Handler();
+            using (var client = GitHubClient.ForApp(null, "fixture-token", handler))
+            {
+                var arguments = new Dictionary<string, object> { { "name", "new-repo" } };
+                string result = client.ExecuteAsync("github_create_repository", arguments, CancellationToken.None).GetAwaiter().GetResult();
+                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                var repository = serializer.Deserialize<Dictionary<string, string>>(result);
+                var payload = serializer.Deserialize<Dictionary<string, object>>(handler.Body);
+                Check(handler.Requests.SequenceEqual(new[] {
+                    "GET https://api.github.com/user auth=Bearer fixture-token",
+                    "POST https://api.github.com/user/repos auth=Bearer fixture-token"
+                }) && (bool)payload["private"] && (string)payload["name"] == "new-repo",
+                    "Repository creation requires the authenticated account and defaults to private without an existing repository binding");
+                Check(repository["repository"] == "fixture-user/new-repo" &&
+                    repository["url"] == "https://github.com/fixture-user/new-repo" && repository["default_branch"] == "main",
+                    "Repository creation returns the canonical repository identity and ignores response URLs");
+                arguments["name"] = "another-user/other-repo";
+                bool rejected = false;
+                try { client.ExecuteAsync("github_create_repository", arguments, CancellationToken.None).GetAwaiter().GetResult(); }
+                catch (ArgumentException) { rejected = true; }
+                Check(rejected && handler.Requests.Count == 2, "Repository creation rejects cross-account names before contacting GitHub");
+            }
+        }
+
+        static void AuthenticatedTransportChecksAccountBeforeWriting()
+        {
+            var factory = typeof(GitHubClient).GetMethod("WithApiTransport",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            Check(factory != null, "GitHub API accepts a delegated authentication transport");
+            var requests = new List<string>();
+            string activeLogin = "fixture-user";
+            Func<HttpMethod, string, string, CancellationToken, Task<string>> transport = (method, path, json, token) => {
+                requests.Add(method + " " + path);
+                return Task.FromResult(path == "/user"
+                    ? "{\"login\":\"" + activeLogin + "\"}"
+                    : "{\"number\":17}");
+            };
+            using (var client = (GitHubClient)factory.Invoke(null, new object[] { "fixture/sample", "fixture-user", transport }))
+            {
+                var link = client.CreateAppPullRequestAsync("Title", "Body", "feature", "main", CancellationToken.None).GetAwaiter().GetResult();
+                Check(link.AbsoluteUri == "https://github.com/fixture/sample/pull/17" &&
+                    requests.SequenceEqual(new[] { "GET /user", "POST /repos/fixture/sample/pulls" }),
+                    "A delegated write rechecks the selected account before contacting the mutation endpoint");
+                activeLogin = "different-user";
+                bool rejected = false;
+                try { client.CreateAppPullRequestAsync("Title", "Body", "feature", "main", CancellationToken.None).GetAwaiter().GetResult(); }
+                catch (ApiException) { rejected = true; }
+                Check(rejected && requests.Count == 3 && requests[2] == "GET /user",
+                    "A delegated GitHub write stops before POST when the active account changed");
+                rejected = false;
+                try { client.GetDefaultBranchAsync(CancellationToken.None).GetAwaiter().GetResult(); }
+                catch (ApiException) { rejected = true; }
+                Check(rejected && requests.Count == 4 && requests[3] == "GET /user",
+                    "A switched CLI account cannot be used for repository reads either");
+            }
+        }
+
+        sealed class GitHubApproval : IAgentApprovalProvider
+        {
+            internal bool Allow = true;
+            internal readonly List<AgentApprovalRequest> Requests = new List<AgentApprovalRequest>();
+            public Task<bool> ApproveAsync(AgentApprovalRequest request)
+            {
+                Requests.Add(request);
+                return Task.FromResult(Allow);
+            }
+        }
+
+        static void AgentGitHubWorkflow()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "deskpet-agent-github-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                using (var workspace = new AgentWorkspace(root, true))
+                {
+                    var handler = new Handler();
+                    var approval = new GitHubApproval();
+                    workspace.ConfigureGitHubAutomation(new PetSettings());
+                    workspace.ConfigureGitHub(GitHubClient.ForApp(null, "fixture-token", handler));
+                    var profiles = new AgentProfileRegistry();
+                    workspace.ConfigureKernel(profiles.PermissionRuntime("build"), null, approval, null, null);
+                    workspace.ConfigureAgentProfile(profiles.Get("build"));
+                    workspace.ConfigureDesktopSession();
+                    Func<string, string, string> invoke = (tool, args) =>
+                        workspace.ExecuteAsync(tool, args, CancellationToken.None).GetAwaiter().GetResult();
+                    Check(workspace.AvailableToolNames.Contains("github_create_repository") &&
+                        !workspace.AvailableToolNames.Contains("github_push"),
+                        "The work agent can create a remote before binding a repository and cannot push an unbound project");
+                    workspace.PlanMode = true;
+                    Check(!workspace.AvailableToolNames.Contains("github_create_repository") &&
+                        TextResources.IsToolError(invoke("github_create_repository", "{\"name\":\"new-repo\"}")) &&
+                        handler.Requests.Count == 0, "Plan mode hides GitHub mutations and refuses direct requests");
+                    workspace.PlanMode = false;
+                    string created = invoke("github_create_repository", "{\"name\":\"new-repo\"}");
+                    Check(created.Contains("fixture-user/new-repo"), "The agent creates a private remote through its authorized API connection");
+                    Check(invoke("github_initialize", "{}").Contains("main"), "The agent initializes its own Git worktree");
+                    Git(root, "config", "user.name", "GitHub Automation Fixture");
+                    Git(root, "config", "user.email", "fixture@example.test");
+                    Check(invoke("github_bind", "{\"repository\":\"fixture-user/new-repo\"}").Contains("fixture-user/new-repo"),
+                        "The work agent checks repository identity before binding the approved origin");
+                    File.WriteAllText(Path.Combine(root, "base.txt"), "base");
+                    File.WriteAllText(Path.Combine(root, "keep.txt"), "keep staged");
+                    Git(root, "add", "--", "keep.txt");
+                    string commit = invoke("github_commit", "{\"paths\":[\"base.txt\"],\"message\":\"Initial step\"}");
+                    Check(commit.Contains("commit") && Git(root, "ls-tree", "--name-only", "HEAD").Trim() == "base.txt" &&
+                        Git(root, "diff", "--cached", "--name-only").Trim() == "keep.txt",
+                        "The agent commits exactly the approved file and preserves unrelated staged content");
+                    File.WriteAllText(Path.Combine(root, ".gitattributes"), "*.bin filter=lfs\n");
+                    File.WriteAllText(Path.Combine(root, "blob.bin"), "filtered data");
+                    string head = Git(root, "rev-parse", "HEAD");
+                    Check(TextResources.IsToolError(invoke("github_commit", "{\"paths\":[\"blob.bin\"],\"message\":\"Filtered file\"}")) &&
+                        Git(root, "rev-parse", "HEAD") == head,
+                        "Selected-file commit detects Git filters instead of silently committing unfiltered content");
+                    Check(invoke("github_branch", "{\"branch\":\"fixture-change\"}").Contains("fixture-change"),
+                        "The agent can prepare a separate branch for a pull request");
+                    approval.Allow = false;
+                    Check(TextResources.IsToolError(invoke("github_push", "{}")) &&
+                        approval.Requests.Last().Resource.Contains("fixture-user/new-repo"),
+                        "Push requests specify the approved GitHub destination and cannot run after denial");
+                    approval.Allow = true;
+                    string pull = invoke("github_create_pull_request",
+                        "{\"title\":\"Fixture change\",\"head\":\"fixture-change\",\"base\":\"main\"}");
+                    Check(pull.Contains("\"number\":18") && handler.Requests.Last().Contains("POST https://api.github.com/repos/fixture-user/new-repo/pulls"),
+                        "Creating a branch and opening a pull request use the same verified project repository");
+                    Check(approval.Requests.All(request => request.Action == "github_write"),
+                        "GitHub automation goes through the workspace write-approval boundary");
+                    workspace.ConfigureAgentProfile(profiles.Get("explore"));
+                    Check(!workspace.AvailableToolNames.Contains("github_initialize") &&
+                        TextResources.IsToolError(invoke("github_login", "{\"open_browser\":false}")),
+                        "Subagents cannot invoke the primary work agent's GitHub authorization or Git mutations");
+                }
+            }
+            finally { DeleteGitFixture(root); }
         }
 
         static void GitHubAppWorkspace()

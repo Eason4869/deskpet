@@ -4394,6 +4394,30 @@
       "argument_count": 0
     },
     {
+      "key": "gitHubApp.cliConnect",
+      "expected": "使用 GitHub CLI 连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.cliLogin",
+      "expected": "打开设备授权",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.cliLoginPending",
+      "expected": "请在 GitHub CLI 窗口完成设备授权，再继续连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.cliUnavailable",
+      "expected": "未找到 GitHub CLI。请安装后重试，或使用个人访问令牌。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "gitHubApp.connect",
       "expected": "验证并连接",
       "format": false,
@@ -4876,6 +4900,12 @@
     {
       "key": "workSummary.gitHub.pushed",
       "expected": "已推送当前分支。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.selectedCommitFailedAfterPreparation",
+      "expected": "提交失败。已选的新文件可能仍标记为待添加，其他暂存文件已保留。",
       "format": false,
       "argument_count": 0
     },
