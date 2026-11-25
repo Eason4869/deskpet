@@ -20,7 +20,7 @@ namespace Dafeiyu
             if(quick!=null){quick.OpenBrowserLink(uri);return true;}
             return false;
         }
-        static void OpenExternally(Uri uri)
+        internal static void OpenExternally(Uri uri)
         {try{Process.Start(new ProcessStartInfo(uri.AbsoluteUri){UseShellExecute=true});}catch(System.ComponentModel.Win32Exception){}catch(InvalidOperationException){}}
         internal static ContextMenu Create(Hyperlink link)
         {

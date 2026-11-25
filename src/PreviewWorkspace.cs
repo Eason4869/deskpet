@@ -9,17 +9,17 @@ namespace Dafeiyu
 {
     internal sealed class PreviewWorkspace:DockPanel,IDisposable
     {
-        sealed class Tab{internal string Key;internal FrameworkElement View;internal Border Header;internal TextBlock Title;internal FrameworkElement Glyph;internal Button Close;internal bool Pinned;}
+        sealed class Tab{internal string Key;internal FrameworkElement View;internal Border Header;internal TextBlock Title;internal FrameworkElement Glyph;internal Button Close;internal bool Pinned;internal Action SideChatChanged;}
         readonly DockPanel bar=new DockPanel{Background=Ui.Brush("#F8F9FB"),Margin=new Thickness(0,0,0,4)};
         double toolbarSpace=150;
-        readonly List<Tab> tabs=new List<Tab>();readonly StackPanel headers=new StackPanel{Orientation=Orientation.Horizontal};readonly Grid body=new Grid();readonly Action empty,openTerminal;readonly Action<string> warning;bool disposed;Tab lastTool;
+        readonly List<Tab> tabs=new List<Tab>();readonly StackPanel headers=new StackPanel{Orientation=Orientation.Horizontal};readonly Grid body=new Grid();readonly Action empty,openTerminal,sideChatsChanged;readonly Action<string> warning;bool disposed;Tab lastTool;
         internal int Count{get{return tabs.Count;}}
         internal int ToolCount{get{return tabs.Count(t=>!t.Pinned);}}
         internal bool HasConversation{get{return tabs.Any(t=>t.Pinned);}}
         internal FrameworkElement Selected{get;private set;}
-        internal PreviewWorkspace(Action empty,Action openTerminal,Action<string> warning=null)
+        internal PreviewWorkspace(Action empty,Action openTerminal,Action<string> warning=null,Action sideChatsChanged=null)
         {
-            this.empty=empty;this.openTerminal=openTerminal;this.warning=warning;Name="PreviewWorkspace";Background=Ui.Brush("#F8F9FB");
+            this.empty=empty;this.openTerminal=openTerminal;this.warning=warning;this.sideChatsChanged=sideChatsChanged;Name="PreviewWorkspace";Background=Ui.Brush("#F8F9FB");
             var add=UiIcons.Button("add",()=>(TextResources.Get("previewWorkspace.previewWorkspace.uiIcons")));add.Name="NewPreviewTab";add.Width=add.Height=add.MinHeight=36;add.Padding=new Thickness(9);LocalizedUi.Set(add,"ToolTip",()=>(TextResources.Get("previewWorkspace.previewWorkspace.addToolTip")));add.Margin=new Thickness(3,0,4,4);add.VerticalAlignment=VerticalAlignment.Top;add.Click+=delegate{openTerminal();};
             var rail=new StackPanel{Orientation=Orientation.Horizontal};rail.Children.Add(headers);rail.Children.Add(add);
             bar.Children.Add(new ScrollViewer{Name="PreviewTabScroll",Content=rail,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Disabled,Padding=new Thickness(1,1,1,1)});DockPanel.SetDock(bar,Dock.Top);Children.Add(bar);Children.Add(body);SizeChanged+=delegate{FitTabWidths();};
@@ -65,10 +65,17 @@ namespace Dafeiyu
             var pinned=tabs.FirstOrDefault(t=>t.Pinned);if(pinned==null)return;LocalizedUi.Set(pinned.Title,"Text",title);LocalizedUi.Tooltip(pinned.Title,title);LocalizedUi.Tooltip(pinned.Header,title);
         }
         internal void SelectConversation(){var pinned=tabs.FirstOrDefault(t=>t.Pinned);if(pinned!=null)Select(pinned);}
+        internal T[] Pages<T>() where T:FrameworkElement {return tabs.Where(tab=>!tab.Pinned).Select(tab=>tab.View).OfType<T>().ToArray();}
+        internal bool SelectPage(FrameworkElement view)
+        {var tab=tabs.FirstOrDefault(t=>!t.Pinned&&ReferenceEquals(t.View,view));if(tab==null)return false;Select(tab);return true;}
         static string ConversationTitle(string title){return String.IsNullOrWhiteSpace(title)?TextResources.Get("previewWorkspace.conversationTitle.text"):title;}
         void Add(string key,Func<string> title,string icon,FrameworkElement view)
         {
             Add(key,title(),icon,view);var tab=tabs.FirstOrDefault(value=>ReferenceEquals(value.View,view));if(tab==null)return;
+            UpdateTabTitle(tab,title);
+        }
+        static void UpdateTabTitle(Tab tab,Func<string> title)
+        {
             LocalizedUi.Set(tab.Title,"Text",title);LocalizedUi.Tooltip(tab.Header,title);
             if(tab.Close!=null){LocalizedUi.Tooltip(tab.Close,()=>TextResources.Format("previewWorkspace.createTab.closeToolTipTitle",title()));LocalizedUi.Automation(tab.Close,()=>TextResources.Format("previewWorkspace.createTab.uiIcons",title()));}
         }
@@ -76,6 +83,15 @@ namespace Dafeiyu
         {
             if(disposed){Release(view);return;}
             var tab=CreateTab(key,title,icon,view,false);headers.Children.Add(tab.Header);tabs.Add(tab);body.Children.Add(view);Select(tab);
+            var sideChat=view as SideChatPane;
+            if(sideChat!=null)
+            {
+                tab.SideChatChanged=delegate {
+                    if(sideChat.SummaryTitle.Length>0&&tab.Title.Text!=sideChat.SummaryTitle)UpdateTabTitle(tab,()=>sideChat.SummaryTitle);
+                    if(sideChatsChanged!=null)sideChatsChanged();
+                };
+                sideChat.SummaryChanged+=tab.SideChatChanged;tab.SideChatChanged();
+            }
         }
         Tab CreateTab(string key,string title,string icon,FrameworkElement view,bool pinned)
         {
@@ -96,9 +112,10 @@ namespace Dafeiyu
 
         internal void Close(FrameworkElement view)
         {
-            var tab=tabs.FirstOrDefault(t=>ReferenceEquals(t.View,view));if(tab==null||tab.Pinned)return;int index=tabs.IndexOf(tab);bool selected=ReferenceEquals(Selected,view);tabs.Remove(tab);headers.Children.Remove(tab.Header);body.Children.Remove(view);Release(view);FitTabWidths();if(tabs.Count==0){Selected=null;empty();}else if(selected)Select(tabs[Math.Min(index,tabs.Count-1)]);
+            var tab=tabs.FirstOrDefault(t=>ReferenceEquals(t.View,view));if(tab==null||tab.Pinned)return;int index=tabs.IndexOf(tab);bool selected=ReferenceEquals(Selected,view);tabs.Remove(tab);headers.Children.Remove(tab.Header);body.Children.Remove(view);Release(view,tab.SideChatChanged);FitTabWidths();if(tabs.Count==0){Selected=null;empty();}else if(selected)Select(tabs[Math.Min(index,tabs.Count-1)]);
+            if(view is SideChatPane&&sideChatsChanged!=null)sideChatsChanged();
         }
-        void Release(FrameworkElement view){var release=view as IDisposable;if(release==null)return;try{release.Dispose();}catch(Exception error){System.Diagnostics.Trace.WriteLine("Preview cleanup: "+error.GetType().Name);if(warning!=null)try{warning(TextResources.Get("previewWorkspace.release.warning"));}catch(Exception notification){System.Diagnostics.Trace.WriteLine("Preview cleanup notification: "+notification.GetType().Name);}}}
-        public void Dispose(){if(disposed)return;disposed=true;foreach(var tab in tabs.ToArray()){if(tab.Pinned)tab.View.Visibility=Visibility.Visible;else Release(tab.View);}tabs.Clear();headers.Children.Clear();body.Children.Clear();Selected=null;lastTool=null;}
+        void Release(FrameworkElement view,Action sideChatChanged=null){var sideChat=view as SideChatPane;if(sideChat!=null&&sideChatChanged!=null)sideChat.SummaryChanged-=sideChatChanged;var release=view as IDisposable;if(release==null)return;try{release.Dispose();}catch(Exception error){System.Diagnostics.Trace.WriteLine("Preview cleanup: "+error.GetType().Name);if(warning!=null)try{warning(TextResources.Get("previewWorkspace.release.warning"));}catch(Exception notification){System.Diagnostics.Trace.WriteLine("Preview cleanup notification: "+notification.GetType().Name);}}}
+        public void Dispose(){if(disposed)return;disposed=true;foreach(var tab in tabs.ToArray()){if(tab.Pinned)tab.View.Visibility=Visibility.Visible;else Release(tab.View,tab.SideChatChanged);}tabs.Clear();headers.Children.Clear();body.Children.Clear();Selected=null;lastTool=null;}
     }
 }

@@ -38,7 +38,7 @@ namespace Dafeiyu
         {
             if(closed)return;EnsurePreviewWorkspace();filePreview.OpenFile(path);PlaceFilePreview(ActualWidth>=1200);RefreshWorkspaceLayout();
         }
-        void EnsurePreviewWorkspace(){previewVisible=true;tabsHidden=false;resumeConversation=false;if(filePreview==null){var owner=session;filePreview=new PreviewWorkspace(CloseFilePreview,OpenBlankTab,message=>owner.ReportNotice(message));}}
+        void EnsurePreviewWorkspace(){previewVisible=true;tabsHidden=false;resumeConversation=false;if(filePreview==null){var owner=session;filePreview=new PreviewWorkspace(CloseFilePreview,OpenBlankTab,message=>owner.ReportNotice(message),RefreshWorkSummaryOverviews);}}
         internal void OpenBrowserLink(Uri uri)
         {
             if(closed||uri==null||(uri.Scheme!="http"&&uri.Scheme!="https"))return;
@@ -63,7 +63,7 @@ namespace Dafeiyu
         }
         void CloseFilePreview()
         {
-            if(filePreview==null)return;var pane=filePreview;RestoreConversationSurface();conversationPreviews.Remove(session);filePreview=null;fullTabView=false;tabsHidden=false;filePreviewDock.Content=null;filePreviewDock.Visibility=Visibility.Collapsed;pane.Dispose();if(!closed)RefreshWorkspaceLayout();
+            if(filePreview==null)return;var pane=filePreview;RestoreConversationSurface();conversationPreviews.Remove(session);filePreview=null;fullTabView=false;tabsHidden=false;filePreviewDock.Content=null;filePreviewDock.Visibility=Visibility.Collapsed;pane.Dispose();if(!closed){RefreshWorkspaceLayout();RefreshWorkSummaryOverviews();}
         }
 
     }

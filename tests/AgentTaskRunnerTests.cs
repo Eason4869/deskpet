@@ -17,6 +17,22 @@ namespace Dafeiyu.Tests
         static async Task Run(){string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"runner-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);using(var w=new AgentWorkspace(root)){
             w.BeginTask(new AgentTaskState{Workspace=root,Goal="fixture"});var api=new Api();int deltas=0;var request=new AgentRunRequest{Model=new ConnectionSettings{Model="original"},Messages=new List<ChatMessage>{new ChatMessage("user","original input")},Workspace=w,Text=d=>deltas++};var running=new AgentTaskRunner(api).RunAsync(request,CancellationToken.None);request.Model.Model="changed";request.Messages.Clear();Check(api.Seen.Model=="original"&&api.Messages.Count==1&&api.Messages[0].Content=="original input","runner freezes model and history before awaiting");api.Release.SetResult("done");var result=await running;Check(result.Status=="completed"&&w.TaskState.Status=="complete","runner owns actual terminal state without a window");api.Delta("late");Check(deltas==0,"late callbacks after completed run are ignored");
             api=new Api();using(var cancel=new CancellationTokenSource()){var stopped=new AgentTaskRunner(api).RunAsync(new AgentRunRequest{Model=new ConnectionSettings(),Messages=new[]{new ChatMessage("user","cancel")},Workspace=w,Text=d=>deltas++},cancel.Token);cancel.Cancel();result=await stopped;Check(result.Status=="cancelled"&&w.TaskState.Status=="cancelled","runner cancellation reaches model and task state");api.Delta("late cancelled");Check(deltas==0,"cancelled event sink cannot update a later run");}
-        }}
+        }
+            using(var workspace=new AgentWorkspace(root))
+            {
+                string claimsRoot=Path.Combine(root,"claims");
+                var model=new AgentSessionModel("task-runner","project","conversation");
+                workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),null,null,new ExecutionClaimStore(claimsRoot),null,model);
+                workspace.BeginTask(new AgentTaskState{Workspace=root,Goal="completed task"});
+                AgentTaskState published=null;
+                workspace.TaskChanged=state=>published=state;
+                using(File.Open(Path.Combine(claimsRoot,"claims.json"),FileMode.Open,FileAccess.Read,FileShare.None))
+                    workspace.FinishTask("complete","");
+                Check(published!=null&&published.Status=="complete"&&!String.IsNullOrEmpty(published.Notice),
+                    "a failed claim write publishes the real terminal state and storage warning");
+                Check(model.Events.FindAll(e=>e.Type=="task.completed").Count==1,
+                    "a failed claim write preserves one terminal event");
+            }
+        }
     }
 }

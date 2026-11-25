@@ -10,6 +10,7 @@ import atexit
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -100,6 +101,14 @@ public static class Probe {
   string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data");Directory.CreateDirectory(data);
   string tag=args.Length==0?"parent":args[0];
   if(tag=="handle-check"){CheckParentHandle(args[1],data);return;}
+  if(tag=="temp-check") {
+   Environment.SetEnvironmentVariable("TEMP",args[1]);
+   Environment.SetEnvironmentVariable("TMP",args[1]);
+   var method=typeof(Dafeiyu.UninstallHandoff).GetMethod("UninstallerTemp",BindingFlags.NonPublic|BindingFlags.Static);
+   string selected=(string)method.Invoke(null,new object[]{Path.GetDirectoryName(data)});
+   File.WriteAllText(Path.Combine(data,"temp-selected"),selected??"");
+   return;
+  }
   using(var mutex=new Mutex(false,Dafeiyu.ReleaseInfo.InstallationMutex)) {
    bool acquired=mutex.WaitOne(0);if(acquired)mutex.ReleaseMutex();
    File.WriteAllText(Path.Combine(data,tag+"-unowned"),acquired.ToString());
@@ -194,6 +203,21 @@ def launch_job(work,path):
 try:
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER,key_path) as key:
         check(Path(winreg.QueryValueEx(key,'InstallLocation')[0])==directory,'real unique Inno registration belongs to owned directory')
+    safe_temp=ROOT/'separate temp';safe_temp.mkdir()
+    nested_temp=data/'temp';nested_temp.mkdir()
+    linked_temp=ROOT/'linked temp'
+    subprocess.run(['cmd.exe','/d','/c','mklink','/J',str(linked_temp),str(nested_temp)],
+                   check=True,capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW)
+    assert linked_temp.lstat().st_reparse_tag==stat.IO_REPARSE_TAG_MOUNT_POINT
+    for candidate in (safe_temp,nested_temp,linked_temp):
+        probe=start([directory/'桌面伙伴.exe','temp-check',candidate],directory)
+        check(probe.wait(timeout=10)==0,'temp selection completes for '+candidate.name)
+        selected=(data/'temp-selected').read_text(encoding='utf-8-sig')
+        if candidate==safe_temp:
+            check(bool(selected) and Path(selected)==safe_temp,'normal user temp remains in use')
+        else:
+            check(not selected or not Path(selected).resolve().is_relative_to(data.resolve()),
+                  'Inno uses an external temp or omits its explicit live log for '+candidate.name)
     parent=launch_parent()
     work,path=make_job()
     handle_probe=start([directory/'桌面伙伴.exe','handle-check',path],directory)

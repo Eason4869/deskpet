@@ -33,7 +33,7 @@ function KillCarouselTimer(Window: HWND; Id: LongWord): Boolean;
 
 function UiLabel(Parent: TWinControl; Caption: String; X, Y, Width, Height, Size: Integer): TLabel;
 begin
-  Result := TLabel.Create(WizardForm);
+  Result := TLabel.Create(Parent);
   Result.Parent := Parent;
   Result.SetBounds(ScaleX(X), ScaleY(Y), ScaleX(Width), ScaleY(Height));
   Result.AutoSize := False; Result.WordWrap := True;
@@ -110,7 +110,7 @@ end;
 
 procedure RoundInstallerWindow(Sender: TObject);
 begin
-  StyleSetRegion(WizardForm.Handle, StyleRegion(0, 0, WizardForm.Width, WizardForm.Height, ScaleX(24), ScaleY(24)), True);
+  RoundWizardFrame(WizardForm);
 end;
 
 procedure ResetDirectoryClick(Sender: TObject);
@@ -269,7 +269,7 @@ begin
   WizardForm.CancelButton.SetBounds(ScaleX(849), ScaleY(562), ScaleX(110), ScaleY(46)); WizardForm.CancelButton.Caption := '取消安装'; StyleButton(WizardForm.CancelButton, 0);
   WizardForm.BackButton.Visible := False;
   CarouselTimer := SetCarouselTimer(0, 0, 100, CreateCallback(@CarouselTick));
-  InitializeHeaderDrag;
+  InitializeHeaderDrag(HeaderPanel, WizardForm);
   WizardForm.OnResize := @RoundInstallerWindow; RoundInstallerWindow(WizardForm);
 end;
 

@@ -261,6 +261,7 @@ namespace Dafeiyu.Tests
             {
                 foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(FinalReply(anthropic,"prior decisions summarized")),Json(FinalReply(anthropic,"task continued"))}))using(var api=new ApiClient()){
                     var messages=new List<ChatMessage>{new ChatMessage("user","initial goal")};for(int i=0;i<12;i++)messages.Add(new ChatMessage(i%2==0?"assistant":"user",new string('旧',2000)));messages.Add(new ChatMessage("user","latest exact request"));var w=new AgentWorkspace(folder.Path){ContextTokenLimit=8192};w.BeginTask(new AgentTaskState{Workspace=folder.Path,Goal="latest exact request"});Equal("task continued",await api.ChatAgentAsync(Config(server,anthropic),messages,w,null,null,null,false,CancellationToken.None));await Within(server.Done);Assert(!Object(server.Bodies[0]).ContainsKey("tools"),"summary request exposed tools");Assert(server.Bodies[1].Contains("prior decisions summarized") && server.Bodies[1].Contains("latest exact request"),"compacted request lost summary or current intent");Equal(1,w.TaskState.ContextCompactions);
+                    Equal(2,w.TaskState.ModelRequests);
                 }
             });
             Run("oversized guidance is retained before native request or checkpoint overflow",async delegate
@@ -294,6 +295,99 @@ namespace Dafeiyu.Tests
                     }
                 }
             });
+            Run("desktop task and persisted kernel step each reach one terminal state",async delegate
+            {
+                foreach(bool succeeds in new[]{true,false})
+                using(var folder=new WorkspaceFolder())
+                using(var server=new Fixture(new[]{Json(succeeds?FinalReply(false,"finished"):"{}")}))
+                using(var api=new ApiClient())
+                using(var session=new ConversationSession(api,new SilentSpeech(),()=>null))
+                {
+                    var settings=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,ReadReplies=false,Text=Config(server,false)};
+                    settings.Text.StreamReplies=false;
+                    var store=new AgentSessionStore(Path.Combine(folder.Path,"kernel-sessions"));
+                    session.ConfigureKernelSession(new AgentSessionModel("session","project","conversation"),store);
+                    Exception failure=null;
+                    try{await session.SendTextAsync("inspect the project",settings,"fixture");}
+                    catch(ApiException error){failure=error;}
+                    await Within(server.Done);
+                    Equal(!succeeds,failure!=null);
+                    var persisted=store.Load("project","conversation");
+                    Equal(succeeds?"idle":"failed",persisted.RecoveryState);
+                    Equal(1,persisted.Events.Count(e=>e.Type=="task.completed"||e.Type=="task.failed"));
+                    Equal(1,persisted.Events.Count(e=>e.Type=="step.completed"||e.Type=="step.failed"));
+                    Equal(succeeds?"complete":"error",session.CurrentAgentTask.Status);
+                }
+            });
+            Run("an in-flight failed request is already counted in Agent progress",async delegate
+            {
+                using(var folder=new WorkspaceFolder())
+                using(var server=new Fixture(new[]{new Reply("{}","",true,"application/json")}))
+                using(var api=new ApiClient())
+                using(var workspace=new AgentWorkspace(folder.Path))
+                {
+                    workspace.BeginTask(new AgentTaskState{Workspace=folder.Path,Goal="inspect"});
+                    var pending=api.ChatAgentAsync(Config(server,false),Messages(),workspace,null,null,null,false,CancellationToken.None);
+                    await WaitCondition(()=>server.Bodies.Count==1);
+                    int countWhileWaiting=workspace.TaskState.ModelRequests;
+                    server.Release(0);
+                    try{await pending;throw new Exception("invalid fixture reply was accepted");}catch(ApiException){}
+                    await Within(server.Done);
+                    Equal(1,countWhileWaiting);
+                    Equal(1,workspace.TaskState.ModelRequests);
+                }
+            });
+            Run("stopping during approval records cancellation without launching the command",async delegate
+            {
+                using(var folder=new WorkspaceFolder())
+                using(var server=new Fixture(new[]{Json(ToolReply(false,"pending-command","exec_command",new{command="Set-Content approval-fixture.txt started"}))}))
+                using(var api=new ApiClient())
+                using(var session=new ConversationSession(api,new SilentSpeech(),()=>null))
+                {
+                    var approval=new PendingApproval();
+                    session.ApprovalProvider=approval;
+                    var settings=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,ReadReplies=false,Text=Config(server,false),
+                        AgentApprovalMode=AgentApprovalMode.Ask,AgentSandboxEnabled=false,AgentTerminalPolicy=AgentTerminalPolicy.ConfirmEach};
+                    settings.Text.StreamReplies=false;
+                    var store=new AgentSessionStore(Path.Combine(folder.Path,"kernel-sessions"));
+                    session.ConfigureKernelSession(new AgentSessionModel("session","project","conversation"),store);
+                    var pending=session.SendTextAsync("run the local fixture",settings,"fixture");
+                    await Within(approval.Entered.Task);
+                    await Within(session.StopAsync());
+                    try{await pending;throw new Exception("approval cancellation was ignored");}
+                    catch(OperationCanceledException){}
+                    await Within(server.Done);
+                    Equal("cancelled",session.CurrentAgentTask.Status);
+                    Equal(1,store.Load("project","conversation").Events.Count(e=>e.Type=="step.cancelled"));
+                    Assert(!File.Exists(Path.Combine(folder.Path,"approval-fixture.txt")),"command ran before approval");
+                }
+            });
+            Run("the main Agent can be stopped after more than 100 tool calls",async delegate
+            {
+                using(var folder=new WorkspaceFolder())
+                using(var stop=new CancellationTokenSource())
+                using(var api=new ApiClient())
+                using(var workspace=new AgentWorkspace(folder.Path){ContextTokenLimit=100000})
+                {
+                    var replies=Enumerable.Range(0,34).Select(round=>{
+                        var calls=Enumerable.Range(0,3).Select(index=>new{id="call-"+round+"-"+index,type="function",
+                            function=new{name="list_files",arguments="{\"path\":\".\"}"}}).ToArray();
+                        return Json(J(new{choices=new[]{new{finish_reason="tool_calls",message=new{tool_calls=calls}}}}));
+                    }).ToArray();
+                    using(var server=new Fixture(replies))
+                    {
+                        int completed=0;
+                        var pending=api.ChatAgentAsync(Config(server,false),Messages(),workspace,null,null,item=>{
+                            if(item.Status=="complete" && ++completed==102)stop.Cancel();
+                        },false,stop.Token);
+                        try{await pending;throw new Exception("manual stop was ignored");}
+                        catch(OperationCanceledException){}
+                        await Within(server.Done);
+                        Equal(102,completed);
+                        Equal(34,workspace.TaskState.ModelRequests);
+                    }
+                }
+            });
             Console.WriteLine("AgentProtocolTests: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
         }
 
@@ -314,6 +408,11 @@ namespace Dafeiyu.Tests
         }
 
         sealed class TerminalApproval:IAgentApprovalProvider {public Task<bool> ApproveAsync(AgentApprovalRequest request){return Task.FromResult(true);}}
+        sealed class PendingApproval:IAgentApprovalProvider
+        {
+            internal readonly TaskCompletionSource<bool> Entered=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public Task<bool> ApproveAsync(AgentApprovalRequest request){Entered.TrySetResult(true);return new TaskCompletionSource<bool>().Task;}
+        }
         static void Terminal(AgentWorkspace workspace){workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),null,new TerminalApproval(),null,"protocol");workspace.ConfigureTerminal(AgentTerminalPolicy.ConfirmEach);workspace.ConfigureDesktopSession();}
         static async Task WaitCondition(Func<bool> done){for(int i=0;i<1500;i++){if(done())return;await Task.Delay(10);}throw new Exception("agent integration timed out");}
         sealed class SilentSpeech:IReplySpeech{public Task SpeakAsync(string text,PetSettings settings,CancellationToken cancel){return Task.FromResult(0);}public void SetVolume(int n){}public void Stop(){}public void Dispose(){}}
@@ -355,7 +454,7 @@ namespace Dafeiyu.Tests
         {
             internal readonly string Path=System.IO.Path.GetFullPath(System.IO.Path.Combine("work","agent-protocol-"+Guid.NewGuid().ToString("N")));
             internal WorkspaceFolder(){Directory.CreateDirectory(Path);}
-            public void Dispose(){Directory.Delete(Path,true);}
+            public void Dispose(){Directory.Delete(Environment.OSVersion.Platform==PlatformID.Win32NT?Maintenance.CachePaths.NativePath(Path):Path,true);}
         }
         private sealed class Reply
         {

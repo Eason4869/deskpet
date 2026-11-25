@@ -61,8 +61,26 @@ namespace Dafeiyu
             if(state==null)throw new ArgumentNullException("state");kernelTaskId=state.Id;if(kernelSessionModel!=null)kernelSessionModel.Record("task.started",null,state.Id);if(kernelClaims!=null&&!String.IsNullOrEmpty(state.Id))kernelClaims.TryClaim(state.Id,state.Id);if(!String.Equals(Path.GetFullPath(state.Workspace).TrimEnd('\\','/'),Root.TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase))throw new ArgumentException(TextResources.Get("agentTaskState.beginTask.text"));
             lock(taskGate){task=state.Copy();task.Status="running";task.Notice="";}
             ImportChanges(state.Changes);
-            if(desktopSession && !readOnly){runJournal=new AgentRunJournal(RunJournalPath(Root),()=>LockDirectories(RunJournalPath(Root),true));if(runJournal.HasPending(state.Id)){lock(taskGate){task.Status="needs_reconciliation";task.Notice=TextResources.Get("agentTaskState.beginTask.taskNotice");}PublishTask();throw new ApiException(task.Notice);}}
             lock(commandResults){commandResults.Clear();if(state.Commands!=null)commandResults.AddRange(state.Commands.Select(c=>c.Copy()));}
+            if(desktopSession && !readOnly)
+            {
+                runJournal=OpenRunJournal(RunJournalPath(Root));
+                jobsJournal=OpenRunJournal(JobRunJournalPath(Root));
+                string notice=null;
+                try
+                {
+                    if(runJournal.HasPending(state.Id)||jobsJournal.HasPending(state.Id))
+                        notice=TextResources.Get("agentTaskState.beginTask.taskNotice");
+                }
+                catch(IOException error){notice=error.Message;}
+                catch(UnauthorizedAccessException){notice=TextResources.Get("agentRunJournal.readCore.text.alternativeA");}
+                if(notice!=null)
+                {
+                    lock(taskGate){task.Status="needs_reconciliation";task.Notice=notice;}
+                    PublishTask();
+                    throw new ApiException(notice);
+                }
+            }
             PublishTask();
         }
         void EnsureTask(){lock(taskGate)if(task==null)task=new AgentTaskState{Workspace=Root};}
@@ -81,14 +99,56 @@ namespace Dafeiyu
         internal Func<IList<ChatMessage>,bool> GuidanceFits {get;set;}
         internal void RecordGuidance(IEnumerable<AgentGuidance> items){EnsureTask();lock(taskGate){if(task.Guidance==null)task.Guidance=new List<AgentGuidance>();foreach(var item in items)if(!task.Guidance.Any(g=>g.Id==item.Id && g.Revision==item.Revision))task.Guidance.Add(item.Copy());}PublishTask();}
         internal void RecordContextUsage(int tokens,string model,int capacity){EnsureTask();lock(taskGate){task.EstimatedContextTokens=tokens;task.ContextModel=model??"";task.ModelContextTokens=capacity;task.ContextInputBudget=AgentContextPolicy.Resolve(ContextTokenLimit,ContextSchemaOverheadTokens).InputBudget;}PublishTask();}
-        internal void RecordModelUsage(long tokens){EnsureTask();lock(taskGate){task.ModelRequests++;task.EstimatedTotalTokens+=Math.Max(0,tokens);}PublishTask();}
+        internal void RecordModelRequest()
+        {
+            EnsureTask();
+            lock(taskGate)task.ModelRequests++;
+            PublishTask();
+        }
+        internal void RecordModelUsage(long tokens)
+        {
+            EnsureTask();
+            lock(taskGate)task.EstimatedTotalTokens+=Math.Max(0,tokens);
+            PublishTask();
+        }
         internal void ContextProgress(string status){EnsureTask();lock(taskGate)task.ContextStatus=status;PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.progress",null,status);}
         internal void RecordCompaction(int tokens,string summary){EnsureTask();lock(taskGate){task.ContextCompactions++;task.EstimatedContextTokens=tokens;task.ContextSummary=summary??"";task.ContextStatus="ready";}PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.compacted",null,"summary");}
         internal void MarkRelationshipSucceeded()
         {EnsureTask();lock(taskGate)task.RelationshipSucceeded=true;}
         public void FinishTask(string status,string notice)
         {
-            EnsureTask();string claimId;lock(taskGate)claimId=task==null?"":task.Id;lock(taskGate){task.Status=status;task.Notice=notice??"";foreach(var item in task.Tools.Where(t=>t.Status=="running")){item.Status="error";item.Summary+=TextResources.Get("agentTaskState.finishTask.itemSummary");}}if(kernelSessionModel!=null&&!String.IsNullOrEmpty(claimId))kernelSessionModel.Record(status=="complete"?"task.completed":"task.failed",null,claimId);if(kernelClaims!=null&&!String.IsNullOrEmpty(claimId)){if(status=="complete")kernelClaims.Complete(claimId,claimId);else kernelClaims.Fail(claimId,claimId);}PublishTask();
+            EnsureTask();
+            string claimId;
+            lock(taskGate)claimId=task.Id;
+            string message=notice??"";
+            if(kernelClaims!=null && !String.IsNullOrEmpty(claimId))
+            {
+                try
+                {
+                    if(status=="complete")kernelClaims.Complete(claimId,claimId);
+                    else kernelClaims.Fail(claimId,claimId);
+                }
+                catch(Exception error)
+                {
+                    if(!(error is IOException || error is UnauthorizedAccessException || error is SerializationException))throw;
+                    System.Diagnostics.Debug.WriteLine(error);
+                    if(message.Length!=0)message+="\n";
+                    message+=TextResources.Get("conversationSession.finishOperation.kernelWarning");
+                }
+            }
+            lock(taskGate)
+            {
+                task.Status=status;
+                task.Notice=message;
+                foreach(var item in task.Tools.Where(t=>t.Status=="running"))
+                {
+                    item.Status="error";
+                    item.Summary+=TextResources.Get("agentTaskState.finishTask.itemSummary");
+                }
+            }
+            if(kernelSessionModel!=null && !String.IsNullOrEmpty(claimId))
+                kernelSessionModel.Record(status=="complete"?"task.completed":"task.failed",null,claimId);
+            PublishTask();
         }
         string UpdatePlan(Dictionary<string,object> args)
         {

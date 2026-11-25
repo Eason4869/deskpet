@@ -35,7 +35,7 @@ internal sealed class DesktopWorkspaces
     {
         var workspace=await Catalog.OpenAsync(Manager,projectId,conversationId,token,()=>SessionSettings(conversationId));
         workspace.LocalAgentSupported=OperatingSystem.IsWindows();
-        lock(settingsGate)if(observed.Add(workspace)){workspace.Session.MessageAdded+=MessageChanged;workspace.Session.MessageUpdated+=MessageChanged;workspace.Session.HistoryChanged+=owner.NotifyWorkChanged;}
+        lock(settingsGate)if(observed.Add(workspace)){workspace.Session.MessageAdded+=MessageChanged;workspace.Session.MessageUpdated+=MessageChanged;workspace.Session.HistoryChanged+=owner.NotifyWorkChanged;workspace.Session.AgentTaskChanged+=owner.NotifyWorkChanged;}
         return workspace;
     }
     private void MessageChanged(ChatMessage message)=>owner.NotifyWorkChanged();
@@ -89,7 +89,7 @@ internal sealed class DesktopWorkspaces
             if(owner.Settings.SaveChatHistory&&(!string.IsNullOrEmpty(workspace.Session.HistoryWarning)||!string.IsNullOrEmpty(workspace.Session.AgentTaskWarning)))throw new IOException(TextResources.Get("conversationWorkspace.closeAsync.text"));
         })).WaitAsync(token).ConfigureAwait(false);
         await Manager.SaveAllAsync().WaitAsync(token).ConfigureAwait(false);
-        foreach(var workspace in workspaces){workspace.Session.MessageAdded-=MessageChanged;workspace.Session.MessageUpdated-=MessageChanged;workspace.Session.HistoryChanged-=owner.NotifyWorkChanged;}
+        foreach(var workspace in workspaces){workspace.Session.MessageAdded-=MessageChanged;workspace.Session.MessageUpdated-=MessageChanged;workspace.Session.HistoryChanged-=owner.NotifyWorkChanged;workspace.Session.AgentTaskChanged-=owner.NotifyWorkChanged;}
         Manager.StateChanged-=owner.NotifyWorkChanged;Task finishing;
         lock(exitGate)finishing=viewsDisposed??=Task.Run(()=>Manager.Dispose());
         await finishing.WaitAsync(token).ConfigureAwait(false);

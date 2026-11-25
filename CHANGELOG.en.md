@@ -2,6 +2,35 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.6 · Production release
+
+- A scrollable release notes dialog opens the first time DeskPet starts after an upgrade. Stable and development preview builds show their own release notes. When the previous version is known, the dialog includes the relevant versions skipped during the upgrade. Chinese and English notes are bundled for offline reading.
+- The Windows work summary shows net file changes, side chats for the current conversation, subagent status and sources. Open a diff, switch or create a side chat, browse sent attachments and reply links, or add an attachment from the summary.
+- After the first completed side-chat reply, the configured chat model generates a title for the tab and work summary.
+- The work summary detects the GitHub repository and current branch from the project's Git checkout. Specify a repository for the project and open it from the summary.
+- The Windows work agent stores execution logs per task and migrates older logs automatically. It tracks completion, failure, cancellation and restart interruption separately, preserves confirmed results when a task resumes, and prompts for review when an outcome is uncertain.
+- The work task panel shows model request counts and recorded token usage, with controls to stop or resume a task.
+- Work agent reply fragments, tool progress and result summaries are saved as encrypted events. Reopening an interrupted conversation restores those details and marks the turn as incomplete in Windows and macOS. Replay makes no model or tool calls.
+- The Windows uninstaller shows progress and a dedicated completion page. It keeps application data by default and offers to remove settings, chat history and remaining files from the current installation after uninstalling.
+
+## [1.0.6-dev.3](https://github.com/Eason4869/deskpet/releases/tag/v1.0.6-dev.3) · Development preview
+
+- The Windows uninstall wizard uses the installer’s branding and companion artwork, with a progress view and a dedicated completion page.
+- The completion page keeps application data by default and lets you remove settings, chat history, and app files stored in the current installation.
+
+## 1.0.6-dev.2 · Development preview
+
+**Updated on 2026-11-24 (Asia/Shanghai)**
+
+- The work agent saves visible reply fragments, tool progress, and result summaries as ordered, encrypted events.
+- Reopening an interrupted work conversation restores saved content and marks it as incomplete in the WPF and Avalonia chat views. Local replay makes zero model or tool calls.
+
+## 1.0.6-dev.1 · Development preview
+
+- The Windows work agent stores execution records by task. Existing journals migrate automatically, completed records no longer block new tasks, and uncertain outcomes prompt for review.
+- Work sessions keep distinct outcomes for completion, failure, cancellation, and interruption. Resuming a task preserves confirmed results.
+- The work task panel shows model request counts and recorded token usage, with controls to stop or continue a task.
+
 ## [1.0.5](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · Production release
 
 - Read selected ranges of text, CSV/TSV, XLS/XLSX, DOC/DOCX, PDF, and PPTX in chat. Spreadsheet views show raw values, display formats, formulas, and saved results. Legacy DOC and XLS files open without Office.

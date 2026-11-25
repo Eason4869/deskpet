@@ -122,13 +122,15 @@ namespace Dafeiyu.Tests
         {
             foreach(string baseline in new[]{OfficialCompanionFixture.Version,"1.0.0","0.9.0"})
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
-                var result=await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.AfterApplicationUpdate,CancellationToken.None);
-                bool newer=baseline=="0.9.0";
-                Check(fixture.Packages==(newer?1:0),"bundle baseline downloads only strictly newer compatible remote: "+baseline);
-                Check(newer?result!=null&&result.InstalledNow:result==null&&service.Installed("e-bao")==null,"bundle success never fabricates a filesystem installation: "+baseline);
-                Check(File.Exists(Path.Combine(service.Storage.Root,"last-checked-app-version.txt")),"successful bundle metadata check records upgrade marker: "+baseline);
-                await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.Cached,CancellationToken.None);
-                Check(fixture.Metadata==1&&fixture.Packages==(newer?1:0),"bundle check shares metadata TTL and managed installation reuse: "+baseline);
+                try{
+                    var result=await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.AfterApplicationUpdate,CancellationToken.None);
+                    bool newer=baseline=="0.9.0";
+                    Check(fixture.Packages==(newer?1:0),"bundle baseline downloads only strictly newer compatible remote: "+baseline);
+                    Check(newer?result!=null&&result.InstalledNow:result==null&&service.Installed("e-bao")==null,"bundle success never fabricates a filesystem installation: "+baseline);
+                    Check(File.Exists(Path.Combine(service.Storage.Root,"last-checked-app-version.txt")),"successful bundle metadata check records upgrade marker: "+baseline);
+                    await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.Cached,CancellationToken.None);
+                    Check(fixture.Metadata==1&&fixture.Packages==(newer?1:0),"bundle check shares metadata TTL and managed installation reuse: "+baseline);
+                }finally{service.ShutdownAsync().GetAwaiter().GetResult();}
             }
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
                 fixture.Offline=true;
@@ -674,12 +676,20 @@ namespace Dafeiyu.Tests
                 // digests for the same role, so its own newer job correctly waits.
                 using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0)))
                 using(var other=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0))) {
-                    var slow=s.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);await Timeout(entered.Task);
+                    var slow=s.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
                     try{
+                        await Timeout(entered.Task);
                         f.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{66});serveNew=true;
                         var fresh=await Timeout(other.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None));release.TrySetResult(true);var older=await Timeout(slow);
                         Check(fresh.Installation.Asset.Sha256==s.Installed("dafeiyu").Asset.Sha256&&older.Installation.RootDirectory==fresh.Installation.RootDirectory,"slow old digest cannot replace a newer completed immutable package or return stale root");
-                    }finally{release.TrySetResult(true);Timeout(slow).GetAwaiter().GetResult();}
+                    }finally{
+                        release.TrySetResult(true);
+                        try{Timeout(slow).GetAwaiter().GetResult();}
+                        finally{
+                            // Both services must release their retained leases before the fixture deletes the shared root.
+                            Task.WhenAll(s.ShutdownAsync(),other.ShutdownAsync()).GetAwaiter().GetResult();
+                        }
+                    }
                 }
             }
         }

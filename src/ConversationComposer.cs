@@ -286,8 +286,9 @@ namespace Dafeiyu
             catch(Exception e){if(!closed)LocalizedUi.Set(status,"Text",()=>(e is ApiException || e is InvalidOperationException?e.Message:TextResources.Get("conversationComposer.captureApplication.invalidOperationExceptionEMessage")));}
             finally{loadingAttachments=false;if(!closed)RefreshAction();}
         }
-        async System.Threading.Tasks.Task PickAttachments()
+        internal async System.Threading.Tasks.Task PickAttachments()
         {
+            if(!CanAdd())return;
             try{var paths=AttachmentPicker.Show(new System.Windows.Interop.WindowInteropHelper(host).Handle);if(paths.Length>0)await AddPathsAsync(paths);}catch(Exception e){Error(e);}
         }
         bool CanAdd(){return !closed && !loadingAttachments && !pet.IsUpdating && !pet.LiveActive && !dictation.IsBusy;}

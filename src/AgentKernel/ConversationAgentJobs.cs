@@ -23,7 +23,7 @@ namespace Dafeiyu
             if(kernelSessionModel==null||owner.ProjectId!=kernelSessionModel.ProjectId||owner.ConversationId!=kernelSessionModel.ConversationId||String.IsNullOrWhiteSpace(kernelTaskId))throw new ArgumentException("persistent_owner");
             if(jobsOwner!=null&&!jobsOwner.Matches(owner))throw new InvalidOperationException("job_owner_frozen");
             jobsManager=manager;jobsOwner=owner;jobsTimeoutCeiling=maximumTimeout;
-            string path=Path.Combine(RunJournalPath(Root),"background-jobs");jobsJournal=new AgentRunJournal(path,()=>LockDirectories(path,true));
+            if(jobsJournal==null)jobsJournal=OpenRunJournal(JobRunJournalPath(Root));
             dynamicTools.RemoveAll(tool=>AgentJobTools.IsJobTool(tool.Name));dynamicTools.AddRange(AgentJobTools.Definitions);BuildSchemas();
         }
         bool JobsAvailable(string name)
@@ -69,7 +69,7 @@ namespace Dafeiyu
         async Task<string> ExecuteJobRecordedAsync(AgentToolInvocation invocation,CancellationToken token)
         {
             if(invocation.ToolName=="get_job")return await ExecuteJobAuthorizedAsync(invocation,token,null).ConfigureAwait(false);
-            string response=await Task.Run(()=>jobsJournal.ExecuteAsync(invocation,before=>ExecuteJobAuthorizedAsync(invocation,token,before)),token).ConfigureAwait(false);
+            string response=await Task.Run(()=>jobsJournal.ExecuteAsync(invocation,before=>ExecuteJobAttemptAsync(invocation,token,before)),token).ConfigureAwait(false);
             // The durable journal prevents reruns even when short-lived metadata is
             // retired. An old success must not resurrect an absent job record.
             var data=new JavaScriptSerializer{MaxJsonLength=1024*1024}.DeserializeObject(response) as Dictionary<string,object>;object ok;
@@ -80,6 +80,25 @@ namespace Dafeiyu
                 return AgentJobTools.Success(current,data.ContainsKey("replayed")&&(bool)data["replayed"]);
             }
             return response;
+        }
+        async Task<string> ExecuteJobAttemptAsync(AgentToolInvocation invocation,CancellationToken token,Action beforeEffect)
+        {
+            bool startingEffect=false;
+            try
+            {
+                return await ExecuteJobAuthorizedAsync(invocation,token,()=>
+                {
+                    startingEffect=true;
+                    beforeEffect();
+                }).ConfigureAwait(false);
+            }
+            catch(OperationCanceledException){throw;}
+            catch(Exception error)
+            {
+                if(startingEffect)throw;
+                Debug.WriteLine(error);
+                return AgentJobTools.Error(JobErrorCode(error));
+            }
         }
         async Task<string> ExecuteJobAuthorizedAsync(AgentToolInvocation invocation,CancellationToken token,Action beforeEffect)
         {
@@ -102,8 +121,8 @@ namespace Dafeiyu
             if(!Object.ReferenceEquals(permissions,kernelPermissions)||!Object.ReferenceEquals(approval,kernelApproval))return AgentJobTools.Error("policy_changed");
             token.ThrowIfCancellationRequested();
             if(invocation.ToolName=="get_job")return AgentJobTools.Page(await jobsManager.GetAsync(jobsOwner,(string)args["id"],(string)args["cursor"],(int)args["limit_bytes"],token).ConfigureAwait(false));
-            token.ThrowIfCancellationRequested();if(beforeEffect==null)return AgentJobTools.Error("execution_reconciliation_required");beforeEffect();
-            return AgentJobTools.Success(await jobsManager.StopAsync(jobsOwner,(string)args["id"],AgentJobStopReason.User,token).ConfigureAwait(false),false);
+            token.ThrowIfCancellationRequested();if(beforeEffect==null)return AgentJobTools.Error("execution_reconciliation_required");
+            return AgentJobTools.Success(await jobsManager.StopForToolAsync(jobsOwner,(string)args["id"],token,beforeEffect).ConfigureAwait(false),false);
         }
         static string JobErrorCode(Exception error)
         {

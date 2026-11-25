@@ -168,6 +168,7 @@ jobs:
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-reply-only | tee "$REPORT_ROOT/proactive-reply-only.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-settings-only | tee "$REPORT_ROOT/proactive-settings-only.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --feature-navigation-ui=zh_CN | tee "$REPORT_ROOT/feature-navigation-ui-zh_CN.log"
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --agent-task-progress | tee "$REPORT_ROOT/agent-task-progress.log"
           # The default headless suite includes feedback motion and placement checks.
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll | tee "$REPORT_ROOT/headless-ui.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --data-management-ui-only | tee "$REPORT_ROOT/data-management-ui.log"

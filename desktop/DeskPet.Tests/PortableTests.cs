@@ -151,7 +151,7 @@ namespace Dafeiyu.Tests
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
                         ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
-                        AgentContextPolicyTests.Main,AgentRunRecoveryTests.Main,AgentTaskMemoryTests.Main,AgentIsolationTests.Main,AgentApprovalTests.Main,ProviderTests.Main, LiveTests.Main, GreetingTests.Main, AiGreetingTests.Main, RecorderFailureTests.Main, OnboardingUpgradeTests.Main })
+                        AgentContextPolicyTests.Main,AgentRunRecoveryTests.Main,AgentSessionModelTests.Main,AgentTaskMemoryTests.Main,AgentIsolationTests.Main,AgentApprovalTests.Main,ProviderTests.Main, LiveTests.Main, GreetingTests.Main, AiGreetingTests.Main, RecorderFailureTests.Main, OnboardingUpgradeTests.Main })
                     { SecretProtection.Configure(protector); result |= test(); }
                     // Windows identity checks belong in the Windows default regression;
                     // macOS uses AgentJobToolTests to verify the unsupported-platform gate.

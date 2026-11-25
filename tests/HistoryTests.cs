@@ -31,6 +31,13 @@ namespace Dafeiyu.Tests
                 Check(files.Length==1 && !System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(files[0])).Contains("sensitive-history"),"history was written in plaintext");
                 var fresh=new HistoryStore(directory);Check(fresh.Load("e-bao")[0].Id==log.Messages[0].Id && fresh.Load("marfu").Count==0,"restart or pet isolation failed");
             });
+            Run("Agent turn replay restores only events newer than its history checkpoint",AgentTurnReplay);
+            Run("a finished Agent turn is recovered and compacted only after the history commit",AgentTurnCompaction);
+            Run("a reader retries a replaced history snapshot after Agent journal compaction",AgentTurnConcurrentCommit);
+            Run("superseded Agent turns retire after the replacement history is durable",AgentTurnReplacement);
+            Run("clearing history removes encrypted Agent turn events",AgentTurnClear);
+            if(Environment.OSVersion.Platform==PlatformID.Win32NT)
+                Run("a live work session records visible progress and honours history opt out",()=>AgentTurnSessionAsync().GetAwaiter().GetResult());
             Run("serialized writes and clear leave no stale history",delegate {
                 string directory=Temp();var store=new HistoryStore(directory);var log=new ConversationLog();log.Commit("first","one");var first=store.SaveAsync("pet",log.Messages);log.Commit("second","two");var second=store.SaveAsync("pet",log.Messages);store.FlushAsync().GetAwaiter().GetResult();
                 Check(store.Load("pet").Count==4,"last queued write lost");store.ClearAsync("pet").GetAwaiter().GetResult();Check(store.Load("pet").Count==0 && Directory.GetFiles(directory).Length==0,"clear left stale encrypted history");
@@ -68,6 +75,142 @@ namespace Dafeiyu.Tests
         }
         static void Check(bool value,string message){if(!value)throw new Exception(message);}
         static string Temp(){string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"history-test-data",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(path);return path;}
+        static ChatMessage BeginAgentReply(ConversationLog log,string stream)
+        {
+            ChatMessage user;
+            var reply=log.BeginTurn("agent request","text",out user);
+            log.MarkAgentTurn(reply.Id,stream,0);
+            return reply;
+        }
+        static void AgentTurnReplay()
+        {
+            string path=Temp(),stream=Guid.NewGuid().ToString("N");
+            var store=new HistoryStore(path);
+            var log=new ConversationLog();
+            var reply=BeginAgentReply(log,stream);
+            var recording=store.CreateAgentTurnRecording("pet");
+            recording.BeginSegment(stream,"task");
+            recording.Text("already saved / ");
+            log.Update(reply.Id,"already saved / ","pending");
+            log.MarkAgentTurn(reply.Id,stream,recording.Revision);
+            store.SaveAsync("pet",log.Messages).GetAwaiter().GetResult();
+            recording.Text("durable tail");
+            recording.Tool(new AgentToolEvent{Id="done",Name="read_file",Summary="safe result",Status="complete"});
+            recording.Tool(new AgentToolEvent{Id="running",Name="read_file",Summary="safe progress",Status="running"});
+            recording.Close();
+            store.FlushAsync().GetAwaiter().GetResult();
+
+            var fresh=new HistoryStore(path);
+            var loaded=fresh.Load("pet").Last();
+            Check(loaded.Id==reply.Id && loaded.Status=="interrupted" && loaded.Content=="already saved / durable tail","replay lost or duplicated the public output");
+            Check(loaded.ToolEvents.Count==2 && loaded.ToolEvents[0].Status=="complete" && loaded.ToolEvents[0].Summary=="safe result" && loaded.ToolEvents[1].Status=="error","replay did not retain the result and close the unfinished tool");
+            Check(fresh.Load("pet").Last().Content==loaded.Content && fresh.Load("other").Count==0,"repeat replay changed the projection or crossed persona boundaries");
+            var restored=new ConversationLog();restored.Replace(fresh.Load("pet"));
+            Check(restored.ForRequest("","next").Count==1,"interrupted replay entered the model context");
+        }
+        static void AgentTurnCompaction()
+        {
+            string path=Temp(),stream=Guid.NewGuid().ToString("N");
+            var store=new HistoryStore(path);
+            var log=new ConversationLog();BeginAgentReply(log,stream);
+            store.SaveAsync("pet",log.Messages).GetAwaiter().GetResult();
+            var recording=store.CreateAgentTurnRecording("pet");
+            recording.BeginSegment(stream,"task");
+            recording.Text("draft text");
+            recording.Tool(new AgentToolEvent{Id="call",Name="read_file",Status="running",Summary="tool progress"});
+            recording.FinishSegment("final answer","complete",new[]{new AgentToolEvent{Id="call",Name="read_file",Status="error",Summary="actual terminal reason"}});
+            recording.Close();
+            store.FlushAsync().GetAwaiter().GetResult();
+
+            string eventPath=Directory.GetFiles(path,"turn.events",SearchOption.AllDirectories).Single();
+            var reopened=new HistoryStore(path);
+            var recovered=reopened.Load("pet");
+            Check(recovered.Last().Status=="complete" && recovered.Last().Content=="final answer" && File.Exists(eventPath),"replay lost terminal state or retired its evidence before saving");
+            Check(recovered.Last().ToolEvents.Single().Summary=="actual terminal reason","journal-only replay replaced the actual terminal tool result");
+            reopened.SaveAsync("pet",log.Messages).GetAwaiter().GetResult();
+            Check(File.Exists(eventPath),"an older checkpoint discarded newer events");
+            reopened.SaveAsync("pet",recovered).GetAwaiter().GetResult();
+            Check(!File.Exists(eventPath) && reopened.Load("pet").Last().Content=="final answer","committed final history did not take over the projection");
+        }
+        static void AgentTurnConcurrentCommit()
+        {
+            var store=new HistoryStore(Temp());var log=new ConversationLog();string stream=Guid.NewGuid().ToString("N");
+            var reply=BeginAgentReply(log,stream);
+            store.SaveAsync("pet",log.Messages).GetAwaiter().GetResult();
+            var recording=store.CreateAgentTurnRecording("pet");recording.BeginSegment(stream,"task");recording.Text("public draft");
+            recording.FinishSegment("final reply","complete");recording.Close();store.FlushAsync().GetAwaiter().GetResult();
+            var reader=new HistoryStore(store.DirectoryPath);
+            reader.BeforeAgentTurnReplay=()=>{
+                reader.BeforeAgentTurnReplay=null;
+                log.MarkAgentTurn(reply.Id,stream,recording.Revision);
+                log.Update(reply.Id,"final reply","complete");
+                store.SaveAsync("pet",log.Messages).GetAwaiter().GetResult();
+            };
+            var restored=reader.Load("pet").Last();
+            Check(restored.Status=="complete"&&restored.Content=="final reply","the reader combined an old checkpoint with a newer empty journal");
+        }
+        static void AgentTurnReplacement()
+        {
+            var store=new HistoryStore(Temp());var old=new ConversationLog();string stream=Guid.NewGuid().ToString("N");BeginAgentReply(old,stream);
+            store.SaveAsync("pet",old.Messages).GetAwaiter().GetResult();
+            var recording=store.CreateAgentTurnRecording("pet");recording.BeginSegment(stream,"task");
+            recording.Tool(new AgentToolEvent{Id="moved",Name="read_file",Status="running",Summary="pending action"});
+            recording.FinishSegment("","complete");recording.Close();store.FlushAsync().GetAwaiter().GetResult();
+            string events=Directory.GetFiles(store.DirectoryPath,"turn.events",SearchOption.AllDirectories).Single();
+            var replacement=new ConversationLog();replacement.Commit("new input","new response");
+            store.SaveAsync("pet",replacement.Messages).GetAwaiter().GetResult();
+            Check(!File.Exists(events)&&store.Load("pet").Last().Content=="new response","a superseded terminal stream pinned the new checkpoint");
+        }
+        static void AgentTurnClear()
+        {
+            string path=Temp(),stream=Guid.NewGuid().ToString("N");
+            var store=new HistoryStore(path);
+            var log=new ConversationLog();BeginAgentReply(log,stream);
+            store.SaveAsync("pet",log.Messages).GetAwaiter().GetResult();
+            var recording=store.CreateAgentTurnRecording("pet");
+            recording.BeginSegment(stream,"task");
+            recording.Text("private fragment");
+            recording.Close();
+            store.FlushAsync().GetAwaiter().GetResult();
+            string events=Directory.GetFiles(path,"turn.events",SearchOption.AllDirectories).Single();
+            Check(!File.ReadAllText(events).Contains("private fragment"),"the Agent reply was stored in plaintext");
+            File.AppendAllText(events,"bad frame\n");
+            var reopened=new HistoryStore(path);
+            Check(reopened.Load("pet").Last().Status=="interrupted" && !String.IsNullOrEmpty(reopened.Warning) && File.Exists(events),"corrupt events hid readable history or were discarded during replay");
+            reopened.ClearAsync("pet").GetAwaiter().GetResult();
+            Check(!File.Exists(events) && reopened.Load("pet").Count==0 && String.IsNullOrEmpty(reopened.Warning),"explicit clear retained Agent reply data");
+        }
+        static async Task AgentTurnSessionAsync()
+        {
+            var store=new HistoryStore(Temp());
+            var settings=Configured();settings.AgentEnabled=true;settings.AgentWorkspace=Temp();
+            var api=new WorkStreamApi();
+            using(var session=new ConversationSession(api,new TestSpeech(),()=>null,store,()=>settings.SaveChatHistory))
+            {
+                session.SelectPersona("pet");
+                var work=session.SendTextAsync("agent fixture",settings,"pet");
+                try
+                {
+                    Check(await Task.WhenAny(api.Started.Task,work,Task.Delay(10000))==api.Started.Task,"work request did not reach Agent streaming");
+                    api.Delta("first fragment");
+                    api.Tool(new AgentToolEvent{Id="call",Name="read_file",Status="complete",Summary="public tool result"});
+                    await store.FlushAsync();
+                    var live=session.History.Messages.Last();
+                    var reopened=new HistoryStore(store.DirectoryPath).Load("pet").Last();
+                    Check(live.Status=="pending"&&live.Id==reopened.Id&&reopened.Content=="first fragment"&&reopened.ToolEvents.Single().Summary=="public tool result","live progress was lost when reading from a fresh history store");
+
+                    settings.SaveChatHistory=false;
+                    api.Delta(" after opt out");
+                    await store.FlushAsync();
+                    reopened=new HistoryStore(store.DirectoryPath).Load("pet").Last();
+                    Check(reopened.Content=="first fragment"&&!reopened.Content.Contains("opt out"),"history opt out still wrote Agent output");
+                    api.Finish.TrySetResult("first fragment after opt out");
+                    await work;
+                    Check(session.History.Messages.Last().Content=="first fragment after opt out","history opt out changed the live response");
+                }
+                finally{api.Finish.TrySetResult("fixture finished");try{work.GetAwaiter().GetResult();}catch(OperationCanceledException){}}
+            }
+        }
         static PetSettings Configured(){return new PetSettings {AgentEnabled=false,ReadReplies=false,Text=new ConnectionSettings {BaseUrl="http://127.0.0.1:9001/v1",Model="chat"}};}
         static async Task CancelRetainsAsync()
         {
@@ -150,6 +293,19 @@ namespace Dafeiyu.Tests
             public readonly TaskCompletionSource<bool> Started=new TaskCompletionSource<bool>();public readonly TaskCompletionSource<string> Finish=new TaskCompletionSource<string>();public Action<string> Delta;public IList<ChatMessage> RequestMessages;
             public async Task<string> ChatStreamAsync(ConnectionSettings cfg,IList<ChatMessage> messages,Action<string> delta,CancellationToken token)
             { RequestMessages=messages;Delta=delta;Started.TrySetResult(true);if(!IgnoreCancel){var cancelled=Task.Delay(Timeout.Infinite,token);await Task.WhenAny(Finish.Task,cancelled);token.ThrowIfCancellationRequested();}return await Finish.Task; }
+        }
+        sealed class WorkStreamApi:TestApi,IAgentConversationApi
+        {
+            public readonly TaskCompletionSource<bool> Started=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public readonly TaskCompletionSource<string> Finish=new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public Action<string> Delta;
+            public Action<AgentToolEvent> Tool;
+            public Task<string> ChatAgentAsync(ConnectionSettings cfg,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> delta,Action<string> reasoning,Action<AgentToolEvent> tool,bool stream,CancellationToken token)
+            {
+                Delta=delta;Tool=tool;
+                Started.TrySetResult(true);
+                return Finish.Task;
+            }
         }
         sealed class TestSpeech:IReplySpeech
         {

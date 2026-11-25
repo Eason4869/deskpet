@@ -125,6 +125,8 @@ namespace Dafeiyu
         [DataMember] public bool RelationshipWork {get;internal set;}
         [DataMember] public bool RelationshipSucceeded {get;internal set;}
         [DataMember] public string AgentTaskId { get; internal set; }
+        [DataMember(EmitDefaultValue=false)] internal string AgentTurnStreamId { get; set; }
+        [DataMember(EmitDefaultValue=false)] internal long AgentTurnRevision { get; set; }
         [DataMember(EmitDefaultValue=false)] public AgentReplyChangeSummary ChangeSummary { get; set; }
         [DataMember] public DateTime? ProcessingStartedAt { get; private set; }
         [DataMember] public long ProcessingMilliseconds { get; private set; }
@@ -201,9 +203,19 @@ namespace Dafeiyu
         }
         public ChatMessage BeginGuidance(string id,string text,out ChatMessage user)
         {
-            lock(gate){string turn="guide-"+id;var u=messages.Find(m=>m.TurnId==turn && m.Role=="user");if(u==null){u=new ChatMessage("user",text,turn,"complete","guide");messages.Add(u);}var reply=messages.Find(m=>m.TurnId==turn && m.Role=="assistant");if(reply==null){reply=new ChatMessage("assistant","",turn,"pending","guide");messages.Insert(messages.IndexOf(u)+1,reply);}else reply.Update("","pending");Trim();user=u.Copy();return reply.Copy();}
+            lock(gate){string turn="guide-"+id;var u=messages.Find(m=>m.TurnId==turn && m.Role=="user");if(u==null){u=new ChatMessage("user",text,turn,"complete","guide");messages.Add(u);}var reply=messages.Find(m=>m.TurnId==turn && m.Role=="assistant");if(reply==null){reply=new ChatMessage("assistant","",turn,"pending","guide");messages.Insert(messages.IndexOf(u)+1,reply);}else{reply.Update("","pending");reply.AgentTurnStreamId=null;reply.AgentTurnRevision=0;}Trim();user=u.Copy();return reply.Copy();}
         }
         public ChatMessage StartProcessing(string id,bool workMode,DateTime? startedAt=null,string skinId=null) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode,startedAt,skinId);return message.Copy();} }
+        internal void MarkAgentTurn(string id,string streamId,long revision)
+        {
+            lock(gate)
+            {
+                var reply=messages.Find(m=>m.Id==id&&m.Role=="assistant");
+                if(reply==null)return;
+                reply.AgentTurnStreamId=streamId;
+                reply.AgentTurnRevision=revision;
+            }
+        }
         internal void RetainImageReply(string id,bool retain){lock(gate){if(retain)retainedImageReplies.Add(id);else retainedImageReplies.Remove(id);}}
         internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&!retainedImageReplies.Contains(id)&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.ImageGenerationTaskIds==null||m.ImageGenerationTaskIds.Count==0)&&(m.GeneratedImages==null||m.GeneratedImages.Count==0)&&(m.ToolEvents==null||m.ToolEvents.Count==0));}
         internal void PersistGeneratedImages(GeneratedImageStore assets)

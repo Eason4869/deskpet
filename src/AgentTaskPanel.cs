@@ -14,6 +14,7 @@ namespace Dafeiyu
     {
         readonly PetWindow pet;readonly ConversationSession session;readonly ConversationQueue queue;readonly StackPanel body=new StackPanel();string taskWorkspace="";
         readonly ScrollViewer detailScroll;
+        StackPanel childTasks;
         readonly TextBlock heading=LocalizedUi.Text(()=>(TextResources.Get("agentTaskPanel.heading.text")),12,Ui.Muted);readonly TextBlock notice=Ui.Text("",11,Ui.Muted);
         bool disposed,queued;string signature="";
         Action<string> openFileRequested;Action<string,FrameworkElement> openDetailRequested;
@@ -52,18 +53,56 @@ namespace Dafeiyu
         void Refresh()
         {
             if(disposed)return;if(!Dispatcher.CheckAccess()){Changed();return;}
-            var task=session.CurrentAgentTask;if(task==null){Visibility=Visibility.Collapsed;return;}Visibility=Visibility.Visible;
-            bool busy=session.IsBusy;string running=task.Tools.LastOrDefault(t=>t.Status=="running")==null?TextResources.Get("agentTaskPanel.refresh.taskToolsLastOrDefault"):TextResources.Get("agentTaskPanel.refresh.taskToolsLastOrDefault.alternativeA");
-            string status=task.Status=="complete"?TextResources.Get("agentTaskPanel.refresh.statusTaskStatus"):task.Status=="running"?running:task.Status=="cancelled"?TextResources.Get("agentTaskPanel.refresh.statusTaskStatus.alternativeA"):task.Status=="interrupted"?TextResources.Get("agentTaskPanel.refresh.statusTaskStatus.alternativeB"):TextResources.Get("agentTaskPanel.refresh.statusTaskStatus.alternativeC");
-            heading.Text=TextResources.Format("agentTaskPanel.refresh.taskPlanCount",status,task.Plan.Count(p=>p.Status=="complete"),task.Plan.Count,task.Changes.Count);
+            var task=session.CurrentAgentTask;if(task==null){Visibility=Visibility.Collapsed;signature="";childTasks=null;return;}Visibility=Visibility.Visible;
+            bool busy=session.IsBusy;
+            LocalizedUi.Set(heading,"Text",()=>TextResources.Format("agentTaskPanel.refresh.taskPlanCount",AgentTaskProgressText.Status(task),task.Plan.Count(p=>p.Status=="complete"),task.Plan.Count,task.Changes.Count));
             string next=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=8*1024*1024}.Serialize(task)+"|"+busy+"|"+pet.Settings.AgentEnabled+"|"+session.AgentTaskWarning;
-            if(next==signature)return;signature=next;body.Children.Clear();
+            if(next==signature)return;signature=next;body.Children.Clear();childTasks=null;
             var goal=Ui.Text(task.Goal,12);goal.Margin=new Thickness(0,3,0,7);body.Children.Add(goal);
+            var requests=LocalizedUi.Text(()=>AgentTaskProgressText.RequestCount(task),11,Ui.Muted);
+            requests.Name="AgentTaskRequestCount";body.Children.Add(requests);
+            var estimate=LocalizedUi.Text(()=>AgentTaskProgressText.TokenEstimate(task),11,Ui.Muted);
+            estimate.Name="AgentTaskTokenEstimate";body.Children.Add(estimate);
+            if(!String.IsNullOrEmpty(AgentTaskProgressText.Notice(task)))
+            {
+                var taskNotice=LocalizedUi.Text(()=>AgentTaskProgressText.Notice(task),11,Ui.Muted);
+                taskNotice.Name="AgentTaskNotice";body.Children.Add(taskNotice);
+            }
+            var executionActions=new WrapPanel{Margin=new Thickness(0,7,0,2)};
+            if(busy && task.Status=="running")
+            {
+                var stop=Small(()=>TextResources.Get("agent.jobs.ui.stop"),"StopAgentTask");
+                stop.Click+=async delegate{try{await queue.PauseAsync();}catch(Exception e){Error(e);}};
+                executionActions.Children.Add(stop);
+            }
+            if(task.Status=="needs_reconciliation")
+            {
+                var acknowledge=Small(()=>TextResources.Get("agentTaskPanel.refresh.small.alternativeD"),"AcknowledgeAgentExecutions");
+                acknowledge.IsEnabled=!busy;
+                acknowledge.Click+=async delegate{try{await session.AcknowledgeAgentExecutionsAsync(TaskSettings);await UpdateUiAsync(Refresh);}catch(Exception e){Error(e);}};
+                executionActions.Children.Add(acknowledge);
+            }
+            var resume=Small(()=>TextResources.Get("agentTaskPanel.refresh.small.alternativeE"),"ContinueAgentTask");
+            resume.IsEnabled=!busy && pet.Settings.AgentEnabled && task.Status!="running" && task.Status!="needs_reconciliation";
+            resume.Click+=async delegate{bool resumeQueue=!queue.IsPaused;queue.Hold();try{await session.ResumeAgentTaskAsync(TaskSettings,pet.Skin.Name);}catch(Exception e){Error(e);}finally{if(resumeQueue)queue.Resume();}};
+            executionActions.Children.Add(resume);body.Children.Add(executionActions);
             string context=task.ContextStatus=="compacting"?TextResources.Get("agentTaskPanel.refresh.contextCompactionsTaskContextCompactions.alternativeA"):task.ContextStatus=="limited"?TextResources.Get("agentTaskPanel.refresh.contextCompactionsTaskContextCompactions.alternativeB"):task.ContextCompactions>0?TextResources.Format("agentTaskPanel.refresh.contextCompactionsTaskContextCompactions",task.ContextCompactions):TextResources.Get("agentTaskPanel.refresh.contextCompactionsTaskContextCompactions.alternativeC");
             body.Children.Add(LocalizedUi.Text(()=>(context+(task.EstimatedContextTokens>0?TextResources.Format("agentTaskPanel.refresh.template",task.EstimatedContextTokens.ToString("N0")):"")),11,Ui.Muted));
-            body.Children.Add(LocalizedUi.Text(()=>(TextResources.Format("agentTaskPanel.refresh.template.alternativeA",task.EstimatedTotalTokens,task.ChildEstimatedTotalTokens)),11,Ui.Muted));
             if(task.Guidance!=null && task.Guidance.Count>0)body.Children.Add(LocalizedUi.Text(()=>(TextResources.Format("agentTaskPanel.refresh.template.alternativeB",task.Guidance.Count)),11,Ui.Muted));
-            if(task.Children!=null && task.Children.Count>0){body.Children.Add(Section(()=>(TextResources.Get("agentTaskPanel.refresh.section"))));foreach(var child in task.Children){string childText=TextResources.Format("agentTaskPanel.refresh.statusChildInput",child.Status,child.Input,(child.Result??""),child.Source,child.ToolCalls,child.EstimatedTokens,child.EstimatedTotalTokens,child.ModelRequests);var line=Ui.Text(childText,11,Ui.Muted);line.TextWrapping=TextWrapping.Wrap;line.Margin=new Thickness(0,3,0,7);body.Children.Add(line);var openChild=Small(()=>(TextResources.Get("agentTaskPanel.refresh.small")),"OpenAgentChildTab");openChild.IsEnabled=OpenDetailRequested!=null;openChild.Click+=delegate{var navigate=OpenDetailRequested;if(navigate!=null)navigate(TextResources.Format("agentTaskPanel.refresh.navigate",child.Id),ReadOnly(childText));};body.Children.Add(openChild);}}
+            if(task.Children!=null && task.Children.Count>0)
+            {
+                childTasks=new StackPanel{Name="AgentTaskChildren"};
+                childTasks.Children.Add(Section(()=>TextResources.Get("agentTaskPanel.refresh.section")));
+                foreach(var child in task.Children)
+                {
+                    string childText=TextResources.Format("agentTaskPanel.refresh.statusChildInput",child.Status,child.Input,child.Result??"",child.Source,child.ToolCalls,child.EstimatedTokens,child.EstimatedTotalTokens,child.ModelRequests);
+                    var line=Ui.Text(childText,11,Ui.Muted);line.Margin=new Thickness(0,3,0,7);childTasks.Children.Add(line);
+                    var openChild=Small(()=>TextResources.Get("agentTaskPanel.refresh.small"),"OpenAgentChildTab");openChild.IsEnabled=OpenDetailRequested!=null;
+                    openChild.Click+=delegate{var navigate=OpenDetailRequested;if(navigate!=null)navigate(TextResources.Format("agentTaskPanel.refresh.navigate",child.Id),ReadOnly(childText));};
+                    childTasks.Children.Add(openChild);
+                }
+                body.Children.Add(childTasks);
+            }
             if(task.Plan.Count>0){var plan=new StackPanel{Name="AgentTaskPlan"};foreach(var step in task.Plan){var line=Ui.Text((step.Status=="complete"?"✓ ":step.Status=="in_progress"?"• ":"○ ")+step.Text,12,step.Status=="in_progress"?Ui.Ink:Ui.Muted);line.Margin=new Thickness(0,2,0,2);plan.Children.Add(line);}body.Children.Add(plan);}
             if(task.Changes.Count>0){body.Children.Add(Section(()=>(TextResources.Get("agentTaskPanel.refresh.section.alternativeA"))));var files=new StackPanel{Name="AgentTaskChanges"};foreach(var change in task.Changes){
                 var row=new DockPanel{Margin=new Thickness(0,2,0,2)};var tools=new StackPanel{Orientation=Orientation.Horizontal};
@@ -75,13 +114,20 @@ namespace Dafeiyu
             foreach(var command in task.Commands){string label=command.CommandId+" · "+(command.Cancelled?TextResources.Get("agentTaskPanel.refresh.labelCommandCommandId.alternativeA"):command.TimedOut?TextResources.Get("agentTaskPanel.refresh.labelCommandCommandId.alternativeB"):TextResources.Format("agentTaskPanel.refresh.labelCommandCommandId",command.ExitCode))+" · "+(command.ElapsedMilliseconds/1000.0).ToString("0.0")+TextResources.Get("agentTaskPanel.refresh.labelCommandCommandId.alternativeC");
                 string commandText=(String.IsNullOrEmpty(command.CommandText)?"":command.CommandText+"\n"+command.Workspace+"\n"+command.IsolationDescription+"\n\n")+(command.Output??"");var output=ReadOnly(commandText);output.MaxHeight=130;var commandBody=new StackPanel();commandBody.Children.Add(output);var open=Small(()=>(TextResources.Get("agentTaskPanel.refresh.small")),"OpenAgentCommandTab");open.IsEnabled=OpenDetailRequested!=null;open.Margin=new Thickness(0,5,0,0);open.HorizontalAlignment=HorizontalAlignment.Left;open.Click+=delegate{var navigate=OpenDetailRequested;if(navigate!=null)navigate(TextResources.Format("agentTaskPanel.refresh.navigate.alternativeA",command.CommandId),ReadOnly(commandText));};commandBody.Children.Add(open);var details=new Expander{Header=Ui.Text(label,11,command.ExitCode==0 && !command.TimedOut && !command.Cancelled?Ui.Muted:Ui.Brush("#A54A37")),Content=commandBody,Margin=new Thickness(0,3,0,3)};ChatUi.ProcessExpander(details);commands.Children.Add(details);
             }body.Children.Add(Section(()=>(TextResources.Get("agentTaskPanel.refresh.section.alternativeB"))));body.Children.Add(commands);
-            if(!String.IsNullOrEmpty(task.Notice))body.Children.Add(Ui.Text(task.Notice,11,Ui.Muted));
             var facts=Small(()=>(TextResources.Get("agentTaskPanel.refresh.small.alternativeC")),"OpenAgentProjectFacts");facts.Click+=delegate{try{if(openDetailRequested!=null)openDetailRequested(TextResources.Get("agentTaskPanel.refresh.openDetailRequested"),new AgentFactsPane(task));else if(Window.GetWindow(this) is ChatWindow)((ChatWindow)Window.GetWindow(this)).OpenProjectFacts(task);else pet.OpenChatProjectFacts(task);}catch(Exception e){Error(e);}};body.Children.Add(facts);
-            if(task.Status=="needs_reconciliation"){var acknowledge=Small(()=>(TextResources.Get("agentTaskPanel.refresh.small.alternativeD")),"AcknowledgeAgentExecutions");acknowledge.IsEnabled=!busy;acknowledge.Click+=async delegate{try{await session.AcknowledgeAgentExecutionsAsync(TaskSettings);await UpdateUiAsync(Refresh);}catch(Exception e){Error(e);}};body.Children.Add(acknowledge);}
-            var actions=new WrapPanel{Margin=new Thickness(0,7,0,2)};var resume=Small(()=>(TextResources.Get("agentTaskPanel.refresh.small.alternativeE")),"ContinueAgentTask");resume.IsEnabled=!busy && pet.Settings.AgentEnabled && task.Status!="running";resume.Click+=async delegate{bool resumeQueue=!queue.IsPaused;queue.Hold();try{await session.ResumeAgentTaskAsync(TaskSettings,pet.Skin.Name);}catch(Exception e){Error(e);}finally{if(resumeQueue)queue.Resume();}};actions.Children.Add(resume);
+            var actions=new WrapPanel{Margin=new Thickness(0,7,0,2)};
             var settings=Small(()=>(TextResources.Get("agentTaskPanel.refresh.small.alternativeF")),"OpenAgentWorkSettings");settings.Click+=delegate{pet.ShowWorkSettings();};actions.Children.Add(settings);
             var clear=Small(()=>(TextResources.Get("agentTaskPanel.refresh.small.alternativeG")),"ClearAgentCheckpoint");clear.IsEnabled=!busy;clear.Click+=async delegate{try{await session.ClearAgentTaskAsync(TaskSettings);}catch(Exception e){Error(e);}};actions.Children.Add(clear);if(!String.IsNullOrEmpty(session.AgentTaskWarning)){var retry=Small(()=>(TextResources.Get("agentTaskPanel.refresh.small.alternativeH")),"RetryAgentCheckpoint");retry.IsEnabled=!busy;retry.Click+=async delegate{try{await session.RetryAgentTaskSaveAsync();await UpdateUiAsync(delegate{notice.Text=String.IsNullOrEmpty(session.AgentTaskWarning)?TextResources.Get("agentTaskPanel.refresh.noticeStringIsNullOrEmpty"):session.AgentTaskWarning;Refresh();});}catch(Exception e){Error(e);}};actions.Children.Add(retry);}body.Children.Add(actions);body.Children.Add(notice);
         }
+        internal void ShowChildren()
+        {
+            if(disposed)return;
+            Refresh();
+            if(childTasks==null)return;
+            IsExpanded=true;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,new Action(delegate{if(!disposed&&childTasks!=null)childTasks.BringIntoView();}));
+        }
+
         internal async Task ShowDiff(string path)
         {
             try
