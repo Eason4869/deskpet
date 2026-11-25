@@ -22,7 +22,7 @@ namespace Dafeiyu
             pet=owner;Margin=new Thickness(24,22,24,20);RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});RowDefinitions.Add(new RowDefinition());
             header=new SettingsPageHeader(()=>(TextResources.Get("quietPanel.quietPanel.headerSettingsPageHeader")),()=>(TextResources.Get("quietPanel.quietPanel.headerSettingsPageHeader.alternativeA")),()=>(new[]{TextResources.Get("quietPanel.quietPanel.headerSettingsPageHeader.alternativeB"),TextResources.Get("quietPanel.quietPanel.headerSettingsPageHeader.alternativeC"),TextResources.Get("dataManagement.title")}),new[]{"GeneralAppearanceTab","GeneralShortcutsTab","GeneralHistoryTab"}){Margin=new Thickness(0,0,0,18)};Children.Add(header);Grid.SetRow(body,1);Children.Add(body);
             var general=new StackPanel();general.Children.Add(LocalizedUi.Text(()=>TextResources.Get("settingsLayout.instantSave"),12,Ui.Muted));var appearance=new StackPanel();
-            theme=new ThemeModePicker(pet.Settings.ThemeMode);theme.Name="ThemeModePicker";theme.Changed+=delegate(string mode){if(!refreshing)pet.SetThemeModeFromSettings(theme,mode);};appearance.Children.Add(Ui.SettingRow(()=>TextResources.Get("quietPanel.quietPanel.text"),null,theme,stackBelow:610));
+            theme=new ThemeModePicker(pet.Settings.ThemeMode);theme.Name="ThemeModePicker";theme.Changed+=delegate(string mode){if(!refreshing)pet.SetThemeModeFromSettings(theme,mode);};appearance.Children.Add(Ui.SettingRow(()=>TextResources.Get("quietPanel.quietPanel.text"),null,theme,alignRight:true,stackBelow:610));
             themeEffect=new ComboBox{Name="ThemeTransitionEffect",SelectedValuePath="Tag",Width=180,MinHeight=36};
             foreach(var effect in ThemeTransitionMotion.Choices)
             {

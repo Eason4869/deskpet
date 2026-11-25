@@ -24,6 +24,7 @@ internal sealed class ThemeModePicker : UserControl
     internal ThemeModePicker(string initial)
     {
         Name = "ThemeModePicker";
+        HorizontalAlignment = HorizontalAlignment.Right;
         LocalizedUi.Automation(this, () => TextResources.Get("themeModePicker.themeModePicker.text"));
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var mode in new[] { "system", "light", "dark" })

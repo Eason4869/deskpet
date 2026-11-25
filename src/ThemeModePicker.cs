@@ -33,7 +33,7 @@ namespace Dafeiyu
             foreach(string mode in new[]{"system","light","dark"})
             {
                 string selected=mode,title=ThemeSwitch.Label(mode);
-                var button=new Button{Name="ThemeChoice"+mode,Content=Preview(mode),Width=84,Height=64,Margin=new Thickness(8,0,0,0),Padding=new Thickness(4),Background=Brushes.Transparent,BorderThickness=new Thickness(2),Cursor=System.Windows.Input.Cursors.Hand,ToolTip=title};
+                var button=new Button{Name="ThemeChoice"+mode,Content=Preview(mode),Width=84,Height=64,Margin=new Thickness(row.Children.Count==0?0:8,0,0,0),Padding=new Thickness(4),Background=Brushes.Transparent,BorderThickness=new Thickness(2),Cursor=System.Windows.Input.Cursors.Hand,ToolTip=title};
                 var border=new FrameworkElementFactory(typeof(Border));border.Name="ThemeChoiceFrame";border.SetValue(Border.CornerRadiusProperty,new CornerRadius(10));
                 border.SetValue(Border.BackgroundProperty,new TemplateBindingExtension(Control.BackgroundProperty));border.SetValue(Border.BorderBrushProperty,new TemplateBindingExtension(Control.BorderBrushProperty));border.SetValue(Border.BorderThicknessProperty,new TemplateBindingExtension(Control.BorderThicknessProperty));border.SetValue(Border.PaddingProperty,new TemplateBindingExtension(Control.PaddingProperty));
                 border.AppendChild(new FrameworkElementFactory(typeof(ContentPresenter)));var template=new ControlTemplate(typeof(Button)){VisualTree=border};

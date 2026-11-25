@@ -37,14 +37,18 @@ namespace Dafeiyu.Tests
             page.RestoreNavigation(3,0,null);Pump();
             var language=Named<Button>(page,"GeneralLanguage");var motion=Named<ComboBox>(page,"ThemeTransitionEffect");var volume=Named<Slider>(page,"ThemeTransitionSoundVolume");
             var sound=Named<CheckBox>(page,"ThemeTransitionSoundEnabled");var track=(FrameworkElement)sound.Template.FindName("track",sound);
+            var picker=Named<ThemeModePicker>(page,"ThemeModePicker");
+            var systemChoice=picker.Origin("system");var darkChoice=picker.Origin("dark");
+            Check(Math.Abs(systemChoice.TranslatePoint(new Point(),picker).X-(picker.ActualWidth-Right(darkChoice,picker)))<2,
+                "theme preview frame hugs its cards with balanced padding");
+            Check(Math.Abs(Right(picker,page)-Right(language,page))<2,"theme preview frame aligns with the language control");
             Check(Math.Abs(Right(motion,page)-Right(language,page))<2&&Math.Abs(Right(volume,page)-Right(language,page))<2,"theme motion and volume align with the language control");
             Check(track.TranslatePoint(new Point(),sound).X>sound.ActualWidth/2,"theme sound keeps its switch at the trailing edge");
             Capture(host,"settings-general-wide");
             host.Width=560;Pump();
-            var picker=Named<ThemeModePicker>(page,"ThemeModePicker");
             Check(All<Button>(picker).Where(button=>button.Name.StartsWith("ThemeChoice",StringComparison.Ordinal)).All(button=>
                 button.TranslatePoint(new Point(),picker).X>=0&&Right(button,picker)<=picker.ActualWidth+1),"all theme choices fit in compact settings");
-            Check(Math.Abs(Right(motion,page)-Right(language,page))<2&&Math.Abs(Right(volume,page)-Right(language,page))<2,"theme control edges stay aligned in compact settings");
+            Check(Math.Abs(Right(picker,page)-Right(language,page))<2&&Math.Abs(Right(motion,page)-Right(language,page))<2&&Math.Abs(Right(volume,page)-Right(language,page))<2,"theme control edges stay aligned in compact settings");
             Capture(host,"settings-general-narrow");
             host.Width=1100;Pump();
         }
