@@ -16,7 +16,7 @@ namespace Dafeiyu
 
         void MountInspectorSummary()
         {
-            inspectorOverview = new WorkSummaryOverview(this, taskPanel);
+            inspectorOverview = new WorkSummaryOverview(this);
             inspectorSummaryBody.Children.Add(inspectorOverview);
             inspectorSummaryBody.Children.Add(taskPanel);
             if (inspectorSummaryScroll == null) inspectorSummaryScroll = Ui.Scroll(inspectorSummaryBody);
@@ -39,22 +39,31 @@ namespace Dafeiyu
             if (inspectorOverview != null) overviews.Add(inspectorOverview);
             if (transientSummaryView != null) overviews.Add(transientSummaryView.Overview);
             if (filePreview != null) overviews.AddRange(filePreview.Pages<SummaryPreview>().Select(view => view.Overview));
+            var contentPages = filePreview == null ? new WorkspacePlanGoalPane[0] : filePreview.Pages<WorkspacePlanGoalPane>();
+            if (overviews.Count == 0 && contentPages.Length == 0) return;
+            var task = session.CurrentAgentTask;
+            bool work = WorkEntry;
+            bool ownsTask = task != null && session.History.Messages.Any(message => message.AgentTaskId == task.Id);
+            var plan = work ? WorkspacePlanGoalPane.Plan(ownsTask ? task : null, session.LatestGeneratedPlan) : null;
+            string goal = work ? pet.ConversationGoal(session) : "";
+            foreach (var page in contentPages) page.Show(page.IsPlan ? plan : WorkspacePlanGoalPane.Goal(goal));
             if (overviews.Count == 0) return;
             ReadWorkSummaryRepository();
             if (summarySources == null) summarySources = WorkSummarySource.FromHistory(session.History.Messages);
-            var chats = filePreview == null ? new SideChatPane[0] : filePreview.Pages<SideChatPane>();
-            var task = session.CurrentAgentTask;
+            ConversationPreviewState state;
+            var chats = conversationPreviews.TryGetValue(session, out state) ? state.SideChats.ToArray() : new SideChatPane[0];
             var changes = AgentChangeSummaryData.FromTask(task);
-            foreach (var overview in overviews) overview.Refresh(task, changes, chats, summarySources);
+            var workers = session.Subagents;
+            foreach (var overview in overviews) overview.Refresh(changes, chats, summarySources, workers, plan, goal);
         }
 
         void OpenSummarySideChat(SideChatPane chat)
         {
+            ConversationPreviewState state;
+            if (closed || (workspace != null && workspace.IsDisposed) || !conversationPreviews.TryGetValue(session, out state) || !state.SideChats.Contains(chat)) return;
             CloseTransientSummary();
-            if (filePreview == null || !filePreview.SelectPage(chat)) return;
-            previewVisible = true;
-            tabsHidden = resumeConversation = false;
-            RefreshWorkspaceLayout();
+            EnsurePreviewWorkspace();
+            ShowSideChat(chat);
         }
 
         void OpenWorkSummarySource(WorkSummarySource source)
@@ -85,38 +94,27 @@ namespace Dafeiyu
             }
         }
 
-        internal sealed class WorkSummaryOverview : StackPanel
+        internal sealed partial class WorkSummaryOverview : StackPanel
         {
             readonly ChatWindow owner;
             readonly ConversationSession conversation;
             readonly Button changes, workers, allSources, repository, linkGitHub;
-            readonly TextBlock changeLabel, added, removed, workerLabel, repositoryLabel, localBranch, noTask;
-            readonly StackPanel sideChats, sourceRows;
+            readonly TextBlock changeLabel, added, removed, workerLabel, workerCompleted, repositoryLabel, localBranch, gitAdded, gitRemoved, planLabel, goalLabel;
+            readonly StackPanel sideChats, sourceRows, changeSection, gitSection, planSection, goalSection, sideChatSection, workerSection, sourceSection;
             string linkedRepository;
             WorkSummarySource[] sources;
             SideChatPane[] displayedChats;
             string[] chatLabels;
             bool[] chatActivity;
 
-            internal WorkSummaryOverview(ChatWindow owner, AgentTaskPanel details)
+            internal WorkSummaryOverview(ChatWindow owner)
             {
                 this.owner = owner;
                 conversation = owner.session;
                 Name = "WorkSummaryOverview";
                 Margin = new Thickness(14, 0, 14, 8);
 
-                linkGitHub = IconAction("LinkWorkSummaryGitHub", () => TextResources.Get("workSummary.linkGitHub"), owner.EditWorkSummaryRepository);
-                var changeSection = Section(() => TextResources.Get("agentTaskPanel.refresh.section.alternativeA"), linkGitHub);
-                repository = Row("OpenWorkSummaryGitHub", () => {
-                    owner.CloseTransientSummary();
-                    if (!String.IsNullOrEmpty(linkedRepository)) MarkdownLinkMenu.OpenExternally(WorkSummaryRepository.GitHubPage(linkedRepository));
-                });
-                repositoryLabel = Label("", 12, Ui.Ink);
-                SetRow(repository, "github", repositoryLabel, null);
-                changeSection.Children.Add(repository);
-                localBranch = Label("", 11, Ui.Muted);
-                localBranch.Margin = new Thickness(6, 0, 6, 3);
-                changeSection.Children.Add(localBranch);
+                changeSection = Section("WorkSummaryFileChanges", () => TextResources.Get("agentTaskPanel.refresh.section.alternativeA"), null);
                 changes = Row("WorkSummaryChanges", () => {
                     owner.CloseTransientSummary();
                     owner.OpenTaskChanges(conversation.CurrentAgentTask);
@@ -133,24 +131,61 @@ namespace Dafeiyu
                 SetRow(changes, "file", changeLabel, lineCounts);
                 changeSection.Children.Add(changes);
 
+                linkGitHub = IconAction("LinkWorkSummaryGitHub", () => TextResources.Get("workSummary.linkGitHub"), owner.EditWorkSummaryRepository);
+                gitSection = Section("WorkSummaryGitChanges", () => TextResources.Get("workSummary.gitChanges.title"), linkGitHub);
+                repository = Row("OpenWorkSummaryGitHub", () => {
+                    if (owner.summaryRepository != null || owner.summaryGitChanges != null) owner.OpenGitChanges();
+                    else OpenLinkedGitHubRepository();
+                });
+                repositoryLabel = Label("", 12, Ui.Ink);
+                gitAdded = Label("", 11, ThemeManager.Brush("#167047", "#65D19A"));
+                gitRemoved = Label("", 11, ThemeManager.Brush("#AD3E51", "#FF9B9E"));
+                gitAdded.Name = "WorkSummaryGitAddedLines";
+                gitRemoved.Name = "WorkSummaryGitRemovedLines";
+                gitRemoved.Margin = new Thickness(6, 0, 0, 0);
+                var gitCounts = new StackPanel { Orientation = Orientation.Horizontal };
+                gitCounts.Children.Add(gitAdded);
+                gitCounts.Children.Add(gitRemoved);
+                SetRow(repository, "git-branch", repositoryLabel, gitCounts);
+                gitSection.Children.Add(BuildGitHubRow());
+                localBranch = Label("", 11, Ui.Muted);
+                localBranch.Margin = new Thickness(6, 0, 6, 3);
+                gitSection.Children.Add(localBranch);
+
+                planSection = Section("WorkSummaryPlan", () => TextResources.Get("workSummary.plan"), null);
+                planLabel = Label("", 12, Ui.Ink);
+                var plan = Row("OpenWorkspacePlan", () => owner.OpenWorkspacePlanGoal(true));
+                SetRow(plan, "list", planLabel, null);
+                planSection.Children.Add(plan);
+
+                goalSection = Section("WorkSummaryGoal", () => TextResources.Get("conversationComposer.openAddMenu.addMenuLabel"), null);
+                goalLabel = Label("", 12, Ui.Ink);
+                var goal = Row("OpenWorkspaceGoal", () => owner.OpenWorkspacePlanGoal(false));
+                SetRow(goal, "target", goalLabel, null);
+                goalSection.Children.Add(goal);
+
                 var newChat = IconAction("NewSummarySideChat", () => TextResources.Get("workSummary.newSideChat"), () => {
                     owner.CloseTransientSummary();
                     owner.OpenSideChat();
                 });
                 sideChats = new StackPanel();
-                Section(() => TextResources.Get("workSummary.sideChats"), newChat).Children.Add(sideChats);
+                sideChatSection = Section("WorkSummarySideChats", () => TextResources.Get("workSummary.sideChats"), newChat);
+                sideChatSection.Children.Add(sideChats);
 
-                var workerSection = Section(() => TextResources.Get("workSummary.workers"), null);
-                workers = Row("WorkSummaryWorkers", details.ShowChildren);
+                workerSection = Section("WorkSummarySubagents", () => TextResources.Get("workSummary.workers"), null);
+                workers = Row("WorkSummaryWorkers", owner.OpenSubagentInspector);
                 workerLabel = Label("", 12, Ui.Ink);
-                SetRow(workers, "target", workerLabel, null);
+                workerLabel.Name = "WorkSummaryActiveWorkers";
+                workerCompleted = Label("", 11, Ui.Muted);
+                workerCompleted.Name = "WorkSummaryCompletedWorkers";
+                SetRow(workers, "target", workerLabel, workerCompleted);
                 workerSection.Children.Add(workers);
 
                 var addSource = IconAction("AddWorkSummarySource", () => TextResources.Get("conversationComposer.openAddMenu.header.alternativeA"), async () => {
                     owner.CloseTransientSummary();
                     if (owner.composer != null) await owner.composer.PickAttachments();
                 });
-                var sourceSection = Section(() => TextResources.Get("webSearch.sources"), addSource);
+                sourceSection = Section("WorkSummarySources", () => TextResources.Get("webSearch.sources"), addSource);
                 sourceRows = new StackPanel();
                 sourceSection.Children.Add(sourceRows);
                 allSources = AgentUi.Nav(() => TextResources.Get("workSummary.allSources"), "ViewAllWorkSummarySources");
@@ -162,30 +197,33 @@ namespace Dafeiyu
                     owner.OpenDetailTab(() => TextResources.Get("webSearch.sources"), Ui.Scroll(content));
                 };
                 sourceSection.Children.Add(allSources);
-                noTask = LocalizedUi.Text(() => TextResources.Get("chatWorkspaceLayout.summaryPreview.text.alternativeA"), 11, Ui.Muted);
-                noTask.Margin = new Thickness(6, 2, 6, 4);
-                LocalizedUi.Tooltip(noTask, () => TextResources.Get("chatWorkspaceLayout.summaryEmpty.text"));
-                Children.Add(noTask);
             }
 
             bool IsCurrent { get { return !owner.closed && ReferenceEquals(conversation, owner.session); } }
 
-            internal void Refresh(AgentTaskState task, AgentChangeSummaryData summary, SideChatPane[] chats, WorkSummarySource[] nextSources)
+            internal void Refresh(AgentChangeSummaryData summary, SideChatPane[] chats, WorkSummarySource[] nextSources,
+                IReadOnlyList<AgentChildResult> children, WorkspacePlanGoalPane.Content plan, string goal)
             {
                 if (!IsCurrent) return;
-                noTask.Visibility = task == null ? Visibility.Visible : Visibility.Collapsed;
                 var git = owner.summaryRepository;
+                var gitChanges = owner.summaryGitChanges;
                 var project = owner.SummaryProject;
                 linkGitHub.Visibility = project == null ? Visibility.Collapsed : Visibility.Visible;
                 linkedRepository = WorkSummaryRepository.Normalize(project == null ? null : project.GitHubRepositoryLink);
                 if (linkedRepository.Length == 0 && git != null) linkedRepository = git.Repository;
-                repository.Visibility = linkedRepository.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-                var branch = git == null ? "" : git.Branch;
+                ShowSection(gitSection, linkedRepository.Length > 0 || git != null || gitChanges != null);
+                var branch = gitChanges != null ? gitChanges.Branch : git == null ? "" : git.Branch;
                 bool matchingOrigin = git != null && linkedRepository.Length > 0 && String.Equals(linkedRepository, git.Repository, StringComparison.OrdinalIgnoreCase);
-                repositoryLabel.Text = linkedRepository + (matchingOrigin && branch.Length > 0 ? " · " + branch : "");
+                RefreshGitHubMenu(linkedRepository.Length > 0, matchingOrigin && branch.Length > 0);
+                string repoName = linkedRepository.Length > 0 ? linkedRepository : gitChanges != null ? gitChanges.RepositoryName : "";
+                repositoryLabel.Text = repoName + (branch.Length > 0 && (matchingOrigin || linkedRepository.Length == 0)
+                    ? (repoName.Length > 0 ? " · " : "") + branch : "");
                 repository.ToolTip = repositoryLabel.Text;
-                localBranch.Visibility = branch.Length > 0 && !matchingOrigin ? Visibility.Visible : Visibility.Collapsed;
+                localBranch.Visibility = branch.Length > 0 && !matchingOrigin && linkedRepository.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
                 if (localBranch.Visibility == Visibility.Visible) LocalizedUi.Set(localBranch, "Text", () => TextResources.Format("workSummary.localBranch", branch));
+                gitAdded.Text = gitChanges == null ? "" : "+" + gitChanges.AddedLines.ToString("N0");
+                gitRemoved.Text = gitChanges == null ? "" : "−" + gitChanges.RemovedLines.ToString("N0");
+                ShowSection(changeSection, summary.FileCount > 0);
                 LocalizedUi.Set(changeLabel, "Text", () => summary.FileCount > 0
                     ? TextResources.Format("agentChangeSummaryCard.refresh.template", summary.FileCount)
                     : TextResources.Get("chatFilePreview.openChangesTab.text"));
@@ -203,14 +241,29 @@ namespace Dafeiyu
                 if (summary.FileCount > 0 && !summary.AddedLines.HasValue)
                     LocalizedUi.Set(changes, "ToolTip", () => TextResources.Get("liveChangeSummary.refresh.labelInlines.alternativeA"));
 
-                var children = task == null ? null : task.Children;
-                workers.IsEnabled = children != null && children.Count > 0;
-                bool running = children != null && task.Status == "running" && conversation.IsBusy;
-                int active = running ? children.Count(child => child.Status == "running") : 0;
-                int queued = running ? children.Count(child => child.Status == "queued") : 0;
-                int total = children == null ? 0 : children.Count;
-                LocalizedUi.Set(workerLabel, "Text", () => total == 0 ? TextResources.Get("workSummary.noWorkers") :
-                    TextResources.Format("workSummary.workerCounts", active, queued, total));
+                planLabel.Text = plan == null ? "" : plan.Title;
+                goalLabel.Text = WorkspacePlanGoalPane.SummaryLine(goal);
+                ShowSection(planSection, plan != null);
+                ShowSection(goalSection, !String.IsNullOrWhiteSpace(goal));
+                ShowSection(sideChatSection, chats.Length > 0);
+                ShowSection(sourceSection, nextSources.Length > 0);
+
+                int active = children.Count(child => child.Status == "running");
+                int queued = children.Count(child => child.Status == "queued");
+                int completed = children.Count(SubagentInspector.IsCompleted);
+                int total = children.Count;
+                int stopped = total - active - queued - completed;
+                ShowSection(workerSection, total > 0);
+                LocalizedUi.Set(workerLabel, "Text", () => active > 0 || queued > 0
+                    ? String.Join(" · ", new[]{
+                        active > 0 ? TextResources.Format("workSummary.subagents.runningCount", active) : "",
+                        queued > 0 ? TextResources.Format("workSummary.subagents.queuedCount", queued) : ""}.Where(text => text.Length > 0))
+                    : stopped > 0 ? TextResources.Format("workSummary.subagents.stoppedCount", stopped)
+                    : "");
+                workerCompleted.Visibility = completed > 0 ? Visibility.Visible : Visibility.Collapsed;
+                LocalizedUi.Set(workerCompleted, "Text", () => TextResources.Format("workSummary.subagents.completedCount", completed));
+                LocalizedUi.HelpText(workers, () => TextResources.Format("workSummary.workerCounts", active, queued, total) +
+                    " · " + TextResources.Format("workSummary.subagents.completedCount", completed));
 
                 RenderSideChats(chats);
                 if (!ReferenceEquals(sources, nextSources))
@@ -218,7 +271,6 @@ namespace Dafeiyu
                     sources = nextSources;
                     sourceRows.Children.Clear();
                     foreach (var source in sources.Take(3)) sourceRows.Children.Add(SourceRow(source));
-                    if (sources.Length == 0) sourceRows.Children.Add(Empty(() => TextResources.Get("workSummary.noSources")));
                     allSources.Visibility = sources.Length > 3 ? Visibility.Visible : Visibility.Collapsed;
                 }
             }
@@ -245,7 +297,6 @@ namespace Dafeiyu
                     SetRow(button, "chat", title, activity);
                     sideChats.Children.Add(button);
                 }
-                if (chats.Length == 0) sideChats.Children.Add(Empty(() => TextResources.Get("workSummary.noSideChats")));
             }
 
             Button SourceRow(WorkSummarySource source)
@@ -258,9 +309,14 @@ namespace Dafeiyu
                 return button;
             }
 
-            StackPanel Section(Func<string> title, Button action)
+            static void ShowSection(Panel content, bool visible)
             {
-                var body = new StackPanel();
+                ((Border)content.Parent).Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            StackPanel Section(string name, Func<string> title, Button action)
+            {
+                var body = new StackPanel { Name = name };
                 var heading = new DockPanel { Margin = new Thickness(6, 0, 3, 2) };
                 if (action != null)
                 {
@@ -273,7 +329,8 @@ namespace Dafeiyu
                 heading.Children.Add(label);
                 body.Children.Add(heading);
                 Children.Add(new Border { Child = body, Background = ThemeManager.CardSurface, BorderBrush = Ui.Line,
-                    BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(5), Margin = new Thickness(0, 0, 0, 7) });
+                    BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(5), Margin = new Thickness(0, 0, 0, 7),
+                    Visibility = Visibility.Collapsed });
                 return body;
             }
 
@@ -326,12 +383,6 @@ namespace Dafeiyu
                 return label;
             }
 
-            static FrameworkElement Empty(Func<string> text)
-            {
-                var label = LocalizedUi.Text(text, 11, Ui.Muted);
-                label.Margin = new Thickness(6, 0, 5, 3);
-                return label;
-            }
         }
     }
 }

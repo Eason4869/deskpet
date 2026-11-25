@@ -19,8 +19,8 @@ namespace Dafeiyu
         }
         void Show(int index)
         {
-            if(index==0){if(web==null){web=new WebSearchSettingsPanel(pet,false);var surface=new DockPanel();var footer=web.DetachSaveFooter();DockPanel.SetDock(footer,Dock.Bottom);surface.Children.Add(footer);surface.Children.Add(Ui.Scroll(web));webPage=surface;}body.Content=webPage;}
-            else {if(channels==null){channels=new ImChannelSettingsPanel(pet);channelPage=Ui.Scroll(channels);}body.Content=channelPage;}
+            if(index==0){if(web==null){web=new WebSearchSettingsPanel(pet,false);var surface=new DockPanel();var footer=web.DetachSaveFooter();DockPanel.SetDock(footer,Dock.Bottom);surface.Children.Add(footer);surface.Children.Add(SettingsSurface.Scroll(web));webPage=surface;}body.Content=webPage;}
+            else {if(channels==null){channels=new ImChannelSettingsPanel(pet){Margin=new Thickness(0,22,0,20)};channelPage=SettingsSurface.Scroll(channels);}body.Content=channelPage;}
         }
         internal void SelectSection(int index){header.Select(index==2?1:0);}
         public void Dispose(){if(channels!=null)channels.Dispose();}

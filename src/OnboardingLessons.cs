@@ -40,7 +40,6 @@ namespace Dafeiyu
             new[]{"chat.dictation", "chat.microphone"},
             new[]{"chat.pin", "chat.export"},
             new[]{"work.instructions", "work.skills"},
-            new[]{"work.goal", "work.context"},
             new[]{"work.process", "editor.prediction", "editor.markdown", "editor.context"},
             new[]{"editor.send", "editor.followup"},
             new[]{"work.recovery", "work.workers"},
@@ -48,6 +47,7 @@ namespace Dafeiyu
         };
         internal static string ResolveLessonId(string id)
         {
+            if(id=="work.goal")return "work.context";
             foreach(var group in CompactGroups)if(Array.IndexOf(group,id)>=0)return group[0];
             return id;
         }
@@ -91,7 +91,6 @@ namespace Dafeiyu
                 case "chat.dictation": lesson.Title=TextResources.Get("onboarding.compact.chat.dictation.title");lesson.Text=TextResources.Get("onboarding.compact.chat.dictation");break;
                 case "chat.pin": lesson.Title=TextResources.Get("onboarding.compact.chat.pin.title");lesson.Text=TextResources.Get("onboarding.compact.chat.pin");break;
                 case "work.instructions": lesson.Title=TextResources.Get("onboarding.compact.work.instructions.title");lesson.Text=TextResources.Get("onboarding.compact.work.instructions");break;
-                case "work.goal": lesson.Title=TextResources.Get("onboarding.compact.work.goal.title");lesson.Text=TextResources.Get("onboarding.compact.work.goal");break;
                 case "work.process": lesson.Title=TextResources.Get("onboarding.compact.work.process.title");lesson.Text=TextResources.Get("onboarding.compact.work.process");break;
                 case "editor.send": lesson.Title=TextResources.Get("onboarding.compact.editor.send.title");lesson.Text=TextResources.Get("onboarding.compact.editor.send");break;
                 case "work.recovery": lesson.Title=TextResources.Get("onboarding.compact.work.recovery.title");lesson.Text=TextResources.Get("onboarding.compact.work.recovery");break;
@@ -217,7 +216,6 @@ namespace Dafeiyu
             add(15, "work.instructions", TextResources.Get("onboardingLessons.build.add.alternativeGV"), TextResources.Get("onboardingLessons.build.add.alternativeGW"), "AgentTrustProjectInstructions", "read", "");
             add(15, "work.skills", TextResources.Get("onboardingLessons.build.add.alternativeGX"), TextResources.Get("onboardingLessons.build.add.alternativeGY"), "AgentSkillsDirectory", "read", "");
             add(15, "work.backup", TextResources.Get("onboardingLessons.build.add.alternativeGZ"), TextResources.Get("onboardingLessons.build.add.alternativeHA"), "AgentBackupFiles", "read", "");
-            add(15, "work.goal", TextResources.Get("onboardingLessons.build.add.alternativeHB"), TextResources.Get("onboardingLessons.build.add.alternativeHC"), "AgentGoal", "read", "");
             add(15, "work.context", TextResources.Get("onboardingLessons.build.add.alternativeHD"), TextResources.Get("onboardingLessons.build.add.alternativeHE"), "WorkContextSummary", "read", "");
             add(15, "work.fallback", TextResources.Get("onboardingLessons.build.add.alternativeHF"), TextResources.Get("onboardingLessons.build.add.alternativeHG"), "AgentContextTokenLimit", "nonempty", "unknown-context");
             add(15, "work.process", TextResources.Get("onboardingLessons.build.add.alternativeHH"), TextResources.Get("onboardingLessons.build.add.alternativeHI"), "AgentDetailedProcess", "read", "");

@@ -15,7 +15,7 @@ namespace Dafeiyu
         static bool SameValue(string left,string right){return left==right||(String.IsNullOrWhiteSpace(left)&&String.IsNullOrWhiteSpace(right))||ShortcutCatalog.Equal(left,right);}
         public ShortcutSettingsPanel(PetWindow owner)
         {
-            pet=owner;VerticalScrollBarVisibility=ScrollBarVisibility.Auto;HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;
+            pet=owner;MaxWidth=SettingsSurface.BodyWidth;VerticalScrollBarVisibility=ScrollBarVisibility.Auto;HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;
             var root=new StackPanel{Margin=new Thickness(0,16,0,0)};
             root.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text")),17));
             root.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("shortcutCapture.help")),12,Ui.Muted));

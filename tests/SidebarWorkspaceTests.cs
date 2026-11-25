@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -20,6 +22,16 @@ namespace Dafeiyu.Tests
         static void CheckWidth(Window window,double requested){Check(Math.Abs(window.ActualWidth-requested)<1,"sidebar fixture actual width matches "+requested+"px (actual "+window.ActualWidth+")");}
         static object Field(ChatWindow window,string name){return typeof(ChatWindow).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(window);}
         static void Capture(FrameworkElement host,string name){host.UpdateLayout();var bmp=new RenderTargetBitmap((int)host.ActualWidth,(int)host.ActualHeight,96,96,PixelFormats.Pbgra32);bmp.Render(host);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var stream=File.Create(Path.Combine("work","permissions",name)))png.Save(stream);}
+        static void RunGit(string root,string arguments)
+        {
+            var start=new ProcessStartInfo("git.exe",arguments){WorkingDirectory=root,UseShellExecute=false,
+                CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};
+            using(var process=Process.Start(start))
+            {
+                if(!process.WaitForExit(8000)){process.Kill();throw new Exception("Git fixture timed out");}
+                if(process.ExitCode!=0)throw new Exception("Git fixture failed: "+process.StandardError.ReadToEnd());
+            }
+        }
         static void WriteRepository(string root)
         {
             string git=Path.Combine(root,".git");
@@ -30,25 +42,195 @@ namespace Dafeiyu.Tests
         }
         sealed class BrokenView:Border,IDisposable{public void Dispose(){throw new IOException("cleanup fixture");}}
         sealed class ReleasedView:Border,IDisposable{internal bool Released;public void Dispose(){Released=true;}}
+        static void CheckSubagentHeader(SubagentInspector pane)
+        {
+            pane.UpdateLayout();
+            var icon=All<Viewbox>(pane).Single(image=>image.Name=="SubagentInspectorHeaderIcon");
+            var title=All<TextBlock>(pane).Single(label=>label.Name=="SubagentInspectorTitle");
+            var back=All<Button>(pane).Single(button=>button.Name=="SubagentInspectorBack");
+            Func<FrameworkElement,double> centerY=element=>element.TranslatePoint(new Point(0,element.ActualHeight/2),pane).Y;
+            var centers = new[] { centerY(icon), centerY(title), centerY(back) };
+            // WPF rounds each element to device pixels independently.
+            double spread = (centers.Max() - centers.Min()) * VisualTreeHelper.GetDpi(pane).DpiScaleY;
+            Check(spread <= 1.000001, "subagent detail icon, title and back button share a visual center line (" +
+                spread.ToString("F3") + " physical pixel spread)");
+        }
+        static async Task RunSubagentHeader()
+        {
+            Directory.CreateDirectory(Path.Combine("work","permissions"));
+            var transport=new ApiClient();
+            using(var session=new ConversationSession(transport,
+                new SpeechOutput(transport,Path.Combine("work","permissions"),app.Dispatcher),null))
+            {
+                var task=new AgentTaskState{Workspace=Directory.GetCurrentDirectory(),Status="complete"};
+                var started=DateTime.UtcNow.AddMinutes(-3);
+                task.Children.Add(new AgentChildResult{Id="fixture-child",Status="completed",Input="检查项目",
+                    Result="已读完项目中的说明",Model="fixture-model",StartedUtc=started,FinishedUtc=started.AddSeconds(24)});
+                session.History.Commit("检查项目","任务已处理");
+                session.History.LinkAgentTask(session.History.Messages.Last().Id,task.Id);
+                session.History.UpdateAgentTaskSummary(task);
+                using(var pane=new SubagentInspector(session))
+                {
+                    var host = new Window { Content = pane };
+                    Ui.Window(host, "", 639, 790);
+                    try
+                    {
+                        host.Show();
+                        await Task.Delay(60);
+                        All<Button>(pane).Single(button=>button.Name=="SubagentInspectorRow").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        CheckSubagentHeader(pane);
+                        Capture(pane,"workspace-subagents-result.png");
+                    }
+                    finally{host.Close();}
+                }
+            }
+            Console.WriteLine("Subagent header tests: "+checks+" passed");
+        }
+        static async Task<Popup> OpenSideChatSummary(ChatWindow window)
+        {
+            All<Button>(window).Single(button=>button.Name=="ToggleWorkspaceSummary").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(80);
+            var popup=(Popup)Field(window,"transientSummary");
+            Check(popup!=null&&popup.IsOpen,"the work summary opens in the narrow window");
+            return popup;
+        }
+        static Button[] SideChatRows(DependencyObject summary)
+        {return All<Button>(summary).Where(button=>button.Name=="OpenSummarySideChat").ToArray();}
+        static async Task<bool> SideChatReleased(SideChatPane chat)
+        {
+            try{await chat.SendAsync("closed workspace");return false;}
+            catch(ObjectDisposedException){return true;}
+        }
+        static void DisableClipboardQueries(MarkdownEditor editor)
+        {
+            // WPF refreshes Paste eligibility on focus changes. The tab fixture needs no desktop clipboard.
+            CommandManager.AddPreviewCanExecuteHandler(editor,delegate(object sender,CanExecuteRoutedEventArgs command){
+                if(command.Command==ApplicationCommands.Paste){command.CanExecute=false;command.Handled=true;}
+            });
+        }
+        static async Task RunSideChatReopen()
+        {
+            string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","sidebar-side-chat-"+Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            var settings=new PetSettings{AgentEnabled=true,AgentWorkspace=root,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,ShowPredictedMessages=false,OnboardingState="completed"};
+            foreach(string hotkey in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[hotkey]="";
+            pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"data","settings.json")),null);
+            var project=new ProjectDefinition{Id="side-chat-fixture",Name="Side chat fixture",Workspace=root};
+            var first=pet.Workspaces.CreateWorkspace(project,new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="First workspace",Mode="work"});
+            var second=pet.Workspaces.CreateWorkspace(project,new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="Second workspace",Mode="work"});
+            var window=new ChatWindow(pet,first){Width=950};
+            DisableClipboardQueries((MarkdownEditor)Field(window,"input"));
+            window.Show();
+            await Task.Delay(100);
+            window.OpenSideChat();
+            window.UpdateLayout();
+            var area=(PreviewWorkspace)Field(window,"filePreview");
+            var chat=(SideChatPane)area.Selected;
+            var editor=All<MarkdownEditor>(chat).Single(input=>input.Name=="SideChatInput");
+            DisableClipboardQueries(editor);
+            chat.Session.AddLiveTurn(chat.Session.PersonaId,"Original side chat","Original reply");
+            editor.Text="Unsent draft";
+            All<Button>(window).Single(button=>button.Name=="ClosePreviewTab").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(area.Pages<SideChatPane>().Length==0,"closing the tab removes the side chat from the preview area");
+
+            var popup=await OpenSideChatSummary(window);
+            var rows=SideChatRows(popup.Child);
+            Check(rows.Length==1&&Object.Equals(rows[0].ToolTip,"Original side chat"),"the summary retains the closed side chat with its title");
+            rows[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            window.UpdateLayout();
+            Check(!popup.IsOpen&&ReferenceEquals(area.Selected,chat)&&chat.IsVisible,"the summary reopens the same side chat in the narrow tab layout");
+            Check(chat.Session.History.Messages.Any(message=>message.Content=="Original reply")&&All<MarkdownEditor>(chat).Single(input=>input.Name=="SideChatInput").Text=="Unsent draft","the reopened side chat retains its reply and draft");
+
+            window.OpenSideChat();
+            var sibling=(SideChatPane)area.Selected;
+            DisableClipboardQueries(All<MarkdownEditor>(sibling).Single());
+            sibling.Session.AddLiveTurn(sibling.Session.PersonaId,"Sibling side chat","Sibling reply");
+            area.Close(chat);
+            window.SwitchWorkspace(second);
+            await Task.Delay(100);
+            popup=await OpenSideChatSummary(window);
+            Check(SideChatRows(popup.Child).Length==0,"another main conversation cannot see the first conversation's side chats");
+            rows[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(Field(window,"filePreview")==null,"a stale work summary row cannot reopen a side chat from another conversation");
+            popup.IsOpen=false;
+            window.SwitchWorkspace(first);
+            await Task.Delay(100);
+            popup=await OpenSideChatSummary(window);
+            rows=SideChatRows(popup.Child);
+            Check(rows.Select(row=>row.ToolTip).SequenceEqual(new object[]{"Original side chat","Sibling side chat"}),"returning to the owner lists closed and open side chats in creation order");
+            rows[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            popup=await OpenSideChatSummary(window);
+            SideChatRows(popup.Child)[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(ReferenceEquals(area.Selected,chat)&&area.Pages<SideChatPane>().Length==2,"selecting an already open side chat does not duplicate it");
+
+            window.MinWidth=1550;window.Width=1550;
+            await Task.Delay(100);
+            Check(!area.HasConversation,"the wider window uses split tool tabs");
+            area.Close(chat);area.Close(sibling);
+            Check(Field(window,"filePreview")==null,"closing the last split tab releases the empty preview area");
+            await Task.Delay(100);
+            var inspector=All<Border>(window).Single(border=>border.Name=="AgentWorkspaceInspector");
+            rows=SideChatRows(inspector);
+            Check(inspector.IsVisible&&rows.Length==2,"the split workspace summary lists the closed side chats");
+            rows[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var recreated=(PreviewWorkspace)Field(window,"filePreview");
+            Check(!ReferenceEquals(recreated,area)&&ReferenceEquals(recreated.Selected,chat),"the summary recreates the split preview area with the original side chat");
+            recreated.Close(chat);
+            window.SwitchWorkspace(second);
+            await pet.Workspaces.CloseWorkspaceAsync(first.Id);
+            await Task.Delay(100);
+            Check(await SideChatReleased(chat)&&await SideChatReleased(sibling),"closing the owning conversation releases its closed side chats");
+            window.OpenSideChat();
+            var activeArea=(PreviewWorkspace)Field(window,"filePreview");
+            var remaining=(SideChatPane)activeArea.Selected;
+            DisableClipboardQueries(All<MarkdownEditor>(remaining).Single());
+            activeArea.Close(remaining);
+            window.Close();
+            Check(await SideChatReleased(remaining),"closing the window releases its closed side chats");
+            Console.WriteLine("Side chat reopen tests: "+checks+" passed");
+        }
         static async Task Run()
         {
             string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","sidebar-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);WriteRepository(root);string file=Path.Combine(root,"README.md");File.WriteAllText(file,"# 测试预览\n\n侧栏支持拖动与独立标签。");var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=root,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,ShowPredictedMessages=false,OnboardingState="completed"};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"data","settings.json")),null);
             // MinWidth establishes each wide viewport even when the CI desktop caps a requested Width.
             var project=new ProjectDefinition{Id="fixture",Name="项目名称",Workspace=root};var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="检查侧栏布局与交互",Mode="work"};var workspace=pet.Workspaces.CreateWorkspace(project,definition);var full=new ChatWindow(pet,workspace);double normalMinWidth=full.MinWidth;full.MinWidth=1780;full.Width=1780;full.Height=880;full.Show();await Task.Delay(150);CheckWidth(full,1780);var title=All<TextBlock>(full).Single(t=>t.Name=="ConversationTitle");Check(title.Text==definition.Name&&title.TextTrimming==TextTrimming.CharacterEllipsis,"header displays active conversation title with overflow trimming");
             var summary=All<Border>(full).Single(b=>b.Name=="AgentWorkspaceInspector");var toggle=All<Button>(full).Single(b=>b.Name=="ToggleWorkspaceSummary");var add=All<Button>(full).Single(b=>b.Name=="NewWorkspaceTab");Check(summary.IsVisible&&toggle.IsVisible&&add.IsVisible,"wide work window exposes summary and both aligned toolbar actions");Check(Math.Abs(toggle.TranslatePoint(new Point(),full).Y-add.TranslatePoint(new Point(),full).Y)<.5,"summary and new-tab toolbar buttons share vertical alignment");
-            Check(All<FrameworkElement>(summary).Any(e=>e.Name=="WorkSummaryOverview")&&All<Button>(summary).Any(e=>e.Name=="NewSummarySideChat")&&All<Button>(summary).Any(e=>e.Name=="AddWorkSummarySource"),"work overview exposes side chat and attachment actions before a task starts");
+            var overview=All<ChatWindow.WorkSummaryOverview>(summary).Single();
+            Check(overview.Children.OfType<Border>().Where(card=>((Panel)card.Child).Name!="WorkSummaryGitChanges")
+                .All(card=>card.Visibility==Visibility.Collapsed),"workspace hides all categories with no corresponding content");
             // A collapsed ContentControl need not create its visual presenter.
             // Inspect its existing content, then verify rendering after a task appears.
             var navigation=(AgentWorkspaceNavigation)Field(full,"navigation");var projects=All<ProjectSidebar>(navigation).Single();var taskHost=projects.Children.OfType<ContentControl>().Single(c=>c.Name=="CurrentProjectTaskHost");var taskShortcut=(Button)taskHost.Content;Check(taskShortcut.Name=="WorkspaceTaskDetails"&&!taskHost.IsVisible,"project task shortcut reserves no visible row when there is no task");
             var tasks=(Dictionary<string,AgentTaskState>)typeof(ConversationSession).GetField("agentTasks",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(workspace.Session);tasks[workspace.Session.PersonaId]=new AgentTaskState{PersonaId=workspace.Session.PersonaId,Workspace=root,Goal="检查当前项目任务入口",Status="complete"};navigation.Refresh();await Task.Delay(60);var projectSection=All<Button>(projects).Single(b=>b.Name=="ToggleSection_projects");var recentSection=All<Button>(projects).Single(b=>b.Name=="ToggleSection_recent");Check(taskShortcut.IsVisible&&ReferenceEquals(taskShortcut.Parent,taskHost)&&projects.Children.IndexOf(taskHost)>projects.Children.IndexOf((UIElement)projectSection.Parent)&&projects.Children.IndexOf(taskHost)<projects.Children.IndexOf(recentSection),"current task shortcut belongs under projects and before recent, not above the footer");
             var task=tasks[workspace.Session.PersonaId];
-            task.Changes.Add(new AgentChange{Path=file,Status="modified",AddedLines=3,RemovedLines=2});
-            task.Changes.Add(new AgentChange{Path=Path.Combine(root,"restored.txt"),Status="restored",AddedLines=20,RemovedLines=10});
-            task.Children.Add(new AgentChildResult{Id="fixture-child",Status="complete",Input="检查项目",Result="已读"});
+            task.Plan.Add(new AgentPlanStep{Text="核对项目文档",Status="complete"});
+            definition.WorkOptions=new ConversationWorkOptions("goal","整理项目说明\n补充安装步骤");
+            File.AppendAllText(file,"\n");
+            RunGit(root,"add -- README.md");
+            RunGit(root,"-c user.name=Fixture -c user.email=fixture@example.invalid commit --no-gpg-sign --no-verify -m fixture");
+            File.AppendAllText(file,"Git workspace fixture.\n");
+            task.Changes.Add(new AgentChange{Path=file,Status="modified",AddedLines=3,RemovedLines=2,AfterHash=new string('a',64)});
+            task.Changes.Add(new AgentChange{Path=Path.Combine(root,"restored.txt"),Status="restored",AddedLines=20,RemovedLines=10,AfterHash=new string('b',64)});
+            var started=DateTime.UtcNow.AddMinutes(-3);
+            task.Children.Add(new AgentChildResult{Id="fixture-child",Status="complete",Input="检查项目",
+                Result="已读完项目中的说明",Model="fixture-model",StartedUtc=started,FinishedUtc=started.AddSeconds(24)});
+            workspace.Session.History.Commit("检查项目","任务已处理");
+            workspace.Session.History.LinkAgentTask(workspace.Session.History.Messages.Last().Id,task.Id);
+            workspace.Session.History.UpdateAgentTaskSummary(task);
             typeof(ChatWindow).GetMethod("RefreshSummary",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(full,null);
             full.UpdateLayout();
             Check(All<TextBlock>(summary).Single(t=>t.Name=="WorkSummaryAddedLines").Text=="+3"&&All<TextBlock>(summary).Single(t=>t.Name=="WorkSummaryRemovedLines").Text=="−2","work summary presents actual net line counts and excludes restored files");
             Check(All<Button>(summary).Single(b=>b.Name=="WorkSummaryWorkers").IsEnabled,"recorded subagents expose their task details");
+            Check(All<TextBlock>(summary).Single(t=>t.Name=="WorkSummaryCompletedWorkers").Text=="1 个已完成",
+                "completed workers remain visible without an active task");
+            Check(!All<StackPanel>(summary).Any(panel=>panel.Name=="AgentTaskChildren"),
+                "workspace summary does not repeat inline worker details");
+            Check(!All<StackPanel>(summary).Any(panel=>panel.Name=="AgentTaskChanges"),
+                "workspace summary keeps task file changes in the top card only");
+            Check(All<Button>(summary).Any(button=>button.Name=="OpenWorkspacePlan"&&button.IsVisible)&&
+                All<Button>(summary).Any(button=>button.Name=="OpenWorkspaceGoal"&&button.IsVisible)&&
+                !All<StackPanel>(summary).Any(panel=>panel.Name=="AgentTaskPlan"),
+                "populated plan and goal each have a category without repeating plan steps inline");
             var taskPanel=(AgentTaskPanel)Field(full,"taskPanel");taskPanel.IsExpanded=false;taskShortcut.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(taskPanel.IsExpanded,"relocated current task shortcut preserves task-focus action");
             project.Conversations.Add(definition);pet.Projects.Projects.Add(project);navigation.Refresh();await Task.Delay(60);Check(!taskHost.IsVisible&&All<Button>(projects).Any(b=>b.Name=="ProjectConversation"&&b.IsVisible),"rendered active conversation suppresses a duplicate current-task shortcut");pet.Projects.Projects.Remove(project);project.Conversations.Remove(definition);tasks.Remove(workspace.Session.PersonaId);full.RefreshAppearance();navigation.Refresh();await Task.Delay(60);Check(!taskHost.IsVisible&&taskHost.DesiredSize.Height<1,"clearing the task collapses the relocated shortcut height");
             full.MinWidth=normalMinWidth;full.Width=1000;await Task.Delay(90);CheckWidth(full,1000);All<Button>(full).Single(b=>b.Name=="ToggleAppSidebar").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(50);Check(!((FrameworkElement)Field(full,"compactTaskHost")).IsVisible,"hiding project sidebar never exposes the legacy compact task status in the chat header");All<Button>(full).Single(b=>b.Name=="ToggleAppSidebar").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));full.MinWidth=2300;full.Width=2300;await Task.Delay(90);CheckWidth(full,2300);
@@ -62,7 +244,10 @@ namespace Dafeiyu.Tests
             full.OpenSideChat();await Task.Delay(100);Check(area.Selected is SideChatPane&&((SideChatPane)area.Selected).Session.History.Messages.Count==0,"side chat opens independent empty project session in right tab");
             var existingSideChat=(SideChatPane)area.Selected;
             project.Conversations.Add(definition);pet.Projects.Projects.Add(project);pet.ProjectStore.Save(pet.Projects);
-            tasks[workspace.Session.PersonaId]=task;
+            var taskStore=(AgentTaskStore)typeof(ConversationSession).GetField("taskStore",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(workspace.Session);
+            await taskStore.SaveAsync(task);
+            Check(taskStore.Load(workspace.Session.PersonaId,root)!=null,"registered conversation loads its persisted task checkpoint");
+            workspace.Session.LoadAgentTask(workspace.EffectiveSettings());
             workspace.Session.History.RegisterGuidance("source-fixture","核对来源",Enumerable.Range(1,4).Select(i=>ChatAttachment.FromText("来源"+i+".txt","fixture data")));
             workspace.Session.History.Commit("链接","[GitHub 示例](https://github.com/example/repo) [重复](https://github.com/example/repo) [被排除](https://user@github.com/example/repo)");
             full.ReloadHistory(false);
@@ -77,10 +262,89 @@ namespace Dafeiyu.Tests
             var deadline=DateTime.UtcNow.AddSeconds(4);
             while(!All<Button>(temporary).Single(b=>b.Name=="OpenWorkSummaryGitHub").IsVisible&&DateTime.UtcNow<deadline)await Task.Delay(30);
             Check(All<Button>(temporary).Single(b=>b.Name=="OpenWorkSummaryGitHub").ToolTip.ToString()=="example/repo · summary-fixture"&&All<Button>(temporary).Single(b=>b.Name=="LinkWorkSummaryGitHub").IsVisible,"summary displays detected repository and offers an explicit per-project override");
+            temporary.UpdateLayout();
+            var gitCard=temporary.Overview.Children.OfType<Border>().Select(card=>card.Child).OfType<StackPanel>()
+                .Single(panel=>panel.Name=="WorkSummaryGitChanges");
+            var gitPlus=All<TextBlock>(gitCard).FirstOrDefault(t=>t.Name=="WorkSummaryGitAddedLines");
+            while((gitPlus==null||gitPlus.Text=="")&&DateTime.UtcNow<deadline)
+            {
+                await Task.Delay(30);temporary.UpdateLayout();
+                gitPlus=All<TextBlock>(gitCard).FirstOrDefault(t=>t.Name=="WorkSummaryGitAddedLines");
+            }
+            var fileChanges=All<TextBlock>(temporary).FirstOrDefault(t=>t.Name=="WorkSummaryAddedLines");
+            Check(gitPlus!=null&&gitPlus.Text=="+1"&&fileChanges!=null&&fileChanges.Text=="+3",
+                "Git line counts are shown independently of task file edits (Git "+(gitPlus==null?"missing":gitPlus.Text)+
+                ", files "+(fileChanges==null?"missing":fileChanges.Text)+")");
+            var gitActions=All<Button>(gitCard).Single(b=>b.Name=="WorkSummaryGitHubActions");
+            gitActions.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(65);
+            Check(popup.IsOpen&&gitActions.ContextMenu.IsOpen,"GitHub actions remain usable in the temporary workspace summary");
+            gitActions.ContextMenu.IsOpen=false;
+            if(!popup.IsOpen){toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(85);popup=(Popup)Field(full,"transientSummary");temporary=(SummaryPreview)popup.Child;}
             Check(All<Button>(temporary).Count(b=>b.Name=="OpenWorkSummarySource")==3&&All<Button>(temporary).Single(b=>b.Name=="ViewAllWorkSummarySources").IsVisible,"compact summary limits source rows and offers the full list");
             Capture(temporary,"work-summary.png");
+            All<Button>(temporary).Single(b=>b.Name=="OpenWorkSummaryGitHub").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(70);
+            var gitPane=area.Selected as GitChangesPane;
+            Check(!popup.IsOpen&&gitPane!=null&&gitPane.IsVisible,"Git changes opens the right-side pane and closes the floating summary");
+            var patch=All<RichTextBox>(gitPane).Single(t=>t.Name=="GitChangesPatch");
+            deadline=DateTime.UtcNow.AddSeconds(8);
+            while(!patch.IsVisible&&DateTime.UtcNow<deadline)await Task.Delay(30);
+            Check(patch.IsVisible&&new TextRange(patch.Document.ContentStart,patch.Document.ContentEnd).Text.Contains("+Git workspace fixture."),
+                "the Git sidebar renders the actual tracked worktree patch");
+            Capture(gitPane,"workspace-git-changes.png");
+            var gitFilter=All<TextBox>(gitPane).Single(t=>t.Name=="GitChangesFilter");
+            gitFilter.Text="no-matching-path";await Task.Delay(60);
+            Check(All<ListBox>(gitPane).Single().Items.Count==0&&!patch.IsVisible,"filtering clears the previous file's preview when no files match");
+            gitFilter.Clear();
+            toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(85);
+            popup=(Popup)Field(full,"transientSummary");temporary=(SummaryPreview)popup.Child;
+            All<Button>(temporary).Single(b=>b.Name=="WorkSummaryWorkers").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(80);
+            var workerPane=area.Selected as SubagentInspector;
+            Check(!popup.IsOpen&&workerPane!=null&&workerPane.IsVisible&&All<MarkdownEditor>(full).Single(t=>t.Name=="MessageInput").IsVisible,
+                "the temporary workspace summary opens subagents beside the live composer");
+            var worker=All<Button>(workerPane).Single(b=>b.Name=="SubagentInspectorRow");
+            Check(All<TextBlock>(workerPane).Any(t=>t.Text=="已完成 · 1")&&Equals(worker.Tag,"fixture-child"),
+                "the sidebar lists the retained worker under the completed group");
+            Capture(workerPane,"workspace-subagents.png");
+            worker.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(60);
+            Check(All<TextBlock>(workerPane).Single(t=>t.Name=="SubagentInspectorResult").Text=="已读完项目中的说明"&&
+                All<TextBlock>(workerPane).Any(t=>t.Text=="fixture-model")&&All<TextBlock>(workerPane).Any(t=>t.Text=="用时 0:00:24"),
+                "worker details show the actual result, model, and elapsed time");
+            CheckSubagentHeader(workerPane);
+            Capture(workerPane,"workspace-subagents-result.png");
+            All<Button>(workerPane).Single(b=>b.Name=="SubagentInspectorBack").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(60);
+            Check(All<Button>(workerPane).Any(b=>b.Name=="SubagentInspectorRow"),
+                "the back button returns to the subagent list in the same tab");
+            toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(80);
+            popup=(Popup)Field(full,"transientSummary");
+            temporary=(SummaryPreview)popup.Child;
+            All<Button>(temporary).Single(b=>b.Name=="WorkSummaryWorkers").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(60);
+            Check(!popup.IsOpen&&area.Pages<SubagentInspector>().Length==1&&ReferenceEquals(workerPane,area.Selected),
+                "opening subagents again selects the same right-side tab");
+            foreach(var name in new[]{"OpenWorkspacePlan","OpenWorkspaceGoal"})
+            {
+                toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(85);
+                popup=(Popup)Field(full,"transientSummary");temporary=(SummaryPreview)popup.Child;
+                All<Button>(temporary).Single(button=>button.Name==name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await Task.Delay(55);
+                var page=area.Selected as WorkspacePlanGoalPane;
+                Check(!popup.IsOpen&&page!=null,"plan and goal content open in a workspace tab");
+                var doc=All<FlowDocumentScrollViewer>(page).Single().Document;
+                string text=new TextRange(doc.ContentStart,doc.ContentEnd).Text;
+                Check(page.IsPlan?text.Contains("✓ 核对项目文档"):text.Contains("补充安装步骤"),
+                    "the plan or goal tab displays the actual complete content");
+            }
+            definition.WorkOptions=new ConversationWorkOptions("off","");full.RefreshAppearance();
+            Check(All<FlowDocumentScrollViewer>(area.Selected).Single().Document==null,"clearing a goal clears its open detail");
+            toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(80);
+            popup=(Popup)Field(full,"transientSummary");
+            temporary=(SummaryPreview)popup.Child;
+            Check(!All<Button>(temporary).Any(button=>button.Name=="OpenWorkspaceGoal"&&button.IsVisible),
+                "clearing existing content hides that specific workspace category");
+            area.Close(existingSideChat);
             All<Button>(temporary).Single(b=>b.Name=="OpenSummarySideChat").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Check(!popup.IsOpen&&ReferenceEquals(existingSideChat,area.Selected)&&area.Pages<SideChatPane>().Length==1,"summary returns to the existing side chat without duplicating it");
+            Check(!popup.IsOpen&&ReferenceEquals(existingSideChat,area.Selected)&&area.Pages<SideChatPane>().Length==1,"summary reopens the closed side chat without duplicating it");
             toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(80);
             temporary=(SummaryPreview)((Popup)Field(full,"transientSummary")).Child;
             All<Button>(temporary).Single(b=>b.Name=="OpenWorkSummarySource"&&Object.Equals(b.ToolTip,"来源1.txt")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -94,6 +358,6 @@ namespace Dafeiyu.Tests
             Check(project.GitHubRepositoryLink=="example/override"&&pet.ProjectStore.Load().Projects.Single(p=>p.Id==project.Id).GitHubRepositoryLink=="example/override","a linked GitHub repository is stored with the named project");
             definition.Name=new string('长',70)+" 标题";full.RefreshAppearance();full.MinWidth=normalMinWidth;full.Width=950;await Task.Delay(100);CheckWidth(full,950);All<Button>(full).Single(b=>b.Name=="BackToConversation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(100);Check(title.Text==definition.Name&&title.ActualWidth>0&&title.ActualWidth<600,"long conversation title remains bounded in compact header");definition.Name="检查侧栏布局与交互";full.RefreshAppearance();full.MinWidth=2300;full.Width=2300;await Task.Delay(100);CheckWidth(full,2300);All<Thumb>(full).Single(t=>t.Name=="PreviewDivider").RaiseEvent(new DragDeltaEventArgs(shell.ColumnDefinitions[6].ActualWidth-640,0){RoutedEvent=Thumb.DragDeltaEvent});await Task.Delay(100);Capture(full,"workspace-sidebar-final.png");full.OpenBlankTab();await Task.Delay(120);Capture(full,"workspace-new-tab.png");var broken=new BrokenView();area.AddPage("清理失败夹具","file",broken);area.Close(broken);Check(workspace.Session.LastNotice.Contains("清理"),"failed tab cleanup reports a notice without escaping into global exception");area.AddPage("再次失败","file",new BrokenView());var released=new ReleasedView();area.AddPage("释放夹具","file",released);full.MinWidth=normalMinWidth;full.Close();Check(released.Released,"window close continues releasing sibling tabs after one cleanup fails");Console.WriteLine("Sidebar workspace tests: "+checks+" passed");
         }
-        [STAThread]public static int Main(){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.DispatcherUnhandledException+=delegate(object sender,System.Windows.Threading.DispatcherUnhandledExceptionEventArgs error){Console.Error.WriteLine(error.Exception.GetType().FullName+" "+error.Exception.Message);Console.Error.WriteLine(error.Exception.StackTrace);error.Handled=true;app.Shutdown(1);};app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run();result=0;}catch(Exception e){Console.Error.WriteLine(e.GetType().FullName+" "+e.Message);Console.Error.WriteLine(e.StackTrace);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));return app.Run()==0?result:1;}
+        [STAThread]public static int Main(string[] args){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.DispatcherUnhandledException+=delegate(object sender,System.Windows.Threading.DispatcherUnhandledExceptionEventArgs error){Console.Error.WriteLine(error.Exception.GetType().FullName+" "+error.Exception.Message);Console.Error.WriteLine(error.Exception.StackTrace);error.Handled=true;app.Shutdown(1);};app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--subagent-header-only"))await RunSubagentHeader();else if(args.Contains("--side-chat-reopen-only"))await RunSideChatReopen();else await Run();result=0;}catch(Exception e){Console.Error.WriteLine(e.GetType().FullName+" "+e.Message);Console.Error.WriteLine(e.StackTrace);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));return app.Run()==0?result:1;}
     }
 }

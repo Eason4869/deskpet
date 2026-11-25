@@ -4,7 +4,7 @@ using Dafeiyu;
 
 namespace DeskPet.Desktop;
 
-internal enum CompanionSelectionOrigin { Settings, PetMenu, StartupRestore, Onboarding }
+internal enum CompanionSelectionOrigin { Settings, PetMenu, StartupRestore, Onboarding, MainWindow }
 
 internal sealed partial class DesktopController
 {
@@ -159,12 +159,14 @@ internal sealed partial class DesktopController
         }
         if(!Skins.Any(s=>s.PickerKey==requested.PickerKey))return;
         Observation.Invalidate();long token=officialCompanions.BeginSelection();latestCompanionToken=token;companionSelectionGeneration++;
+        fullChat?.CompanionReveal?.Cancel();
         companionSelection?.Cancel();awaitingCompanionFrame=null;companionClocks.Clear();companionClocks[token]=System.Diagnostics.Stopwatch.StartNew();
         using var cancellation=CancellationTokenSource.CreateLinkedTokenSource(companionLifetime.Token);companionSelection=cancellation;companionRequestKey=requested.PickerKey;
         Settings.PendingOfficialCompanionId="";CompanionSelectionNotice="";
         bool Owns()=>!exiting&&!cancellation.IsCancellationRequested&&officialCompanions.OwnsSelection(token);
         SelectionStage(token,requested,origin,"requested");
         IDisposable? preparedPins=null;
+        CompanionWindowReveal? reveal=null;
         try {
             var next=requested;HolidayCatalog? nextCatalog=null;bool cached=false,repair=false;
             if(requested.OfficialCharacterId!=null){
@@ -200,6 +202,8 @@ internal sealed partial class DesktopController
             using var admission=DataMaintenance.EnterActivity();
             if(next.OfficialCharacterId!=null&&!CanPublishOfficial(next))return;
             bool changed=Skin.PickerKey!=next.PickerKey;
+            if(changed&&origin is not (CompanionSelectionOrigin.StartupRestore or CompanionSelectionOrigin.Onboarding))
+                reveal=fullChat?.PrepareCompanionReveal(token,Skin.PickerKey,next.PickerKey);
             Pet.CancelHolidayForSkinChange();if(next.OfficialCharacterId==null)next.PackageHolidayCatalog=nextCatalog;
             PersonaProfiles.SaveVoices(Settings);Skin=next;PersonaProfiles.Activate(Settings,next.Id,next.Prompt,next.Voices,next.OfficialCharacterId??next.BuiltinCharacterId);Session.SelectPersona(next.Id);
             Settings.SelectedCompanionKey=next.PickerKey;Settings.PendingOfficialCompanionId="";ReplaceCompanionEntry(next);
@@ -207,11 +211,12 @@ internal sealed partial class DesktopController
             var oldPins=activeCompanionPins;activeCompanionPins=preparedPins;preparedPins=null;
             if(changed&&origin!=CompanionSelectionOrigin.StartupRestore)awaitingCompanionFrame=new CompanionSelectionUpdate(token,next.PickerKey,origin.ToString(),"render-pending",0);
             Pet.SelectSkin();oldPins?.Dispose();Save();if(tray!=null)tray.ToolTipText="DeskPet · "+next.Name;
+            if(!deferredSettingsSave)reveal?.MarkCommitted(token,Skin.PickerKey);
             SelectionStage(token,next,origin,"committed",cached);
             if(next.OfficialCharacterId!=null&&origin!=CompanionSelectionOrigin.StartupRestore)Run(()=>RefreshOfficialAsync(next,token,OfficialCompanionCheckMode.Cached,origin));
         }catch(OperationCanceledException){if(officialCompanions.OwnsSelection(token))SelectionStage(token,requested,origin,"cancelled");}
         catch(Exception error) when(error is IOException or InvalidDataException or InvalidOperationException or ArgumentException or NotSupportedException or ApiException){if(Owns())SelectionStage(token,requested,origin,"failed");}
-        finally{if(cancellation.IsCancellationRequested&&officialCompanions.OwnsSelection(token)&&CurrentCompanionSelection?.Request==token&&CurrentCompanionSelection.Stage!="cancelled")SelectionStage(token,requested,origin,"cancelled");preparedPins?.Dispose();if(ReferenceEquals(companionSelection,cancellation)){companionSelection=null;companionRequestKey=null;}if(awaitingCompanionFrame?.Request!=token)companionClocks.Remove(token);}
+        finally{reveal?.AbortPending(token);if(cancellation.IsCancellationRequested&&officialCompanions.OwnsSelection(token)&&CurrentCompanionSelection?.Request==token&&CurrentCompanionSelection.Stage!="cancelled")SelectionStage(token,requested,origin,"cancelled");preparedPins?.Dispose();if(ReferenceEquals(companionSelection,cancellation)){companionSelection=null;companionRequestKey=null;}if(awaitingCompanionFrame?.Request!=token)companionClocks.Remove(token);}
     }
     internal void CompanionHidden(PetSkin hidden)
     {

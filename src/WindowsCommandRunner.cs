@@ -17,12 +17,12 @@ namespace Dafeiyu
         internal static bool IsWindowsHost {get{return Environment.OSVersion.Platform==PlatformID.Win32NT;}}
         // Suspended creation closes the spawn/assign race: no project code runs
         // until it belongs to a kill-on-close Job, including all descendants.
-        internal static CommandResult Run(AgentCommand command,int timeoutSeconds,CancellationToken token,bool cleanEnvironment=false,WindowsSandboxLease sandbox=null,System.Collections.Generic.IDictionary<string,string> environmentOverrides=null,bool labelOutput=true)
+        internal static CommandResult Run(AgentCommand command,int timeoutSeconds,CancellationToken token,bool cleanEnvironment=false,WindowsSandboxLease sandbox=null,System.Collections.Generic.IDictionary<string,string> environmentOverrides=null,bool labelOutput=true,bool stdoutOnly=false)
         {
             if(!IsWindowsHost)throw new PlatformNotSupportedException(TextResources.Get("windowsCommandRunner.run.text"));
             token.ThrowIfCancellationRequested();IntPtr job=IntPtr.Zero,input=IntPtr.Zero;ProcessInfo process=new ProcessInfo();
             SafeFileHandle readOut=null,writeOut=null,readError=null,writeError=null;Task stdout=null,stderr=null;
-            var captured=new BoundedOutput();var watch=Stopwatch.StartNew();bool timedOut=false,cancelled=false;
+            var captured=new BoundedOutput(stdoutOnly);var watch=Stopwatch.StartNew();bool timedOut=false,cancelled=false;
             IntPtr environment=IntPtr.Zero;
             try{
                 var security=new SecurityAttributes{Length=Marshal.SizeOf(typeof(SecurityAttributes)),Inherit=true};
@@ -42,7 +42,7 @@ namespace Dafeiyu
                 writeOut.Dispose();writeOut=null;writeError.Dispose();writeError=null;CloseHandle(input);input=IntPtr.Zero;
                 var outputHandle=readOut;readOut=null;var errorHandle=readError;readError=null;
                 stdout=Task.Factory.StartNew(()=>Drain(outputHandle,captured,cleanEnvironment&&labelOutput?"[stdout] ":""),CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);
-                stderr=Task.Factory.StartNew(()=>Drain(errorHandle,captured,cleanEnvironment&&labelOutput?"[stderr] ":""),CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);
+                stderr=Task.Factory.StartNew(()=>Drain(errorHandle,stdoutOnly?null:captured,cleanEnvironment&&labelOutput?"[stderr] ":""),CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);
                 if(ResumeThread(process.Thread)==UInt32.MaxValue)throw new Win32Exception(Marshal.GetLastWin32Error());
                 while(true){
                     uint state=WaitForSingleObject(process.Process,50);if(state==0)break;if(state!=258)throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -69,6 +69,7 @@ namespace Dafeiyu
             using(handle)using(var stream=new FileStream(handle,FileAccess.Read))using(var reader=new StreamReader(stream,new UTF8Encoding(false,false),true)){
                 char[] block=new char[4096],line=label.Length==0?null:new char[BoundedOutput.MaximumCharacters];int used=0,n;
                 while((n=reader.Read(block,0,block.Length))>0){
+                    if(output==null)continue;
                     if(line==null){output.Add(block,n);continue;}
                     // Pipe reads can split words. Label complete lines atomically, with the capture cap bounding partial lines.
                     for(int i=0;i<n;i++){
@@ -123,8 +124,13 @@ namespace Dafeiyu
         sealed class BoundedOutput
         {
             public const int MaximumCharacters=256*1024;
+            readonly bool preserveStart;
             readonly object gate=new object();readonly StringBuilder text=new StringBuilder();public bool Truncated;
-            public void Add(char[] value,int length,string label=""){lock(gate){text.Append(label);text.Append(value,0,length);if(text.Length>MaximumCharacters){text.Remove(0,text.Length-MaximumCharacters);Truncated=true;}}}
+            internal BoundedOutput(bool preserveStart=false){this.preserveStart=preserveStart;}
+            public void Add(char[] value,int length,string label=""){lock(gate){
+                if(preserveStart){int count=Math.Min(length,MaximumCharacters-text.Length);text.Append(value,0,count);if(count<length)Truncated=true;return;}
+                text.Append(label);text.Append(value,0,length);if(text.Length>MaximumCharacters){text.Remove(0,text.Length-MaximumCharacters);Truncated=true;}
+            }}
             public string Text{get{lock(gate)return text.ToString();}}
         }
         internal static string Quote(string value)

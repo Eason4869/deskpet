@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
@@ -9,7 +10,84 @@ namespace Dafeiyu
     internal static class SettingsSurface
     {
         internal const double GroupSpacing=36;
-        static ControlTemplate expanderTemplate;
+        internal const double BodyWidth=684;
+        static ControlTemplate expanderTemplate,sliderTemplate;
+        internal static ScrollViewer Scroll(UIElement body,double horizontalInset=0)
+        {
+            var scroll=Ui.Scroll(body);
+            scroll.MaxWidth=BodyWidth;
+            scroll.Margin=new Thickness(horizontalInset,0,horizontalInset,0);
+            return scroll;
+        }
+        internal static CheckBox Toggle(Func<string> label,bool value,Action<bool> changed)
+        {return LocalizedUi.With(Ui.Toggle(label(),value,changed,true),"Content",label);}
+        internal static Slider StyleSlider(Slider slider,int precision=0)
+        {
+            if(sliderTemplate==null)sliderTemplate=(ControlTemplate)ThemeManager.Parse(@"
+<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Slider'>
+  <ControlTemplate.Resources>
+    <Style x:Key='RailButton' TargetType='RepeatButton'>
+      <Setter Property='Focusable' Value='False'/>
+      <Setter Property='Template'>
+        <Setter.Value>
+          <ControlTemplate TargetType='RepeatButton'>
+            <Grid Background='Transparent'>
+              <Border Background='{TemplateBinding Background}' CornerRadius='2' Height='4' VerticalAlignment='Center'/>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </ControlTemplate.Resources>
+  <Grid x:Name='SliderSurface' Background='Transparent' SnapsToDevicePixels='True'>
+    <Track x:Name='PART_Track'>
+      <Track.DecreaseRepeatButton>
+        <RepeatButton Command='{x:Static Slider.DecreaseLarge}' Style='{StaticResource RailButton}' Background='{TemplateBinding Foreground}'/>
+      </Track.DecreaseRepeatButton>
+      <Track.IncreaseRepeatButton>
+        <RepeatButton Command='{x:Static Slider.IncreaseLarge}' Style='{StaticResource RailButton}' Background='{TemplateBinding Background}'/>
+      </Track.IncreaseRepeatButton>
+      <Track.Thumb>
+        <Thumb Width='16' x:Name='SliderThumb' Background='{TemplateBinding Foreground}' BorderBrush='{TemplateBinding BorderBrush}'>
+          <Thumb.Template>
+            <ControlTemplate TargetType='Thumb'>
+              <Grid Background='Transparent'>
+                <Ellipse Width='16' Height='16' Fill='{TemplateBinding Background}' Stroke='{TemplateBinding BorderBrush}' StrokeThickness='2'/>
+              </Grid>
+            </ControlTemplate>
+          </Thumb.Template>
+        </Thumb>
+      </Track.Thumb>
+    </Track>
+  </Grid>
+  <ControlTemplate.Triggers>
+    <Trigger Property='IsKeyboardFocusWithin' Value='True'>
+      <Setter TargetName='SliderThumb' Property='Effect'>
+        <Setter.Value><DropShadowEffect Color='#357FF5' BlurRadius='5' ShadowDepth='0' Opacity='.8'/></Setter.Value>
+      </Setter>
+    </Trigger>
+    <Trigger Property='IsEnabled' Value='False'><Setter TargetName='SliderSurface' Property='Opacity' Value='.5'/></Trigger>
+  </ControlTemplate.Triggers>
+</ControlTemplate>");
+            slider.Template=sliderTemplate;
+            slider.MinHeight=26;
+            slider.Background=ThemeManager.Brush("#85858A","#65758C");
+            slider.Foreground=ThemeManager.Brush("#126BC4","#73AAFF");
+            slider.BorderBrush=ThemeManager.Surface;
+            slider.AutoToolTipPlacement=AutoToolTipPlacement.TopLeft;
+            slider.AutoToolTipPrecision=precision;
+            slider.AddHandler(Thumb.DragStartedEvent,new DragStartedEventHandler(delegate(object sender,DragStartedEventArgs args)
+            {
+                var thumb=args.OriginalSource as Thumb;
+                var tooltip=thumb==null?null:thumb.ToolTip as ToolTip;
+                if(tooltip==null)return;
+                tooltip.Background=ThemeManager.Surface;
+                tooltip.Foreground=Ui.Ink;
+                tooltip.BorderBrush=ThemeManager.CardBorder;
+                tooltip.Padding=new Thickness(8,4,8,4);
+            }),true);
+            return slider;
+        }
         internal static void StyleExpander(Expander expander)
         {
             if(expanderTemplate==null)expanderTemplate=(ControlTemplate)ThemeManager.Parse(@"

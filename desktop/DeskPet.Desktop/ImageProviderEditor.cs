@@ -18,7 +18,7 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
     private readonly NumericUpDown timeout = new() { Minimum = 1, Maximum = 3600, Value = 300 };
     private readonly ComboBox size = ImageWorkspacePage.ParameterChoices("ImageProviderSize", new[] { "1024x1024", "1536x1024", "1024x1536", "auto" });
     private readonly ComboBox quality = ImageWorkspacePage.ParameterChoices("ImageProviderQuality", new[] { "auto", "low", "medium", "high", "standard", "hd" });
-    private readonly CheckBox useProxy = LocalizedUi.With(new CheckBox(){ Content = TextResources.Get("imageProviderEditor.useProxy.content") },"Content",()=>(TextResources.Get("imageProviderEditor.useProxy.content"))), edits = LocalizedUi.With(new CheckBox(){ Content = TextResources.Get("imageProviderEditor.useProxy.content.alternativeA") },"Content",()=>(TextResources.Get("imageProviderEditor.useProxy.content.alternativeA")));
+    private readonly CheckBox useProxy = new(), edits = new();
     private readonly TextBlock notice = LocalizedUi.Text(()=>(TextResources.Get("imageProviderEditor.notice.text")));
     private readonly StackPanel result = Ui.Column();
     private ImageGenerationProvider? selected;
@@ -42,7 +42,10 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
         Children.Add(SettingsVisual.Wrap(providers, add, remove));
         Children.Add(LocalizedUi.Text(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.text.alternativeA"))));
         Children.Add(presets); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field")), name)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeA")), address)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeB")), new SecretField(key)));
-        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeC")), protocol)); Children.Add(SettingsVisual.Wrap(useProxy, edits)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeD")), proxy));
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeC")), protocol));
+        Children.Add(SettingsVisual.CheckRow(()=>TextResources.Get("imageProviderEditor.useProxy.content"),useProxy));
+        Children.Add(SettingsVisual.CheckRow(()=>TextResources.Get("imageProviderEditor.useProxy.content.alternativeA"),edits));
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeD")), proxy));
         Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeE")), model));
         var parameters = new Expander { Name = "ImageProviderParameters", Header = LocalizedUi.Text(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.text.alternativeB"))), HorizontalContentAlignment = HorizontalAlignment.Stretch, Content = Ui.Column(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeF")), timeout), LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeG")), size), LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeH")), quality), LocalizedUi.Text(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.text.alternativeC")), 13), presetNotes) };
         Children.Add(parameters);

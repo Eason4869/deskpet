@@ -34,16 +34,16 @@ namespace Dafeiyu.Tests
                 Run("saving a stale work draft preserves current global conversation preferences",delegate{
                     var panel=new WorkSettingsPanel(pet);host.Content=panel;host.UpdateLayout();
                     cfg.ShowPredictedMessages=false;cfg.PlainTextEditor=true;cfg.ShowContextUsage=false;cfg.SendOnEnter=false;cfg.FollowUpBehavior="steer";cfg.AgentDetailedProcess=true;
-                    Control<TextBox>(panel,"AgentGoal").Text="work-only edit";Check(panel.Save(),"work save failed");
-                    var saved=pet.Store.Load();Check(!saved.ShowPredictedMessages&&saved.PlainTextEditor&&!saved.ShowContextUsage&&!saved.SendOnEnter&&saved.FollowUpBehavior=="steer"&&saved.AgentDetailedProcess,"work save overwrote another page's preferences");
+                    Control<TextBox>(panel,"AgentGlobalInstructions").Text="work-only instructions";cfg.AgentGoal="stored legacy goal";Check(panel.Save(),"work save failed");
+                    var saved=pet.Store.Load();Check(!saved.ShowPredictedMessages&&saved.PlainTextEditor&&!saved.ShowContextUsage&&!saved.SendOnEnter&&saved.FollowUpBehavior=="steer"&&saved.AgentDetailedProcess&&saved.AgentGlobalInstructions=="work-only instructions"&&saved.AgentGoal=="stored legacy goal","work save lost its edit or overwrote separate preferences or legacy data");
                     Check(!All<FrameworkElement>(panel).Any(c=>new[]{"ShowPredictedMessages","PlainTextEditor","ShowContextUsage","SendShortcut","FollowUpBehavior","AgentDetailedProcess"}.Contains(c.Name)),"global controls remain in work settings");
                 });
                 Run("conversation settings save only their own preferences and restore drafts without disk writes",delegate{
                     var type=typeof(PetWindow).Assembly.GetType("Dafeiyu.ConversationSettingsPanel");Check(type!=null,"conversation settings page is missing");
                     var panel=(UserControl)Activator.CreateInstance(type,new object[]{pet});host.Content=panel;host.UpdateLayout();
                     Control<CheckBox>(panel,"ShowPredictedMessages").IsChecked=true;Control<CheckBox>(panel,"ReadReplies").IsChecked=true;Control<ComboBox>(panel,"DefaultConversationMode").SelectedIndex=0;
-                    cfg.AgentGoal="newer work goal";Check((bool)type.GetMethod("Save").Invoke(panel,null),"conversation save failed");
-                    var saved=pet.Store.Load();Check(saved.ShowPredictedMessages&&saved.ReadReplies&&!saved.AgentEnabled&&saved.AgentGoal=="newer work goal","conversation save touched work fields or missed preferences");
+                    cfg.AgentGlobalInstructions="newer work instructions";Check((bool)type.GetMethod("Save").Invoke(panel,null),"conversation save failed");
+                    var saved=pet.Store.Load();Check(saved.ShowPredictedMessages&&saved.ReadReplies&&!saved.AgentEnabled&&saved.AgentGlobalInstructions=="newer work instructions","conversation save touched work fields or missed preferences");
                     Control<CheckBox>(panel,"PlainTextEditor").IsChecked=!saved.PlainTextEditor;var before=File.ReadAllBytes(Path.Combine(root,"settings.json"));
                     Control<Button>(panel,"RestoreConversationSettings").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(!(bool)type.GetProperty("HasUnsavedChanges").GetValue(panel,null)&&File.ReadAllBytes(Path.Combine(root,"settings.json")).SequenceEqual(before),"restore did not discard only the local draft");
                     Control<CheckBox>(panel,"ShowPredictedMessages").IsChecked=false;pet.Store.BeforeExactSave=delegate{throw new IOException("fixture save failure");};
@@ -86,16 +86,16 @@ namespace Dafeiyu.Tests
                     Check((bool)type.GetMethod("Save").Invoke(panel,null)&&pet.Store.Load().PlainTextEditor&&!pet.Store.Load().ReadReplies,"saving one tab did not save the shared conversation draft");
                 });
                 Run("project global defaults populate a draft while preserving identity and directory",delegate{
-                    var project=ProjectCatalogStore.CreateProject(pet.Projects,"Project identity",root);project.Goal="project goal";
-                    typeof(PetWindow).GetField("editingProject",Members).SetValue(pet,project);cfg.AgentGoal="global goal";cfg.AgentCommandTimeoutSeconds=135;cfg.AgentApprovalMode=AgentApprovalMode.Legacy;cfg.AgentFullAccess=false;
+                    var project=ProjectCatalogStore.CreateProject(pet.Projects,"Project identity",root);project.GlobalInstructions="project instructions";project.Goal="project legacy goal";
+                    typeof(PetWindow).GetField("editingProject",Members).SetValue(pet,project);cfg.AgentGlobalInstructions="global instructions";cfg.AgentGoal="global legacy goal";cfg.AgentCommandTimeoutSeconds=135;cfg.AgentApprovalMode=AgentApprovalMode.Legacy;cfg.AgentFullAccess=false;
                     var panel=new WorkSettingsPanel(pet);host.Content=panel;host.UpdateLayout();Control<TextBox>(panel,"ProjectName").Text="project draft name";Control<TextBox>(panel,"AgentWorkspace").Text=root;
                     Control<Button>(panel,"UseGlobalWorkDefaults").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     TextResources.ApplyLanguage(TextResources.PrepareLanguage("en_US"));TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));
-                    Check(Control<TextBox>(panel,"AgentGoal").Text=="global goal"&&Control<TextBox>(panel,"AgentCommandTimeoutSeconds").Text=="135","global values not copied into draft");
-                    Check(Control<TextBox>(panel,"ProjectName").Text=="project draft name"&&Control<TextBox>(panel,"AgentWorkspace").Text==root&&project.Name=="Project identity"&&project.Goal=="project goal"&&panel.HasUnsavedChanges,"defaults changed project identity, directory or live configuration");
+                    Check(Control<TextBox>(panel,"AgentGlobalInstructions").Text=="global instructions"&&Control<TextBox>(panel,"AgentCommandTimeoutSeconds").Text=="135","global values not copied into draft");
+                    Check(Control<TextBox>(panel,"ProjectName").Text=="project draft name"&&Control<TextBox>(panel,"AgentWorkspace").Text==root&&project.Name=="Project identity"&&project.GlobalInstructions=="project instructions"&&panel.HasUnsavedChanges,"defaults changed project identity, directory or live configuration");
                     Check(!All<Button>(panel).Any(b=>b.Name=="WorkSettingsArchivedTab"),"archives remain a work configuration tab");
-                    Check(panel.Save()&&project.ApprovalMode==AgentApprovalMode.Legacy&&!project.FullAccess&&project.Name=="project draft name"&&project.Workspace==root,"saving defaults changed legacy permission semantics or project identity");
-                    Control<TextBox>(panel,"AgentGoal").Text="unsaved project goal";var beforeRestore=File.ReadAllBytes(Path.Combine(root,"settings.json"));Control<Button>(panel,"RestoreWorkSettings").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(Control<TextBox>(panel,"AgentGoal").Text=="global goal"&&!panel.HasUnsavedChanges&&File.ReadAllBytes(Path.Combine(root,"settings.json")).SequenceEqual(beforeRestore),"project restore did not discard its local draft independently of global settings");
+                    Check(panel.Save()&&project.ApprovalMode==AgentApprovalMode.Legacy&&!project.FullAccess&&project.Name=="project draft name"&&project.Workspace==root&&project.Goal=="project legacy goal"&&pet.ProjectStore.Load().Projects.Single(p=>p.Id==project.Id).Goal=="project legacy goal","saving defaults changed legacy data, permissions or project identity");
+                    Control<TextBox>(panel,"AgentGlobalInstructions").Text="unsaved project instructions";var beforeRestore=File.ReadAllBytes(Path.Combine(root,"settings.json"));Control<Button>(panel,"RestoreWorkSettings").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(Control<TextBox>(panel,"AgentGlobalInstructions").Text=="global instructions"&&!panel.HasUnsavedChanges&&File.ReadAllBytes(Path.Combine(root,"settings.json")).SequenceEqual(beforeRestore),"project restore did not discard its local draft independently of global settings");
                     typeof(PetWindow).GetField("editingProject",Members).SetValue(pet,null);
                 });
                 Console.WriteLine("Settings separation: "+passed+" passed, "+failed+" failed");return failed==0?0:1;

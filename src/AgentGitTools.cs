@@ -42,14 +42,8 @@ namespace Dafeiyu
         }
         internal static string Read(string tool,string path,string repository,string scope,int limit,int timeout,CancellationToken cancel)
         {
-            var common=new List<string>{"--no-pager","--no-optional-locks","--literal-pathspecs","-c","core.fsmonitor=false","-c","core.untrackedCache=false","-c","core.hooksPath=","-c","diff.external=","-c","core.quotePath=false","-c","color.ui=false","-c","submodule.recurse=false","-c","protocol.allow=never","-c","credential.helper=","-c","core.worktree="+repository,"-C",repository};
-            if(tool=="git_status"||tool=="git_diff"){
-                // Worktree reads can execute clean/process filters even with external diffs disabled.
-                // Ask Git to resolve includes and worktree config; only an empty no-match result is safe.
-                var filters=RunCommand(common.Concat(new[]{"config","--includes","--name-only","--get-regexp",@"^filter\..*\.(clean|process)$"}).ToArray(),repository,timeout,cancel);
-                if(filters.ExitCode==0)throw new ArgumentException(TextResources.Get("agentGitTools.read.text"));
-                if(filters.Truncated||filters.ExitCode!=1||!String.IsNullOrEmpty(filters.Output))throw new ArgumentException(TextResources.Get("agentGitTools.read.text.alternativeA"));
-            }
+            var common=ReadOnlyArguments(repository);
+            if(tool=="git_status"||tool=="git_diff")ValidateWorktreeFilters(common,repository,timeout,cancel);
             string relative=String.Equals(path,repository,StringComparison.OrdinalIgnoreCase)?".":path.Substring(repository.TrimEnd('\\','/').Length+1).Replace('\\','/');
             cancel.ThrowIfCancellationRequested();string branch=Run(common.Concat(new[]{"symbolic-ref","--short","-q","HEAD"}).ToArray(),repository,timeout,cancel,false);
             branch=(branch??"").Trim();if(branch.Length>256)branch=branch.Substring(0,256)+"…";
@@ -61,30 +55,41 @@ namespace Dafeiyu
             if(output.Length>MaximumOutput)output=TextResources.Format("agentGitTools.read.outputOutputSubstring",output.Substring(0,MaximumOutput));
             return TextResources.Get("agentGitTools.read.text.alternativeC")+repository+TextResources.Get("agentGitTools.read.text.alternativeD")+(String.IsNullOrWhiteSpace(branch)?TextResources.Get("agentGitTools.read.text.alternativeE"):branch.Trim())+"\n"+(tool=="git_diff"?TextResources.Format("agentGitTools.read.template",scope):"")+output;
         }
+        internal static string[] ReadOnlyArguments(string repository)
+        {
+            return new[]{"--no-pager","--no-optional-locks","--literal-pathspecs","-c","core.fsmonitor=false","-c","core.untrackedCache=false","-c","core.hooksPath=","-c","diff.external=","-c","core.quotePath=false","-c","color.ui=false","-c","submodule.recurse=false","-c","protocol.allow=never","-c","credential.helper=","-c","core.worktree="+repository,"-C",repository};
+        }
+        internal static void ValidateWorktreeFilters(string[] common,string repository,int timeout,CancellationToken cancel)
+        {
+            // Worktree reads can execute clean/process filters even with external diffs disabled.
+            var filters=RunCommand(common.Concat(new[]{"config","--includes","--name-only","--get-regexp",@"^filter\..*\.(clean|process)$"}).ToArray(),repository,timeout,cancel);
+            if(filters.ExitCode==0)throw new ArgumentException(TextResources.Get("agentGitTools.read.text"));
+            if(filters.Truncated||filters.ExitCode!=1||!String.IsNullOrEmpty(filters.Output))throw new ArgumentException(TextResources.Get("agentGitTools.read.text.alternativeA"));
+        }
         static string Run(string[] arguments,string directory,int timeout,CancellationToken cancel,bool requireSuccess)
         {
             var result=RunCommand(arguments,directory,timeout,cancel);
             if(requireSuccess&&result.ExitCode!=0){string diagnostic=result.Output??"";if(diagnostic.Length>1000)diagnostic=diagnostic.Substring(0,1000);throw new ArgumentException(TextResources.Format("agentGitTools.run.template",diagnostic));}
             string text=result.Output??"";return text+(result.Truncated?TextResources.Get("agentGitTools.run.text"):"");
         }
-        static CommandResult RunCommand(string[] arguments,string directory,int timeout,CancellationToken cancel)
+        internal static CommandResult RunCommand(string[] arguments,string directory,int timeout,CancellationToken cancel,bool stdoutOnly=false)
         {
             string executable=LocateGit();var environment=new Dictionary<string,string>{{"GIT_OPTIONAL_LOCKS","0"},{"GIT_NO_LAZY_FETCH","1"},{"GIT_TERMINAL_PROMPT","0"},{"GIT_CONFIG_NOSYSTEM","1"},{"GIT_CONFIG_GLOBAL",Environment.OSVersion.Platform==PlatformID.Win32NT?"NUL":"/dev/null"},{"GIT_PAGER",""},{"GIT_ATTR_NOSYSTEM","1"}};
             var command=new AgentCommand{Id=Guid.NewGuid().ToString("N"),Executable=executable,Workspace=directory,Arguments=arguments};
             CommandResult result;
-            if(Environment.OSVersion.Platform==PlatformID.Win32NT)result=WindowsCommandRunner.Run(command,timeout,cancel,true,null,environment,false);
-            else result=RunPortable(command,timeout,cancel,environment);
+            if(Environment.OSVersion.Platform==PlatformID.Win32NT)result=WindowsCommandRunner.Run(command,timeout,cancel,true,null,environment,false,stdoutOnly);
+            else result=RunPortable(command,timeout,cancel,environment,stdoutOnly);
             cancel.ThrowIfCancellationRequested();if(result.TimedOut)throw new ArgumentException(TextResources.Get("agentGitTools.runCommand.text"));
             return result;
         }
-        static CommandResult RunPortable(AgentCommand command,int timeout,CancellationToken cancel,IDictionary<string,string> environment)
+        static CommandResult RunPortable(AgentCommand command,int timeout,CancellationToken cancel,IDictionary<string,string> environment,bool stdoutOnly)
         {
 #if PORTABLE
             var start=new ProcessStartInfo(command.Executable){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=command.Workspace};foreach(string arg in command.Arguments)start.ArgumentList.Add(arg);
             foreach(string key in start.Environment.Keys.Where(k=>k.StartsWith("GIT_",StringComparison.OrdinalIgnoreCase)).ToArray())start.Environment.Remove(key);foreach(var pair in environment)start.Environment[pair.Key]=pair.Value;
             using(var process=new Process{StartInfo=start}){cancel.ThrowIfCancellationRequested();process.Start();var text=new StringBuilder();object gate=new object();bool truncated=false;
-                Func<StreamReader,Task> drain=async reader=>{char[] block=new char[4096];int n;while((n=await reader.ReadAsync(block,0,block.Length).ConfigureAwait(false))>0){lock(gate){int take=Math.Min(n,256*1024-text.Length);if(take<n)truncated=true;if(take>0)text.Append(block,0,take);}}};
-                var stdout=drain(process.StandardOutput);var stderr=drain(process.StandardError);var watch=Stopwatch.StartNew();bool timedOut=false;
+                Func<StreamReader,bool,Task> drain=async (reader,capture)=>{char[] block=new char[4096];int n;while((n=await reader.ReadAsync(block,0,block.Length).ConfigureAwait(false))>0){if(capture)lock(gate){int take=Math.Min(n,256*1024-text.Length);if(take<n)truncated=true;if(take>0)text.Append(block,0,take);}}};
+                var stdout=drain(process.StandardOutput,true);var stderr=drain(process.StandardError,!stdoutOnly);var watch=Stopwatch.StartNew();bool timedOut=false;
                 try{while(!process.WaitForExit(50)){if(cancel.IsCancellationRequested||watch.Elapsed.TotalSeconds>=timeout){timedOut=!cancel.IsCancellationRequested;process.Kill(true);break;}}if(!process.WaitForExit(2000))throw new IOException(TextResources.Get("agentGitTools.runPortable.text.alternativeA"));if(!Task.WaitAll(new[]{stdout,stderr},2000))throw new IOException(TextResources.Get("agentGitTools.runPortable.text.alternativeB"));return new CommandResult{Output=text.ToString(),ExitCode=process.ExitCode,TimedOut=timedOut,Cancelled=cancel.IsCancellationRequested,Truncated=truncated};}
                 finally{if(!process.HasExited)process.Kill(true);}
             }

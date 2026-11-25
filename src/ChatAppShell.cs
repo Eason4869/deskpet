@@ -14,12 +14,16 @@ namespace Dafeiyu
     {
         Grid appPages,homePage;Border appRail;Image shellAvatarImage;Button shellBack,shellForward,shellHome,shellUsage,shellMcp,shellSettings,shellSidebar;
         SettingsPage settingsPage;UsageStatisticsPage usagePage;PluginsPage mcpPage;ImageWorkspacePage imagePage;Button shellImages;string shellPage="home";bool shellReady,restoringRoute,sidebarHidden,sidebarTemporary;
+        ScheduledTasksPage scheduledTasksPage;
+        Button shellScheduledTasks;
         readonly List<AppRoute> appHistory=new List<AppRoute>();int historyIndex=-1;
         readonly List<ShellCommand> shellCommands=new List<ShellCommand>();IInputElement lastEditingTarget;
         string liveReturnPage;int liveReturnSection,liveReturnHistory;
         sealed class AppRoute{internal string Page;internal ConversationWorkspace Workspace;internal int Section,SecondarySection=-1;internal string FeatureAnchor;}
         internal string CurrentPage {get{return shellPage;}}
         internal bool HasUnsavedMcpEdits {get{return mcpPage!=null&&mcpPage.HasUnsavedEdits;}}
+        internal LiquidThemeReveal ThemeReveal { get; private set; }
+        internal CompanionWindowReveal CompanionReveal { get; private set; }
         internal void InitializeAppShell()
         {
             Content=null;
@@ -31,18 +35,45 @@ namespace Dafeiyu
             var minimize=ShellIcons.Button("minimize",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons")),()=>SystemCommands.MinimizeWindow(this));minimize.Name="AppMinimize";
             var maximize=ShellIcons.Button("maximize",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeA")),delegate{if(WindowState==WindowState.Maximized)SystemCommands.RestoreWindow(this);else SystemCommands.MaximizeWindow(this);});maximize.Name="AppMaximize";
             var close=ShellIcons.Button("close",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeB")),Close);close.Name="AppClose";
+            var themeSwitch=new ThemeTitleSwitch();
+            WindowChrome.SetIsHitTestVisibleInChrome(themeSwitch,true);captionButtons.Children.Add(themeSwitch);
             foreach(var b in new[]{minimize,maximize,close}){b.Width=42;b.Height=36;WindowChrome.SetIsHitTestVisibleInChrome(b,true);captionButtons.Children.Add(b);}DockPanel.SetDock(captionButtons,Dock.Right);top.Children.Add(captionButtons);
             var navButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
             shellBack=ShellIcons.Button("back",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeC")),()=>TravelPage(-1));shellBack.Name="AppBack";shellForward=ShellIcons.Button("forward",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeD")),()=>TravelPage(1));shellForward.Name="AppForward";
             shellSidebar=ShellIcons.Button("sidebar",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeE")),ToggleAppSidebar);shellSidebar.Name="ToggleAppSidebar";
             foreach(var b in new[]{shellBack,shellForward,shellSidebar}){WindowChrome.SetIsHitTestVisibleInChrome(b,true);navButtons.Children.Add(b);}DockPanel.SetDock(navButtons,Dock.Left);top.Children.Add(navButtons);
-            var menuButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};BuildShellCommands();BuildTitleMenus(menuButtons);DockPanel.SetDock(menuButtons,Dock.Left);top.Children.Add(menuButtons);top.Children.Add(new Border{Background=Brushes.Transparent});frame.Children.Add(top);
+            var menuButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};BuildShellCommands();BuildTitleMenus(menuButtons);
+            var titleMenus=new Viewbox{Child=menuButtons,Stretch=Stretch.Uniform,StretchDirection=StretchDirection.DownOnly,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Center};
+            DockPanel.SetDock(titleMenus,Dock.Left);top.Children.Add(titleMenus);top.Children.Add(new Border{Background=Brushes.Transparent});frame.Children.Add(top);
+            top.SizeChanged+=delegate(object sender,SizeChangedEventArgs args)
+            {
+                double inset=args.NewSize.Width<570?5:11;
+                var padding=new Thickness(inset,0,inset,0);
+                foreach(var menu in menuButtons.Children.OfType<Button>())
+                    if(menu.Padding!=padding)menu.Padding=padding;
+            };
             var body=new Grid();body.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(60)});body.ColumnDefinitions.Add(new ColumnDefinition());
             var railBody=new Grid{Margin=new Thickness(6,8,6,10)};railBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});railBody.RowDefinitions.Add(new RowDefinition());railBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var railTop=new StackPanel();shellHome=ShellIcons.Button("home",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeF")),()=>ShowHomePage());shellHome.Name="ShellHome";shellUsage=ShellIcons.Button("usage",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeG")),ShowUsagePage);shellUsage.Name="ShellUsage";shellMcp=ShellIcons.Button("mcp",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeH")),ShowPluginsPage);shellMcp.Name="ShellMcp";shellSettings=ShellIcons.Button("settings",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeI")),()=>pet.ShowSettings());shellSettings.Name="ShellSettings";shellImages=ShellIcons.Button("image",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeJ")),()=>ShowImagesPage());shellImages.Name="ShellImages";foreach(var b in new[]{shellHome,shellImages,shellUsage,shellMcp,shellSettings}){b.Width=b.Height=40;b.Margin=new Thickness(0,3,0,3);railTop.Children.Add(b);}railBody.Children.Add(railTop);
+            var railTop=new StackPanel();shellHome=ShellIcons.Button("home",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeF")),()=>ShowHomePage());shellHome.Name="ShellHome";shellUsage=ShellIcons.Button("usage",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeG")),ShowUsagePage);shellUsage.Name="ShellUsage";shellMcp=ShellIcons.Button("mcp",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeH")),ShowPluginsPage);shellMcp.Name="ShellMcp";shellSettings=ShellIcons.Button("settings",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeI")),()=>pet.ShowSettings());shellSettings.Name="ShellSettings";shellImages=ShellIcons.Button("image",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeJ")),()=>ShowImagesPage());shellImages.Name="ShellImages";
+            shellScheduledTasks=ShellIcons.Button("calendar",()=>TextResources.Get("scheduledTasks.title"),()=>ShowScheduledTasksPage());
+            shellScheduledTasks.Name="ShellScheduledTasks";
+            foreach(var b in new[]{shellHome,shellImages,shellScheduledTasks,shellUsage,shellMcp,shellSettings}){b.Width=b.Height=40;b.Margin=new Thickness(0,3,0,3);railTop.Children.Add(b);}railBody.Children.Add(railTop);
             shellAvatarImage=new Image{Width=30,Height=30,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,30,30),10,10)};RenderOptions.SetBitmapScalingMode(shellAvatarImage,BitmapScalingMode.HighQuality);var profile=ShellIcons.Button("pet",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeK")),OpenProfileMenu);profile.Name="ShellAvatar";profile.Width=profile.Height=40;profile.Content=shellAvatarImage;Grid.SetRow(profile,2);railBody.Children.Add(profile);appRail=new Border{Name="AppIconRail",Background=ThemeManager.Brush("#EDF3F8","#202733"),Child=railBody};body.Children.Add(appRail);
             appPages=new Grid{Name="AppPageHost",Background=ThemeManager.Surface,ClipToBounds=true};homePage=new Grid{Name="AppHomePage"};homePage.Children.Add(workspaceShell);appPages.Children.Add(homePage);
-            var pageFrame=new Border{Name="AppContentFrame",Background=ThemeManager.Surface,CornerRadius=new CornerRadius(16),BorderBrush=Ui.Brush("#E3E7EC"),BorderThickness=new Thickness(1),Child=appPages,ClipToBounds=true};pageFrame.SizeChanged+=delegate{pageFrame.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,pageFrame.ActualWidth),Math.Max(0,pageFrame.ActualHeight)),16,16);};Grid.SetColumn(pageFrame,1);body.Children.Add(pageFrame);Grid.SetRow(body,1);frame.Children.Add(body);Content=frame;
+            var pageFrame=new Border{Name="AppContentFrame",Background=ThemeManager.Surface,CornerRadius=new CornerRadius(16),BorderBrush=Ui.Brush("#E3E7EC"),BorderThickness=new Thickness(1),Child=appPages,ClipToBounds=true};pageFrame.SizeChanged+=delegate{pageFrame.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,pageFrame.ActualWidth),Math.Max(0,pageFrame.ActualHeight)),16,16);};Grid.SetColumn(pageFrame,1);body.Children.Add(pageFrame);
+            var companionHost=new Grid{ClipToBounds=true};
+            companionHost.Children.Add(body);Grid.SetRow(companionHost,1);frame.Children.Add(companionHost);
+            var themeHost=new Grid{ClipToBounds=true};themeHost.Children.Add(frame);Content=themeHost;
+            ThemeReveal = new LiquidThemeReveal(this,themeHost,frame,themeSwitch,pet.SetThemeMode,LiquidThemeShape.DefaultDuration,
+                ()=>pet.Settings.ThemeTransitionEffect,pet.PlayThemeSound);
+            CompanionReveal=new CompanionWindowReveal(this,companionHost,body,()=>!closed&&IsActive&&shellPage=="home",
+                ()=>pet.Skin.PickerKey,()=>pet.Settings.CompanionTransitionEffect,
+                ()=>profile.IsVisible?profile.TranslatePoint(new Point(profile.ActualWidth/2,profile.ActualHeight/2),body):
+                    new Point(Math.Min(24,body.ActualWidth/2),Math.Max(0,body.ActualHeight-24)),
+                ()=>navigation!=null&&navigation.IsVisible&&!sidebarTemporary?
+                    navigation.TranslatePoint(new Point(navigation.ActualWidth,0),body).X:.23*body.ActualWidth,
+                ThemeReveal.InterruptForCompanion);
+            ThemeReveal.BeforeCapture=CompanionReveal.Cancel;
             sidebarHidden=false;shellReady=true;RecordPage("home");RefreshShellAppearance();
             PreviewKeyDown+=ShellKeyDown;PreviewMouseDown+=delegate(object sender,MouseButtonEventArgs e){if(sidebarTemporary&&!navigation.IsMouseOver&&!shellSidebar.IsMouseOver){sidebarTemporary=false;RefreshWorkspaceLayout();}if(e.ChangedButton==MouseButton.XButton1){e.Handled=true;TravelPage(-1);}else if(e.ChangedButton==MouseButton.XButton2){e.Handled=true;TravelPage(1);}};
             AddHandler(Keyboard.GotKeyboardFocusEvent,new KeyboardFocusChangedEventHandler(delegate(object sender,KeyboardFocusChangedEventArgs e){var element=e.NewFocus as FrameworkElement;if(element!=null&&(element is System.Windows.Controls.Primitives.TextBoxBase||element is PasswordBox)&&element.IsVisible)lastEditingTarget=e.NewFocus;}),true);
@@ -50,7 +81,7 @@ namespace Dafeiyu
             StateChanged+=delegate{maximize.Content=ShellIcons.Image(WindowState==WindowState.Maximized?"restore":"maximize");};
             SourceInitialized+=delegate{HwndSource.FromHwnd(new WindowInteropHelper(this).Handle).AddHook(ShellWindowMessage);};
             var compose=ShellIcons.Button("new-chat",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeL")),pet.NewShellConversation);compose.Name="ShellNewChat";compose.Margin=new Thickness(0,0,10,0);DockPanel.SetDock(compose,Dock.Left);conversationHeader.Children.Insert(0,compose);
-            Closed+=delegate{if(companionPage!=null)companionPage.Dispose();if(settingsPage!=null)settingsPage.Dispose();if(usagePage!=null)usagePage.Dispose();if(mcpPage!=null)mcpPage.Dispose();if(imagePage!=null)imagePage.Dispose();pet.ReleaseSettingsPage(settingsPage);};
+            Closed+=delegate{if(companionPage!=null)companionPage.Dispose();if(settingsPage!=null)settingsPage.Dispose();if(usagePage!=null)usagePage.Dispose();if(mcpPage!=null)mcpPage.Dispose();if(imagePage!=null)imagePage.Dispose();if(scheduledTasksPage!=null)scheduledTasksPage.Dispose();pet.ReleaseSettingsPage(settingsPage);};
         }
         internal void ShowHomePage(bool record=true)
         {
@@ -68,6 +99,7 @@ namespace Dafeiyu
             if(!shellReady||closed)return;if(usagePage==null){usagePage=new UsageStatisticsPage(pet.UsageStats){Visibility=Visibility.Collapsed};appPages.Children.Add(usagePage);}SetShellPage("usage");RecordPage("usage");
         }
         internal void ShowMcpPage(bool edit=false){ShowPluginsPage();if(mcpPage!=null){if(edit)mcpPage.OpenMcpEditor();else mcpPage.SelectMcp();}}
+        internal void ShowAppsPage(){ShowPluginsPage();if(mcpPage!=null)mcpPage.SelectApps();}
         internal void ShowPluginsPage()
         {
             if(!shellReady||closed)return;if(mcpPage==null){mcpPage=new PluginsPage(pet){Visibility=Visibility.Collapsed};appPages.Children.Add(mcpPage);}SetShellPage("mcp");RecordPage("mcp");
@@ -77,9 +109,24 @@ namespace Dafeiyu
         {
             if(!shellReady||closed)return;if(imagePage==null){imagePage=new ImageWorkspacePage(pet){Visibility=Visibility.Collapsed};appPages.Children.Add(imagePage);}imagePage.RefreshProviders();SetShellPage("images");RecordPage("images");if(previous!=null)imagePage.Prepare(previous);
         }
+        internal void ShowScheduledTasksPage(string taskId=null,string runId=null)
+        {
+            if(!shellReady||closed)return;
+            if(scheduledTasksPage==null)
+            {
+                scheduledTasksPage=new ScheduledTasksPage(pet.ScheduledTasks){Visibility=Visibility.Collapsed};
+                scheduledTasksPage.ShowMissedRequested+=()=>pet.ShowScheduledMissed(this);
+                appPages.Children.Add(scheduledTasksPage);
+            }
+            SetShellPage("scheduledTasks");
+            RecordPage("scheduledTasks");
+            if(String.IsNullOrEmpty(taskId))scheduledTasksPage.ShowTemplates();
+            else scheduledTasksPage.ShowTask(taskId,runId);
+        }
         void SetShellPage(string page)
         {
-            CloseTransientSummary();CloseProfileMenu();shellPage=page;if(companionPage!=null)companionPage.Visibility=page=="companion"?Visibility.Visible:Visibility.Collapsed;if(imagePage!=null)imagePage.Visibility=page=="images"?Visibility.Visible:Visibility.Collapsed;homePage.Visibility=page=="home"?Visibility.Visible:Visibility.Collapsed;if(settingsPage!=null)settingsPage.Visibility=page=="settings"?Visibility.Visible:Visibility.Collapsed;if(usagePage!=null)usagePage.Visibility=page=="usage"?Visibility.Visible:Visibility.Collapsed;if(mcpPage!=null)mcpPage.Visibility=page=="mcp"?Visibility.Visible:Visibility.Collapsed;RefreshShellAppearance();if(page=="home")Dispatcher.BeginInvoke(new Action(RefreshWorkspaceLayout));
+            if(page!=shellPage&&CompanionReveal!=null)CompanionReveal.Cancel();
+            CloseTransientSummary();CloseProfileMenu();shellPage=page;if(companionPage!=null)companionPage.Visibility=page=="companion"?Visibility.Visible:Visibility.Collapsed;if(imagePage!=null)imagePage.Visibility=page=="images"?Visibility.Visible:Visibility.Collapsed;if(scheduledTasksPage!=null)scheduledTasksPage.Visibility=page=="scheduledTasks"?Visibility.Visible:Visibility.Collapsed;homePage.Visibility=page=="home"?Visibility.Visible:Visibility.Collapsed;if(settingsPage!=null)settingsPage.Visibility=page=="settings"?Visibility.Visible:Visibility.Collapsed;if(usagePage!=null)usagePage.Visibility=page=="usage"?Visibility.Visible:Visibility.Collapsed;if(mcpPage!=null)mcpPage.Visibility=page=="mcp"?Visibility.Visible:Visibility.Collapsed;RefreshShellAppearance();if(page=="home")Dispatcher.BeginInvoke(new Action(RefreshWorkspaceLayout));
         }
         void RecordPage(string page)
         {
@@ -90,12 +137,12 @@ namespace Dafeiyu
         void TravelPage(int direction)
         {
             int next=historyIndex+direction;if(next<0||next>=appHistory.Count)return;var route=appHistory[next];restoringRoute=true;
-            try{if(route.Page=="settings"){if(settingsPage==null)return;SetShellPage("settings");settingsPage.RestoreNavigation(route.Section,route.SecondarySection,route.FeatureAnchor,true);}else if(route.Page=="companion"){ShowCompanionPage(route.FeatureAnchor);}else if(route.Page=="images"){ShowImagesPage();}else if(route.Page=="usage"){ShowUsagePage();}else if(route.Page=="mcp"){ShowPluginsPage();}else{if(!ReferenceEquals(workspace,route.Workspace)&&(route.Workspace==null||pet.Workspaces.OpenWorkspaces.Contains(route.Workspace)))SwitchWorkspace(route.Workspace);SetShellPage("home");}historyIndex=next;}
+            try{if(route.Page=="settings"){if(settingsPage==null)return;SetShellPage("settings");settingsPage.RestoreNavigation(route.Section,route.SecondarySection,route.FeatureAnchor,true);}else if(route.Page=="companion"){ShowCompanionPage(route.FeatureAnchor);}else if(route.Page=="images"){ShowImagesPage();}else if(route.Page=="scheduledTasks"){ShowScheduledTasksPage();}else if(route.Page=="usage"){ShowUsagePage();}else if(route.Page=="mcp"){ShowPluginsPage();}else{if(!ReferenceEquals(workspace,route.Workspace)&&(route.Workspace==null||pet.Workspaces.OpenWorkspaces.Contains(route.Workspace)))SwitchWorkspace(route.Workspace);SetShellPage("home");}historyIndex=next;}
             finally{restoringRoute=false;RefreshShellAppearance();}
         }
         void RefreshShellAppearance()
         {
-            if(!shellReady)return;if(companionPage!=null)companionPage.RefreshIdentity();shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);LocalizedUi.Set(shellAvatarImage,"ToolTip",()=>(pet.Skin.DisplayName));
+            if(!shellReady)return;if(companionPage!=null)companionPage.RefreshIdentity();shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellScheduledTasks,"calendar",shellPage=="scheduledTasks");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);LocalizedUi.Set(shellAvatarImage,"ToolTip",()=>(pet.Skin.DisplayName));
         }
         void SelectRailIcon(Button button,string icon,bool selected)
         {button.Content=ShellIcons.Image(icon,selected?Ui.Brush("#1C2024"):AgentUi.Muted,18,selected);button.Background=selected?Ui.Brush("#E1E8EE"):Brushes.Transparent;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?TextResources.Get("chatAppShell.selectRailIcon.automationAutomationPropertiesSetItemStatus"):"");}
@@ -121,6 +168,21 @@ namespace Dafeiyu
         void AddProfile(ContextMenu menu,string name,Func<string> label,string icon,Action action){var item=LocalizedUi.With(new MenuItem{Name=name,Header=label(),Icon=ShellIcons.Image(icon)},"Header",label);item.Click+=delegate{menu.IsOpen=false;action();};menu.Items.Add(item);}
         Button FindShellButton(string name){return appRail.Child is Grid?((Grid)appRail.Child).Children.OfType<Button>().First(b=>b.Name==name):null;}
         void CloseProfileMenu(){if(appRail==null)return;var button=FindShellButton("ShellAvatar");if(button!=null&&button.ContextMenu!=null)button.ContextMenu.IsOpen=false;}
+        internal FrameworkElement CompanionInstallationAnchor
+        {
+            get
+            {
+                if(closed||!IsVisible||WindowState==WindowState.Minimized||shellPage!="home"||appRail==null)return null;
+                var avatar=FindShellButton("ShellAvatar");
+                return avatar.IsVisible&&PresentationSource.FromVisual(avatar)!=null?avatar:null;
+            }
+        }
+        internal CompanionWindowReveal PrepareCompanionReveal(long request,string current,string target)
+        {
+            CloseProfileMenu();
+            if(CompanionReveal!=null)CompanionReveal.Prepare(request,current,target);
+            return CompanionReveal;
+        }
         internal void MountLiveContent(FrameworkElement view){liveReturnPage=shellPage;liveReturnSection=settingsPage==null?0:settingsPage.SelectedNavigationIndex;liveReturnHistory=historyIndex;ShowHomePage(false);workspaceShell.Visibility=Visibility.Collapsed;homePage.Children.Add(view);}
         internal void UnmountLiveContent(FrameworkElement view)
         {

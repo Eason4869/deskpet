@@ -34,11 +34,12 @@ namespace Dafeiyu
             }catch{reservation.Dispose();throw;}
         }
         ComposerDraftStore composerDrafts;
-        internal void BindDraft(ConversationWorkspace workspace,string role)
+        internal void BindDraft(ConversationWorkspace workspace,string role,Func<string,bool> isPromoted=null)
         {
             if(composerDrafts==null)composerDrafts=new ComposerDraftStore(dataRoot,Maintenance);
             workspace.DraftOwner=role;
-            workspace.DraftProjectChanged=delegate{if(workspace.IsDraft)BindDraft(workspace,workspace.DraftOwner);};
+            workspace.DraftProjectChanged=delegate{if(workspace.IsDraft)BindDraft(workspace,workspace.DraftOwner,isPromoted);};
+            workspace.BindDraftWorkOptions(composerDrafts,role,isPromoted);
             workspace.Session.BindDraft(composerDrafts,ComposerDraftStore.Scope(role,workspace.Definition.Mode,workspace.ProjectId,workspace.Definition.SectionId),saveHistory);
         }
         public int OpenCount {get{lock(gate)return workspaces.Count(w=>!closing.ContainsKey(w.Id));}}

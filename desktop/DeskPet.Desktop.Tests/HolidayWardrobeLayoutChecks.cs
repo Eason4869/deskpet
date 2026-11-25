@@ -49,7 +49,11 @@ internal static class HolidayWardrobeLayoutChecks
         Check(!RendersPreview(new Border { Background = Avalonia.Media.Brushes.Red }), "thumbnail assertion rejects swapped red/blue channels");
         Check(!RendersPreview(new Border { Background = Avalonia.Media.Brushes.Transparent }), "thumbnail assertion rejects an empty render");
         using var fixture = new HolidayReviewChecks.Fixture(directory, "e-bao", null, false, "蝙蝠小披风");
-        fixture.EnterHoliday(); var owner = fixture.Owner;
+        var owner = fixture.Owner;
+        // Startup can merge the bundled wardrobe over the mock holiday catalog.
+        owner.Skin.PackageHolidayCatalog = new HolidayCatalog(fixture.Root);
+        owner.Holidays.ReplaceCatalog(owner.Skin.PackageHolidayCatalog);
+        fixture.EnterHoliday();
         var window = new SettingsWindow(owner, new SpriteAssets(name => File.OpenRead(Path.Combine(fixture.Root, name.Substring("Dafeiyu.Holidays.".Length)))));
         try
         {
@@ -62,12 +66,22 @@ internal static class HolidayWardrobeLayoutChecks
             Check(!panel.IsVisible, "undiscovered wardrobe reserves no visible selector");
             Directory.CreateDirectory(artifacts); Capture(window, Path.Combine(artifacts, "avalonia-before-unlock.png"));
             double unsplitWidth = partner.Bounds.Width;
-            var ticket = owner.Holidays.TryBeginHover(0)!;
+            // Drive wardrobe discovery from a stable eligible context as this fixture checks Settings layout.
+            owner.Holidays.Refresh(new HolidayContext { PersonaId = owner.Skin.Id, CharacterId = owner.Skin.OutfitCharacterId,
+                StateKey = owner.Skin.PickerKey, LocalTime = fixture.Date, MonotonicSeconds = fixture.Seconds,
+                ResourceVersion = owner.Skin.PackVersion ?? "builtin-1", CanPlayEasterEgg = true });
+            owner.Holidays.LeaveHover();
+            var ticket = owner.Holidays.TryBeginHover(0) ?? throw new Exception("Wardrobe fixture could not start an eligible discovery");
             var playback = new HolidayPlayback(); playback.Start(ticket); playback.MarkFirstFrameRendered(); owner.Holidays.MarkHoverFirstFrame(ticket);
-            for (int i = 0; i < 8; i++) playback.Advance(.25);
+            for (int i = 0; i < ticket.Clip.FrameCount; i++) playback.Advance(1 / ticket.Clip.Fps);
             Check(owner.Holidays.CompleteHover(ticket), "valid complete hover discovers wardrobe while settings stays open");
             Dispatcher.UIThread.RunJobs();
             Check(panel.IsVisible && Math.Abs(partner.Bounds.Width - wardrobe.Bounds.Width) < 1 && partner.Bounds.Width < unsplitWidth * .65, "discovery splits selector area into equal-width dropdowns live");
+            var enabled = panel.GetLogicalDescendants().OfType<CheckBox>().Distinct().Single(check => check.Name == "HolidayOutfitsEnabled");
+            double Right(Control control) => control.TranslatePoint(new Point(control.Bounds.Width, 0), window)!.Value.X;
+            Check(enabled.Content == null && Math.Abs(Right(enabled) - Right(wardrobe)) < 1 &&
+                Avalonia.Automation.AutomationProperties.GetName(enabled) == TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content"),
+                "wardrobe switch has a localized accessible name and aligns to the selector's right edge");
             Check(prompt.Text == "未保存的人格草稿，解锁衣柜时应当保留。", "live discovery preserves unsaved persona form");
             Check(wardrobe.Items.Count == 2 && wardrobe.Items[0]!.ToString() == "默认", "wardrobe contains default plus current character's owned outfit");
             foreach (var option in wardrobe.Items)

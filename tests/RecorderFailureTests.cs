@@ -25,7 +25,8 @@ namespace Dafeiyu.Tests
             using(var session=new ConversationSession(new UnusedApi(),new UnusedSpeech(),()=>recorder))
             {
                 session.StartRecording(settings);recorder.Fail();
-                await Until(()=>!session.IsBusy);
+                // End releases the active operation before publishing the final Idle stage.
+                await Until(()=>!session.IsBusy && session.Stage==ConversationStage.Idle && recorder.Disposed);
                 Check(session.Stage==ConversationStage.Idle && recorder.Disposed,"conversation recording failure releases ownership and microphone");
                 Check(session.LastNotice.Contains("device disconnected"),"conversation recording failure remains visible in status");
                 recorder.Fail();Check(!session.IsBusy && session.History.Messages.Count==0,"late recording failure cannot create a turn");
@@ -34,7 +35,7 @@ namespace Dafeiyu.Tests
             using(var dictation=new DictationSession(new UnusedApi(),()=>recorder,()=>settings))
             {
                 dictation.Start(owner);recorder.Fail();
-                await Until(()=>!dictation.IsBusy);
+                await Until(()=>!dictation.IsBusy && dictation.Stage==DictationStage.Idle && !dictation.Owns(owner) && recorder.Disposed);
                 Check(dictation.Stage==DictationStage.Idle && !dictation.Owns(owner) && recorder.Disposed,"dictation device failure releases ownership without calling ASR");
                 // An event racing with Finish must not prevent a subsequent fresh recording.
                 recorder=new Recorder();dictation.Start(owner);await dictation.CancelAsync(owner);
@@ -63,12 +64,12 @@ namespace Dafeiyu.Tests
             var settings=new PetSettings{Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="fixture"},Transcription=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="fixture"}};
             var actual=new NativeFailureRecorder(false,true);
             using(var session=new ConversationSession(new UnusedApi(),new UnusedSpeech(),()=>actual)) {
-                session.StartRecording(settings);await Until(()=>!session.IsBusy);
+                session.StartRecording(settings);await Until(()=>!session.IsBusy && session.Stage==ConversationStage.Idle && actual.Disposed);
                 Check(actual.Disposed && session.Stage==ConversationStage.Idle && session.LastNotice.Contains("麦克风"),"ordinary real WinMM failure reaches conversation cleanup and visible notice");
             }
             actual=new NativeFailureRecorder(false,true);
             using(var dictation=new DictationSession(new UnusedApi(),()=>actual,()=>settings)) {
-                dictation.Start(new object());await Until(()=>!dictation.IsBusy);
+                dictation.Start(new object());await Until(()=>!dictation.IsBusy && dictation.Stage==DictationStage.Idle && actual.Disposed);
                 Check(actual.Disposed && dictation.Stage==DictationStage.Idle && dictation.LastNotice.Contains("麦克风"),"ordinary real WinMM failure reaches dictation cleanup and visible notice");
             }
         }

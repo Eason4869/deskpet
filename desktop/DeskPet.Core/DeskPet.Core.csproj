@@ -53,12 +53,14 @@
     <Compile Include="../../src/ImageGalleryLayout.cs;../../src/ImageGalleryQuery.cs;../../src/ImageGalleryExport.cs;../../src/ImageGalleryDateFilter.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ConversationImageGeneration.cs" Link="Shared/ConversationImageGeneration.cs" />
     <Compile Include="../../src/AgentQuestionController.cs;../../src/AgentProjectTools.cs;../../src/AgentImageInspection.cs;../../src/AgentGitTools.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/GitHubCliTransport.cs;../../src/GitHubAgentLocal.cs;../../src/GitHubAppGit.cs;../../src/WorkSummaryRepository.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/WebPValidation.cs" Link="Shared/WebPValidation.cs" />
     <Compile Include="../../src/ImageGenerationProvider.cs;../../src/GeneratedImage.cs;../../src/GeneratedImageStore.cs;../../src/ImageGenerationClient.cs;../../src/ImageDownloadSecurity.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/OfficialCompanion*.cs;../../src/GitHubAssetTransport.cs" Exclude="../../src/OfficialCompanionProgressWindow.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/CompanionPackStorage.cs" Link="Shared/CompanionPackStorage.cs" />
     <Compile Include="../../src/UsageRecord.cs;../../src/UsageStore.cs;../../src/UsageTracking.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/WebSearch.cs;../../src/WebSearchProviders.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ScheduledTaskRule.cs;../../src/ScheduledTaskStore.cs;../../src/ScheduledTaskService.cs;../../src/ScheduledTaskAi.cs;../../src/ScheduledTaskRuntime.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ChatAttachment.cs" Link="Shared/ChatAttachment.cs" />
     <Compile Include="../../src/Files/**/*.cs" Link="Shared/Files/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../src/MarkdownContent.cs" Link="Shared/MarkdownContent.cs" />
@@ -74,6 +76,11 @@
     <Compile Include="../../src/ApplicationSnapshots.cs;../../src/AttachmentPicker.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ShortcutDefinitions.cs" Link="Shared/ShortcutDefinitions.cs" />
     <Compile Include="../../src/ThemeColors.cs" Link="Shared/ThemeColors.cs" />
+    <Compile Include="../../src/LiquidThemeShape.cs" Link="Shared/LiquidThemeShape.cs" />
+    <Compile Include="../../src/CompanionTransitionMotion.cs;../../src/CompanionRevealPaths.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/RippleThemeShape.cs;../../src/ThemeTransitionMotion.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ThemeRevealPaths.cs;../../src/RefractionThemeShape.cs;../../src/ZipperThemeShape.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/LiquidThemeAudio.cs;../../src/LiquidThemeSoundPlayback.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/OnboardingUpgrade.cs" Link="Shared/OnboardingUpgrade.cs" />
     <Compile Include="../../src/WanderSchedule.cs" Link="Shared/WanderSchedule.cs" />
     <Compile Include="../../src/GitHubUpdates.cs;../../src/GitHubReleaseChannels.cs" Link="Shared/GitHubUpdates.cs" />

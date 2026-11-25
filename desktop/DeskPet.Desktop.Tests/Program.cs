@@ -44,6 +44,8 @@ if(args.Contains("--notification-sounds")){if(Dafeiyu.Tests.NotificationSoundTes
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
+bool ThemeOverlay(Window window) => window.GetVisualDescendants().OfType<Control>().Any(c => c.Name == "LiquidThemeOverlay");
+void CompleteThemeReveal(Window window) => Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !ThemeOverlay(window); });
 void Complete(Task task) { Until(() => task.IsCompleted); task.GetAwaiter().GetResult(); }
 void CloseController(DesktopController owner){owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}
 T Result<T>(Task<T> task) { Complete(task); return task.GetAwaiter().GetResult(); }
@@ -54,6 +56,135 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--companion-window-reveal"))
+    {
+        if(Dafeiyu.Tests.CompanionTransitionMotionTests.Run()!=0)throw new Exception("Companion geometry failed");
+        Console.WriteLine("Avalonia companion window reveal: "+CompanionWindowRevealChecks.Run(
+            Path.Combine(directory,"companion-reveal"),args.Contains("--capture"))+" passed");
+        return;
+    }
+    if (args.Contains("--theme-reveal"))
+    {
+        using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "theme-data")));
+        var window = new ChatWindow(owner, false);
+        try
+        {
+            owner.SetThemeMode("light");
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var titleSwitch = window.GetLogicalDescendants().OfType<ThemeTitleSwitch>().Distinct().Single();
+            var titleLight = titleSwitch.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "AppThemeLight");
+            var titleDark = titleSwitch.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "AppThemeDark");
+            var titleSystem = titleSwitch.SystemButton;
+            var thumb = titleSwitch.GetLogicalDescendants().OfType<Control>().Single(c => c.Name == "AppThemeThumb");
+            Check(new[] { titleLight, titleDark, titleSystem }.All(button => button.IsEffectivelyVisible && button.Focusable),
+                "Desktop main window exposes direct keyboard-accessible theme choices");
+            var shape = new LiquidThemeShape(880, 730, 820, 42);
+            var first = Geometry.Parse(shape.PathAt(.14));
+            var middle = Geometry.Parse(shape.PathAt(.62));
+            Check(first.FillContains(new Point(820, 44)) && !first.FillContains(new Point(10, 728)),
+                "Avalonia draws the liquid at the trigger");
+            Check(middle.FillContains(new Point(440, 728)) && !middle.FillContains(new Point(440, 20)),
+                "Avalonia reveals the new theme from the bottom");
+            foreach (var progress in Enumerable.Range(0, 101)) Geometry.Parse(shape.PathAt(progress / 100.0));
+            var draft = window.GetLogicalDescendants().OfType<TextBox>().Single(b => b.Name == "ChatDraft");
+            draft.Text = "Preserve draft";
+            draft.Focus();
+            titleDark.Focus(NavigationMethod.Pointer);
+            Check(draft.IsFocused, "Pointer activation keeps focus in the existing draft editor");
+            titleDark.Focus(NavigationMethod.Tab);
+            Check(titleDark.IsFocused, "Tab navigation can focus the dark theme button");
+            draft.Focus();
+            bool Overlay() => ThemeOverlay(window);
+            void Switch(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var store = new SettingsStore(Path.Combine(owner.DataDirectory, "settings.json"));
+            var slide = (TranslateTransform)thumb.RenderTransform!;
+            double lightPosition = slide.X;
+            Switch(titleDark);
+            bool reducedMotion = DeskPet.Platform.Mac.MacServices.PrefersReducedMotion;
+            if (!reducedMotion)
+            {
+                Check(Overlay() && store.Load().ThemeMode == "light", "Desktop retains the stored mode while the snapshot is active");
+                var overlay = window.GetVisualDescendants().OfType<Control>().Single(c => c.Name == "LiquidThemeOverlay");
+                var capsule = titleSwitch.Capsule;
+                var center = capsule.TranslatePoint(new Point(capsule.Bounds.Width / 2, capsule.Bounds.Height / 2), overlay)!.Value;
+                var corner = capsule.TranslatePoint(new Point(1, 1), overlay)!.Value;
+                var monitorCenter = titleSystem.TranslatePoint(new Point(titleSystem.Bounds.Width / 2, titleSystem.Bounds.Height / 2), overlay)!.Value;
+                Check(overlay.Clip != null && !overlay.Clip.FillContains(center), "The reveal leaves the live title thumb visible");
+                Check(overlay.Clip!.FillContains(corner) && overlay.Clip.FillContains(monitorCenter),
+                    "The snapshot covers the title background outside the rounded capsule");
+                Switch(titleDark);
+                Check(DesktopTheme.Mode == "dark", "Desktop coalesces another click on the selected side");
+                Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
+            }
+            Check(store.Load().ThemeMode == "dark" && draft.Text == "Preserve draft" && !Overlay() && slide.X > lightPosition,
+                "Desktop persists dark with the thumb on the right and preserves the live draft");
+            Switch(titleLight);
+            CompleteThemeReveal(window);
+            Check(store.Load().ThemeMode == "light" && slide.X == lightPosition, "Desktop chooses light directly and slides the thumb left");
+            Switch(titleSystem);
+            Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
+            Check(store.Load().ThemeMode == "system", "The separate monitor follows the system");
+            bool previousDark = DesktopTheme.IsDark;
+            foreach (bool isDark in new[] { !previousDark, previousDark })
+            {
+                Application.Current!.SetValue(Application.ActualThemeVariantProperty,
+                    isDark ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light);
+                Check(DesktopTheme.IsDark == isDark && Overlay() == !reducedMotion,
+                    $"Desktop follows system appearance with a reveal when motion is allowed (expected dark {isDark}, effective {Application.Current.ActualThemeVariant}, mode {DesktopTheme.Mode}, cached dark {DesktopTheme.IsDark}, overlay {Overlay()}, reduced motion {reducedMotion})");
+                Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
+                Check(store.Load().ThemeMode == "system", "System appearance retains the system preference");
+            }
+            Switch(titleLight);
+            window.Width += 30;
+            window.UpdateLayout();
+            Until(() => !Overlay());
+            Check(store.Load().ThemeMode == "light" && draft.Text == "Preserve draft",
+                "Desktop resize settles the selected mode and preserves the draft");
+            owner.Settings.ThemeTransitionEffect = ThemeTransitionMotion.Off;
+            Switch(titleDark);
+            Check(!Overlay() && store.Load().ThemeMode == "dark" && store.Load().ThemeTransitionEffect == "off",
+                "Desktop Off immediately switches the palette and remembers the choice");
+            foreach (var effect in new[] { ThemeTransitionMotion.Ripple, ThemeTransitionMotion.Refraction, ThemeTransitionMotion.Zipper })
+            {
+                owner.Settings.ThemeTransitionEffect = effect;
+                owner.SetThemeMode("light");
+                Switch(titleDark);
+                Check(Overlay() == !reducedMotion, $"Desktop {effect} uses the same native reveal lifecycle");
+                Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
+                Check(store.Load().ThemeMode == "dark" && store.Load().ThemeTransitionEffect == effect,
+                    $"Desktop {effect} remembers its choice and preserves the resulting theme");
+            }
+            owner.Settings.ThemeTransitionEffect = ThemeTransitionMotion.RandomSelection;
+            owner.SetThemeMode("light");
+            Switch(titleDark);
+            Check(Overlay() == !reducedMotion, "Random still animates the theme from the desktop title controls");
+            CompleteThemeReveal(window);
+            Check(store.Load().ThemeMode == "dark" && store.Load().ThemeTransitionEffect == ThemeTransitionMotion.RandomSelection,
+                "Desktop retains Random after resolving a concrete effect");
+            var settings = new SettingsWindow(owner);
+            try
+            {
+                settings.Show();
+                settings.SelectSection("behavior");
+                Dispatcher.UIThread.RunJobs();
+                var picker = settings.GetLogicalDescendants().OfType<ThemeModePicker>().Distinct().Single();
+                owner.Settings.ThemeTransitionEffect = ThemeTransitionMotion.Flow;
+                foreach (var mode in new[] { "light", "dark" })
+                {
+                    picker.Origin(mode).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Check(DesktopTheme.Mode == mode && ThemeOverlay(settings) == !reducedMotion,
+                        $"Setting preview reveals {mode} from its own window");
+                    CompleteThemeReveal(settings);
+                    Check(store.Load().ThemeMode == mode, $"Setting preview commits {mode} after its reveal");
+                }
+            }
+            finally { settings.Close(); }
+        }
+        finally { window.Close(); CloseController(owner); }
+        Console.WriteLine("Theme reveal: " + assertions + " passed");
+        return;
+    }
     if (args.Contains("--agent-task-progress"))
     {
         if (!OperatingSystem.IsWindows()) return;
@@ -650,7 +781,11 @@ try
     var initialTheme = controller.Settings.ThemeMode;
     partnerSettings.SelectSection("behavior"); Dispatcher.UIThread.RunJobs();
     var themePicker = partnerSettings.GetLogicalDescendants().OfType<ThemeModePicker>().Distinct().Single();
-    void ChooseTheme(string mode) => themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "ThemeChoice" + mode).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    void ChooseTheme(string mode)
+    {
+        themePicker.Origin(mode).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        CompleteThemeReveal(partnerSettings);
+    }
     Check(themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Count() == 3, "desktop settings expose three theme preview cards");
     ChooseTheme("dark"); Dispatcher.UIThread.RunJobs();
     Check(Application.Current!.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark && controller.Settings.ThemeMode == "dark", "desktop theme selection applies dark immediately");

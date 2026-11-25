@@ -34,7 +34,7 @@ internal sealed class WebSearchSettingsView : Grid
             SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.enabled"),()=>"",enabled),
             SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.provider"),()=>"",provider),native,externalFields,
             SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.showSources"),()=>"",sources),SettingsVisual.Text(()=>TextResources.Get("webSearch.help"),12,true)));
-        Children.Add(new ScrollViewer{HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,Content=new Border{Padding=new Thickness(24),Child=body}});
+        Children.Add(SettingsVisual.ScrollBody(body));
         var save=LocalizedUi.Button(()=>TextResources.Get("webSearch.save"),Save);save.Name="SaveWebSearch";
         var restore=LocalizedUi.Button(()=>TextResources.Get("settingsLayout.restore"),Restore);restore.Name="RestoreWebSearch";
         var footer=new Border{Padding=new Thickness(24,14),BorderBrush=DesktopTheme.CardBorder,BorderThickness=new Thickness(0,1,0,0),Child=Ui.Column(notice,SettingsVisual.Wrap(save,restore))};Grid.SetRow(footer,1);Children.Add(footer);

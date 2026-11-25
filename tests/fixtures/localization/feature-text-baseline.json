@@ -2324,6 +2324,60 @@
       "argument_count": 0
     },
     {
+      "key": "themeTransition.motion.flow",
+      "expected": "流水",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.label",
+      "expected": "切换动效",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.off",
+      "expected": "关闭",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.random",
+      "expected": "随机",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.refraction",
+      "expected": "折光",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.ripple",
+      "expected": "涟漪",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.motion.zipper",
+      "expected": "拉链",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.sound.enabled",
+      "expected": "主题切换音效",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.sound.volume",
+      "expected": "主题切换音量",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "usageStatistics.conversationModelsHelp",
       "expected": "本机对话模型用量，包含个人聊天、工作及辅助请求；不含 ASR 语音识别、TTS 朗读及 Live 实时语音。",
       "format": false,
@@ -3646,6 +3700,1368 @@
     {
       "key": "workSummary.workers",
       "expected": "子智能体",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.advanced",
+      "expected": "高级设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.ai",
+      "expected": "AI 任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.content",
+      "expected": "任务内容",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.copyResult",
+      "expected": "复制结果",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.cost",
+      "expected": "AI 任务可能产生模型调用或搜索费用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.create",
+      "expected": "创建",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.daily",
+      "expected": "每天",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.date",
+      "expected": "日期",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.defaultModel",
+      "expected": "应用默认",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.deleteDescription",
+      "expected": "要删除「{0}」及其运行记录吗？",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.deleteTitle",
+      "expected": "删除定时任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.draft",
+      "expected": "在聊天中创建",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.draftError",
+      "expected": "无法生成草稿。请重试或填写表单。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.draftPrompt",
+      "expected": "描述要做什么、什么时候做",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.draftReady",
+      "expected": "查看任务设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.edit",
+      "expected": "编辑",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.editor",
+      "expected": "定时设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.empty",
+      "expected": "暂无定时任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.emptyHint",
+      "expected": "从模板开始，或新建任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.enable",
+      "expected": "启用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.failed",
+      "expected": "失败",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.frequency",
+      "expected": "重复",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.futureDate",
+      "expected": "请选择将来的运行时间。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.history",
+      "expected": "运行记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.interrupted",
+      "expected": "已中断",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.invalid",
+      "expected": "请填写任务名称、任务内容，并设置有效的运行时间。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.invalidDraft",
+      "expected": "我没能确认运行安排。你希望我在什么时候做什么？",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.localZone",
+      "expected": "本地时区 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.manual",
+      "expected": "填写表单",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.missedHint",
+      "expected": "请选择立即运行每项任务，或跳过本次运行。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.missedTask",
+      "expected": "{0} · 原定于 {1}",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "scheduledTasks.missedTitle",
+      "expected": "错过的定时任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.missedView",
+      "expected": "查看错过的任务（{0}）",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.missingModel",
+      "expected": "所选模型已不可用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.model",
+      "expected": "模型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.modelUnavailable",
+      "expected": "模型不可用 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.monthly",
+      "expected": "每月",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.name",
+      "expected": "任务名称",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.new",
+      "expected": "新建任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.next",
+      "expected": "下次运行 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.noHistory",
+      "expected": "暂无运行记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.noNext",
+      "expected": "暂无后续运行",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.noSelection",
+      "expected": "选择一项任务以查看详情",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notificationResult",
+      "expected": "{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.notify",
+      "expected": "通知",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notifyAll",
+      "expected": "所有结果",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notifyFailures",
+      "expected": "仅在失败时",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notifyNone",
+      "expected": "仅记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notifyReminder",
+      "expected": "到期时",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.once",
+      "expected": "仅一次",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.openResult",
+      "expected": "查看任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.pause",
+      "expected": "暂停",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.pending",
+      "expected": "待处理",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.queued",
+      "expected": "排队中",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.reminder",
+      "expected": "提醒",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.runError",
+      "expected": "任务运行失败。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.runLocal",
+      "expected": "在此设备上运行",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.runNow",
+      "expected": "立即运行",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.running",
+      "expected": "运行中",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.runningDelete",
+      "expected": "请等当前运行结束后再删除此任务。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.search",
+      "expected": "搜索任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.send",
+      "expected": "发送",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.skip",
+      "expected": "跳过本次",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.skipped",
+      "expected": "已跳过",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.stop",
+      "expected": "停止",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.storageError",
+      "expected": "无法读取或保存定时任务数据。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.succeeded",
+      "expected": "已完成",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templatePlan",
+      "expected": "每日计划",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templatePlanPrompt",
+      "expected": "每天上午 9 点提醒我列出今天最重要的三件事。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateReading",
+      "expected": "睡前阅读",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateReadingPrompt",
+      "expected": "每天晚上 9 点提醒我读 15 分钟书。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateReport",
+      "expected": "周报草稿",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateReportPrompt",
+      "expected": "每周五下午 4 点帮我起草一份周报。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateStretch",
+      "expected": "伸展提醒",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateStretchPrompt",
+      "expected": "每个工作日下午 3 点提醒我起身伸展。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateWater",
+      "expected": "喝水提醒",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateWaterPrompt",
+      "expected": "每天上午 10 点提醒我喝水。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateWeekend",
+      "expected": "周末活动建议",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateWeekendPrompt",
+      "expected": "每周四下午 6 点给我推荐一些周末活动。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.time",
+      "expected": "时间",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.title",
+      "expected": "定时任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.type",
+      "expected": "任务类型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.webSearch",
+      "expected": "使用联网搜索",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.weekly",
+      "expected": "每周",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.connect",
+      "expected": "连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.disconnect",
+      "expected": "断开连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.disconnected",
+      "expected": "未连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.failed",
+      "expected": "操作失败。请重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.footer",
+      "expected": "管理已连接的应用及其访问权限。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.analyze",
+      "expected": "分析邮件",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.description",
+      "expected": "连接 Gmail 后可搜索和阅读邮件。DeskPet 仅使用只读权限。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.disconnectedLocal",
+      "expected": "已在此设备断开连接。可前往 Google 账号设置撤销访问权限。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.empty",
+      "expected": "没有匹配的邮件",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.instruction",
+      "expected": "你希望模型怎样处理这封邮件？",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.next",
+      "expected": "下一页",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.noOfficialClient",
+      "expected": "当前版本缺少 OAuth 客户端配置，无法登录 Gmail。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.noPlainText",
+      "expected": "这封邮件没有纯文本正文。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.revoked",
+      "expected": "已断开连接，并撤销 Gmail 访问权限。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.search",
+      "expected": "搜索 Gmail",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.view",
+      "expected": "查看 Gmail",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.work",
+      "expected": "工作模式中的 Gmail",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.workDisclosure",
+      "expected": "你的指令、所选邮件的主题和最多 16,000 个字符的纯文本正文将发送给 {0}。",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "apps.tab",
+      "expected": "应用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.planExecution.decline",
+      "expected": "暂不执行",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.planExecution.execute",
+      "expected": "执行计划",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.planExecution.failed",
+      "expected": "未能提交计划执行。请检查当前会话与工作模式后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.planExecution.question",
+      "expected": "计划已生成。现在执行这份计划吗？",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.planExecution.request",
+      "expected": "请按此消息附带的已确认计划执行，按附件顺序阅读。继续遵循当前工作区权限和审批要求。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.planExecution.tooLong",
+      "expected": "这份计划超出单次请求支持的长度，无法完整提交。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.planExecution.waiting",
+      "expected": "等待当前会话和消息队列空闲后可执行。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.workMode.exitGoal",
+      "expected": "退出目标模式",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.workMode.exitPlan",
+      "expected": "退出计划模式",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.workMode.goalFollowUpPlaceholder",
+      "expected": "补充目标要求，或继续推进当前目标",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.workMode.goalPlaceholder",
+      "expected": "描述你的目标及可衡量的预期成果",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "conversationComposer.workMode.planPlaceholder",
+      "expected": "描述任务，先生成执行计划",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.cliConnect",
+      "expected": "使用 GitHub CLI 连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.cliLogin",
+      "expected": "打开设备授权",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.cliLoginPending",
+      "expected": "请在 GitHub CLI 窗口完成设备授权，再继续连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.cliUnavailable",
+      "expected": "未找到 GitHub CLI。请安装后重试，或使用个人访问令牌。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.connect",
+      "expected": "验证并连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.connected",
+      "expected": "已连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.connectedAs",
+      "expected": "已连接 GitHub 账号 {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "gitHubApp.connection",
+      "expected": "GitHub 连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.description",
+      "expected": "在工作区创建 GitHub 拉取请求。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.disconnect",
+      "expected": "断开连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.disconnected",
+      "expected": "未连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.failed",
+      "expected": "GitHub 验证失败。请检查令牌和网络连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.hideSettings",
+      "expected": "收起设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.hint",
+      "expected": "在 GitHub 创建细粒度个人访问令牌，并选择要授权的仓库。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.invalidToken",
+      "expected": "请输入有效的细粒度个人访问令牌。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.manage",
+      "expected": "管理连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.repository",
+      "expected": "默认仓库（可选，owner/repo）",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.saveFailed",
+      "expected": "无法保存 GitHub 设置。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.saveRepository",
+      "expected": "保存默认仓库",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.saved",
+      "expected": "GitHub 设置已保存。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.timeout",
+      "expected": "GitHub 连接超时。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.token",
+      "expected": "细粒度个人访问令牌",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.tokenHint",
+      "expected": "创建拉取请求需要 Pull requests 读写权限。推送使用本机 Git 凭据。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.tokenPage",
+      "expected": "创建令牌",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.authorizationDenied",
+      "expected": "Gmail 访问授权被拒绝。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.authorizationTimeout",
+      "expected": "Gmail 授权超时。请重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.browserError",
+      "expected": "无法打开浏览器登录 Gmail。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.callbackComplete",
+      "expected": "已收到授权。请返回 DeskPet 继续。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.callbackDenied",
+      "expected": "Gmail 访问授权被拒绝。你可以关闭此标签页。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.callbackError",
+      "expected": "此设备无法接收 Gmail 登录结果。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.callbackInvalid",
+      "expected": "Gmail 登录响应无效。请返回 DeskPet 重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.clientChanged",
+      "expected": "Gmail OAuth 客户端已更改。请重新连接 Gmail。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.invalidConfig",
+      "expected": "Gmail OAuth 客户端配置无效。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.invalidMessage",
+      "expected": "这封 Gmail 邮件无效。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.invalidResponse",
+      "expected": "Gmail 返回了意外的响应。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.invalidSearch",
+      "expected": "Gmail 搜索条件无效。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.messageUnavailable",
+      "expected": "这封 Gmail 邮件已不可用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.missingConfig",
+      "expected": "缺少 Gmail OAuth 客户端配置。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.networkError",
+      "expected": "无法连接 Gmail。请检查网络连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.notConnected",
+      "expected": "请先连接 Gmail。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.reconnect",
+      "expected": "Gmail 访问权限已过期或被撤销。请重新连接 Gmail。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.requestFailed",
+      "expected": "Gmail 请求失败。请重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.requestTimeout",
+      "expected": "Gmail 请求超时。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.scopeError",
+      "expected": "缺少 Gmail 只读权限。请重新连接 Gmail 并允许读取邮件。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gmailApp.storageError",
+      "expected": "无法在此设备读取或保存 Gmail 凭据。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.binary",
+      "expected": "二进制文件，无法预览文本差异。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.detached",
+      "expected": "分离的 HEAD",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.failed",
+      "expected": "无法读取 Git 更改。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.filter",
+      "expected": "筛选文件",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.loading",
+      "expected": "正在读取 Git 更改…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.loadingDiff",
+      "expected": "正在读取文件差异…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.noChanges",
+      "expected": "没有已跟踪的 Git 更改。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.noDiff",
+      "expected": "该文件没有可预览的文本差异。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.noMatches",
+      "expected": "没有匹配的文件。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.noRepository",
+      "expected": "当前工作区未找到 Git 仓库。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.refresh",
+      "expected": "刷新 Git 更改",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.title",
+      "expected": "Git 更改",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.truncated",
+      "expected": "变更较多，当前仅显示可读取的一部分。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.untracked",
+      "expected": "已跳过 {0} 个未跟踪文件。",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.gitChanges.upstream",
+      "expected": "与上游比较",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitChanges.workingTree",
+      "expected": "工作区",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.base",
+      "expected": "目标分支",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.body",
+      "expected": "说明（可选）",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.busy",
+      "expected": "请等待工作区任务结束。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.changed",
+      "expected": "工作区、分支、暂存区或连接发生变化。请重新确认操作。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.commit",
+      "expected": "提交已暂存的更改",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.commitInfo",
+      "expected": "将 {0} 个文件的已暂存更改提交到 {2} 分支。\n工作区：{1}",
+      "format": true,
+      "argument_count": 3
+    },
+    {
+      "key": "workSummary.gitHub.commitMessage",
+      "expected": "提交说明",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.committed",
+      "expected": "已提交暂存更改。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.incompatiblePush",
+      "expected": "origin 必须使用单一 GitHub HTTPS 或 SSH 推送地址，且地址须与关联仓库匹配。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.invalidInput",
+      "expected": "请填写有效的标题或提交说明。创建拉取请求时，请选择不同的目标分支。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.invalidWorktree",
+      "expected": "当前工作区、分支或 origin 与关联的 GitHub 仓库不匹配。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.menu",
+      "expected": "GitHub 操作",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.noStaged",
+      "expected": "没有已暂存的更改。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.noToken",
+      "expected": "请先在「应用」中连接 GitHub，再创建拉取请求。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.open",
+      "expected": "打开 GitHub 仓库",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.operationFailed",
+      "expected": "Git 操作未完成。请检查工作区状态和 Git 配置。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.pullCreated",
+      "expected": "已创建拉取请求。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.pullFailed",
+      "expected": "未能确认拉取请求是否创建。重试前请在 GitHub 查看。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.pullInfo",
+      "expected": "从 {0} 上已推送的 {1} 分支创建拉取请求。",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "workSummary.gitHub.pullRequest",
+      "expected": "创建拉取请求",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.push",
+      "expected": "推送当前分支",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.pushFailed",
+      "expected": "未能确认推送结果。重试前请检查远程分支和本机 Git 凭据。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.pushInfo",
+      "expected": "将提交 {2} 推送到 {0} 的 {1} 分支。",
+      "format": true,
+      "argument_count": 3
+    },
+    {
+      "key": "workSummary.gitHub.pushed",
+      "expected": "已推送当前分支。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.selectedCommitFailedAfterPreparation",
+      "expected": "提交失败。已选的新文件可能仍标记为待添加，其他暂存文件已保留。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.gitHub.title",
+      "expected": "标题",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.plan",
+      "expected": "计划",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.activeGroup",
+      "expected": "当前 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.cancelled",
+      "expected": "已取消",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.completed",
+      "expected": "已完成",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.completedCount",
+      "expected": "{0} 个已完成",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.completedGroup",
+      "expected": "已完成 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.duration",
+      "expected": "用时 {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.failed",
+      "expected": "失败",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.interrupted",
+      "expected": "已中断",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.name",
+      "expected": "子智能体 {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.progress",
+      "expected": "处理过程",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.queued",
+      "expected": "等待开始",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.queuedCount",
+      "expected": "{0} 个排队中",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.result",
+      "expected": "结果",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.running",
+      "expected": "处理中",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.runningCount",
+      "expected": "{0} 个运行中",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.stoppedCount",
+      "expected": "{0} 个已结束",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.stoppedGroup",
+      "expected": "已结束 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "workSummary.subagents.task",
+      "expected": "任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workSummary.subagents.usage",
+      "expected": "{0} 次工具调用 · {1} 次模型请求",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "companionTransition.motion.label",
+      "expected": "角色切换动效",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionTransition.motion.off",
+      "expected": "关闭",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionTransition.motion.random",
+      "expected": "随机",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionTransition.motion.ripple",
+      "expected": "头像涟漪",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionTransition.motion.zipper",
+      "expected": "拉链开场",
       "format": false,
       "argument_count": 0
     }

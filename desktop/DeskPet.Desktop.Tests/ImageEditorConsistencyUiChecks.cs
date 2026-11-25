@@ -31,7 +31,17 @@ internal static class ImageEditorConsistencyUiChecks
         var labels = image.Children.OfType<StackPanel>().Where(p => p.Children.FirstOrDefault() is TextBlock).Select(p => ((TextBlock)p.Children[0]).Text).ToArray();
         Check(labels.SequenceEqual(new[] { "厂商名称", "服务地址", "API Key（保存在系统密钥保护下）", "协议", "代理地址", "模型 ID（可手填）" }), "common fields follow conversation naming and order");
         Check(image.Children.Last() is Button imageSave && text.Children.Last() is Button textSave && imageSave.Content as string == textSave.Content as string, "save/enable action matches text model footer");
-        Check(image.Children.OfType<WrapPanel>().Any(row => row.Children.OfType<CheckBox>().Select(c => c.Content as string).SequenceEqual(new[] { "此厂商使用独立代理", "支持参考图编辑" })), "independent proxy and reference capability share the options row");
+        var proxyOption = image.GetLogicalDescendants().OfType<CheckBox>().Single(c => c.Name == "ImageProviderUseProxy");
+        var referenceOption = image.GetLogicalDescendants().OfType<CheckBox>().Single(c => c.Name == "ImageProviderSupportsEdits");
+        Check(new[] { proxyOption, referenceOption }.All(c => c.IsVisible && c.IsEnabled && c.Focusable) &&
+            Avalonia.Automation.AutomationProperties.GetName(proxyOption) == "此厂商使用独立代理" &&
+            Avalonia.Automation.AutomationProperties.GetName(referenceOption) == "支持参考图编辑",
+            "independent proxy and reference capability have accessible controls");
+        double Right(CheckBox option) => option.TranslatePoint(new Point(option.Bounds.Width, 0), image)!.Value.X;
+        Check(proxyOption.TranslatePoint(default, image)!.Value.Y < referenceOption.TranslatePoint(default, image)!.Value.Y &&
+            Math.Abs(Right(proxyOption) - Right(referenceOption)) < 1 &&
+            Math.Abs(Right(referenceOption) - image.Bounds.Width) < 1,
+            "independent proxy and reference capability align to the trailing edge of separate rows");
         var parameters = image.GetLogicalDescendants().OfType<Expander>().Distinct().Single(e => e.Name == "ImageProviderParameters");
         Check(!parameters.IsExpanded && parameters.Header is TextBlock { Text: "图片生成设置" }, "image specific defaults are grouped and initially collapsed");
         var before = owner.Settings.ImageProviders.Count; var drafts = image.GetLogicalDescendants().OfType<ComboBox>().Distinct().Single(c => c.Name == "ImageProviderList"); var count = drafts.Items.Count;

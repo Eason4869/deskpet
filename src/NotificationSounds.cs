@@ -37,6 +37,7 @@ namespace Dafeiyu
         readonly HashSet<string> known=new HashSet<string>(StringComparer.Ordinal);
         readonly SemaphoreSlim playback=new SemaphoreSlim(1,1);
         Request pending;
+        LiquidThemeSoundPlayback themePlayback;
         DateTime lastPlayed,lastOperation;
         bool operationActive,hasOperation;
         bool active,disposed,hasPlayed;
@@ -60,6 +61,7 @@ namespace Dafeiyu
                 {
                     var current=settings();var now=clock();
                     if((active&&!operationActive)||!Allowed(current)||audioBusy()||(hasPlayed&&now-lastPlayed<TimeSpan.FromSeconds(3)))return false;
+                    CancelTheme();
                     if(operationActive)CancelPending();operationActive=false;
                     active=true;hasPlayed=true;lastPlayed=now;
                     var request=new Request();pending=request;
@@ -90,9 +92,49 @@ namespace Dafeiyu
             }
         }
         static bool OperationAllowed(PetSettings value,bool preview){return value!=null&&(preview||value.NotificationSoundsEnabled)&&!value.QuietMode&&value.CompanionOperationSoundVolume>0;}
+        internal ILiquidThemeSound TryPlayTheme(bool dark,TimeSpan duration,bool shortFeedback,string motion=ThemeTransitionMotion.Flow)
+        {
+            lock(gate)
+            {
+                if(disposed||active||themePlayback!=null)return null;
+                int volume;
+                try{volume=audioBusy()?0:ThemeVolume(settings());}catch{return null;}
+                if(volume<=0||!playback.Wait(0))return null;
+                var request=new LiquidThemeSoundPlayback(createOutput,()=>audioBusy()?0:ThemeVolume(settings()),dark,duration,shortFeedback,volume,motion);
+                themePlayback=request;
+                Task.Run(async delegate
+                {
+                    try{await request.PlayAsync().ConfigureAwait(false);}
+                    finally
+                    {
+                        lock(gate)
+                        {
+                            themePlayback=null;
+                            playback.Release();
+                        }
+                    }
+                });
+                return request;
+            }
+        }
+        static int ThemeVolume(PetSettings value)
+        {
+            return value!=null&&value.NotificationSoundsEnabled&&value.ThemeTransitionSoundEnabled&&!value.QuietMode
+                ?value.ThemeTransitionSoundVolume:0;
+        }
         public void Refresh()
         {
-            lock(gate)try{if(audioBusy()||(operationActive?!OperationAllowed(settings(),pending!=null&&pending.Preview):!Allowed(settings())))CancelPending();}catch{CancelPending();}
+            lock(gate)
+            {
+                try
+                {
+                    bool busy=audioBusy();
+                    var current=busy?null:settings();
+                    if(busy||(operationActive?!OperationAllowed(current,pending!=null&&pending.Preview):!Allowed(current)))CancelPending();
+                    if(themePlayback!=null)themePlayback.Refresh(ThemeVolume(current));
+                }
+                catch{CancelPending();CancelTheme();}
+            }
         }
 
         static bool Allowed(PetSettings value){return value!=null&&value.NotificationSoundsEnabled&&!value.QuietMode&&value.Volume>0;}
@@ -129,7 +171,12 @@ namespace Dafeiyu
         static byte[] ReadPcm(int cue,bool operation,out int rate)
         {
             string[] names=operation?new[]{"companion-appear","companion-switch","companion-hide"}:new[]{"task-complete","review-needed","permission-needed","attention-failed"};
-            using(var stream=typeof(NotificationSoundPlayer).Assembly.GetManifestResourceStream("Dafeiyu.Sounds."+names[(int)cue]+".wav"))
+            return ReadPcmResource(names[(int)cue],out rate);
+        }
+
+        internal static byte[] ReadPcmResource(string name,out int rate)
+        {
+            using(var stream=typeof(NotificationSoundPlayer).Assembly.GetManifestResourceStream("Dafeiyu.Sounds."+name+".wav"))
             {
                 if(stream==null)throw new InvalidDataException("Notification cue is unavailable.");
                 using(var reader=new BinaryReader(stream))
@@ -160,9 +207,10 @@ namespace Dafeiyu
             }
         }
 
-        public void Stop(){lock(gate){CancelPending();}}
+        public void Stop(){lock(gate){CancelPending();CancelTheme();}}
         void CancelPending(){if(pending!=null){pending.Stopped.TrySetResult(true);pending=null;}active=false;}
-        public void Dispose(){lock(gate){if(disposed)return;disposed=true;CancelPending();}}
+        void CancelTheme(){if(themePlayback!=null)themePlayback.Cancel();}
+        public void Dispose(){lock(gate){if(disposed)return;disposed=true;CancelPending();CancelTheme();}}
         sealed class Request
         {
             internal bool Preview;

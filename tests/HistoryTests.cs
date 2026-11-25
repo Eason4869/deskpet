@@ -118,7 +118,7 @@ namespace Dafeiyu.Tests
             recording.BeginSegment(stream,"task");
             recording.Text("draft text");
             recording.Tool(new AgentToolEvent{Id="call",Name="read_file",Status="running",Summary="tool progress"});
-            recording.FinishSegment("final answer","complete",new[]{new AgentToolEvent{Id="call",Name="read_file",Status="error",Summary="actual terminal reason"}});
+            recording.FinishSegment("final answer","complete",new[]{new AgentToolEvent{Id="call",Name="read_file",Status="error",Summary="actual terminal reason"}},generatedPlan:true);
             recording.Close();
             store.FlushAsync().GetAwaiter().GetResult();
 
@@ -126,11 +126,13 @@ namespace Dafeiyu.Tests
             var reopened=new HistoryStore(path);
             var recovered=reopened.Load("pet");
             Check(recovered.Last().Status=="complete" && recovered.Last().Content=="final answer" && File.Exists(eventPath),"replay lost terminal state or retired its evidence before saving");
+            var generatedPlan=new ConversationLog();generatedPlan.Replace(recovered);
+            Check(generatedPlan.LatestGeneratedPlan!=null&&generatedPlan.LatestGeneratedPlan.Content=="final answer","replay lost the generated plan marker");
             Check(recovered.Last().ToolEvents.Single().Summary=="actual terminal reason","journal-only replay replaced the actual terminal tool result");
             reopened.SaveAsync("pet",log.Messages).GetAwaiter().GetResult();
             Check(File.Exists(eventPath),"an older checkpoint discarded newer events");
             reopened.SaveAsync("pet",recovered).GetAwaiter().GetResult();
-            Check(!File.Exists(eventPath) && reopened.Load("pet").Last().Content=="final answer","committed final history did not take over the projection");
+            Check(!File.Exists(eventPath) && reopened.Load("pet").Last().Content=="final answer"&&reopened.Load("pet").Last().IsGeneratedPlan,"committed final history did not take over the projection");
         }
         static void AgentTurnConcurrentCommit()
         {

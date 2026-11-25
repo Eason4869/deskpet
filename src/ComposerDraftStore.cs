@@ -68,28 +68,47 @@ namespace Dafeiyu
                 else timer.Change(350,Timeout.Infinite);
             }
         }
+        internal void SaveNow(string scope,string text)
+        {
+            using(maintenance.EnterActivity())lock(gate)
+            {
+                if(disposed)throw new ObjectDisposedException("ComposerDraftStore");
+                if(!readScopes.Contains(scope))Get(scope);
+                if(blocked.Contains(scope))throw new IOException(TextResources.Get("composerDraft.storageError"));
+                try{Write(scope,text);pending.Remove(scope);}
+                catch(Exception error){if(!StorageError(error))throw;Fail();throw new IOException(TextResources.Get("composerDraft.storageError"),error);}
+                if(pending.Count==0&&blocked.Count==0)Warning=null;
+            }
+        }
+
+        void Write(string scope,string text)
+        {
+            string path=FileName(scope),temp=Path.Combine(directory,Guid.NewGuid().ToString("N")+".tmp");
+            try
+            {
+                Dafeiyu.Maintenance.CachePaths.Check(path);Directory.CreateDirectory(directory);
+                if(text.Length==0){if(File.Exists(path))File.Delete(path);return;}
+                var json=new JavaScriptSerializer().Serialize(new Dictionary<string,string>{{"version","1"},{"scope",scope},{"text",text}});
+                var cipher=SecretProtection.Protect(Encoding.UTF8.GetBytes(json));
+                using(var file=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+                {
+                    file.Write(cipher,0,cipher.Length);file.Flush(true);
+                }
+                AtomicFile.Commit(temp,path);
+            }
+            finally {try{File.Delete(temp);}catch(IOException){}catch(UnauthorizedAccessException){}}
+        }
+
         public void Flush()
         {
             lock(gate) {
                 if(disposed)return;
                 foreach(var item in new List<KeyValuePair<string,string>>(pending)) {
-                    string path=FileName(item.Key),temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";
                     try {
-                        Dafeiyu.Maintenance.CachePaths.Check(path);Directory.CreateDirectory(directory);
-                        if(item.Value.Length==0){if(File.Exists(path))File.Delete(path);}
-                        else {
-                            var json=new JavaScriptSerializer().Serialize(new Dictionary<string,string>{
-                                {"version","1"},{"scope",item.Key},{"text",item.Value}});
-                            var cipher=SecretProtection.Protect(Encoding.UTF8.GetBytes(json));
-                            using(var file=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)) {
-                                file.Write(cipher,0,cipher.Length);file.Flush(true);
-                            }
-                            if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);
-                        }
+                        Write(item.Key,item.Value);
                         pending.Remove(item.Key);
                         if(pending.Count==0&&blocked.Count==0)Warning=null;
                     }catch(Exception error){if(!StorageError(error))throw;Fail();}
-                    finally {try{if(File.Exists(temp))File.Delete(temp);}catch(IOException){}catch(UnauthorizedAccessException){}}
                 }
             }
         }

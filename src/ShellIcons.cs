@@ -14,7 +14,9 @@ namespace Dafeiyu
         {
             string shape;
             switch(name){
+                case "theme-light":case "theme-dark":case "theme-system":shape=ThemeSwitch.Icon(name.Substring(6));break;
                 case "image":shape="M3 4h18v16H3z M3 16l5-5 5 5 3-3 5 5 M16 8h.1";break;
+                case "calendar":shape="M5 5h14q2 0 2 2v12q0 2-2 2H5q-2 0-2-2V7q0-2 2-2z M7 3v4 M17 3v4 M3 10h18 M8 14h2 M14 14h2 M8 17h2";break;
                 case "home":shape="M3 11 12 3 21 11 M5 10v10h5v-6h4v6h5V10";break;
                 case "settings":shape="M9.13 5.07L10.19 4.72 10.21 1.86 13.79 1.86 13.81 4.72 14.87 5.07 15.86 5.57 17.91 3.56 20.44 6.09 18.43 8.14 18.93 9.13 19.28 10.19 22.14 10.21 22.14 13.79 19.28 13.81 18.93 14.87 18.43 15.86 20.44 17.91 17.91 20.44 15.86 18.43 14.87 18.93 13.81 19.28 13.79 22.14 10.21 22.14 10.19 19.28 9.13 18.93 8.14 18.43 6.09 20.44 3.56 17.91 5.57 15.86 5.07 14.87 4.72 13.81 1.86 13.79 1.86 10.21 4.72 10.19 5.07 9.13 5.57 8.14 3.56 6.09 6.09 3.56 8.14 5.57z M15.3 12a3.3 3.3 0 1 1-6.6 0a3.3 3.3 0 1 1 6.6 0";break;
                 case "back":shape="M19 12H5 M11 6l-6 6 6 6";break;
@@ -48,7 +50,7 @@ namespace Dafeiyu
                 default:shape="M12 3v12 M6 9a9 9 0 1 0 12 0";break;
             }
             if(solid&&name=="home")shape="M3 10.5L12 3l9 7.5-2 2V21h-5v-6h-4v6H5v-8.5z";
-            var path=new Path{Data=Geometry.Parse(shape),Fill=solid?(ink??AgentUi.Ink):Brushes.Transparent,Stroke=ink??AgentUi.Muted,StrokeThickness=1.65,StrokeLineJoin=PenLineJoin.Round,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round};
+            var path=new Path{Data=Geometry.Parse(shape),Fill=solid&&name!="calendar"?(ink??AgentUi.Ink):Brushes.Transparent,Stroke=ink??AgentUi.Muted,StrokeThickness=1.65,StrokeLineJoin=PenLineJoin.Round,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round};
             var canvas=new Canvas{Width=24,Height=24};canvas.Children.Add(path);return new Viewbox{Child=canvas,Width=size,Height=size,Stretch=Stretch.Uniform,VerticalAlignment=VerticalAlignment.Center,HorizontalAlignment=HorizontalAlignment.Center,IsHitTestVisible=false};
         }
         internal static Button Button(string icon,string label,Action click)

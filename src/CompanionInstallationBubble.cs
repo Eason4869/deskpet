@@ -45,13 +45,21 @@ namespace Dafeiyu
         {
             var text=status.Text;if(text!=previousText){previousText=text;message.Text=text;pet.ShowCompanionInstallationStatus(status.Origin,text);}
             cancel.Visibility=status.CanCancel?Visibility.Visible:Visibility.Collapsed;retry.Visibility=status.CanRetry?Visibility.Visible:Visibility.Collapsed;
-            if(status.Visible(pet.IsPetVisible)){if(!IsVisible)Show();BubblePlacement.Follow(this,pet,tail);}else if(IsVisible)Hide();
+            var anchor=status.Origin=="MainWindow"&&!pet.IsPetVisible?pet.CompanionInstallationAnchor:null;
+            if(status.Visible(pet.IsPetVisible||anchor!=null))
+            {
+                if(!IsVisible)Show();
+                if(anchor==null)BubblePlacement.Follow(this,pet,tail);
+                else BubblePlacement.Follow(this,anchor,tail);
+            }
+            else if(IsVisible)Hide();
             if(!status.Active)timer.Stop();
         }
     }
     public sealed partial class PetWindow
     {
         CompanionInstallationBubble companionInstallationBubble;
+        internal FrameworkElement CompanionInstallationAnchor {get{return chat==null?null:chat.CompanionInstallationAnchor;}}
         void PresentCompanionInstallation(CompanionSelectionUpdate update){if(companionInstallationBubble==null)companionInstallationBubble=new CompanionInstallationBubble(this);companionInstallationBubble.Accept(update);}
         internal void ShowCompanionInstallationStatus(string origin,string text){if(origin=="Settings"||origin=="Onboarding"){Notice=text;if(preferences!=null)preferences.ShowNotice(text);}}
     }

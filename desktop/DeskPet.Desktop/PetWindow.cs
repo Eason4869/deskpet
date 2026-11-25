@@ -92,12 +92,18 @@ internal sealed partial class PetWindow : Window
         relationshipContentEpoch++;
         ObserveFeedbackQuiet();
         CancelHoliday();
-        Width = 192 * owner.Settings.Scale; Height = 208 * owner.Settings.Scale;
+        ApplyDesktopSize();
         Topmost = owner.Settings.Topmost;
         if (!owner.Settings.Wander && !owner.Settings.FollowCursor) { runUntil = 0; walkTarget = null; if (action is "running-left" or "running-right") Play("idle", false); }
         if (owner.Settings.X is double x && owner.Settings.Y is double y && !IsVisible) Position = new PixelPoint((int)x, (int)y);
         Clamp(); ConfigureNative(false);
         RefreshHoliday(true);
+    }
+    private void ApplyDesktopSize()
+    {
+        double scale = OfficialCompanionProfiles.DesktopScale(owner.Skin.OfficialCharacterId, owner.Settings.Scale);
+        Width = 192 * scale;
+        Height = 208 * scale;
     }
     public void SelectSkin()
     {
@@ -109,6 +115,7 @@ internal sealed partial class PetWindow : Window
         var previousCompanion=RelationshipIdentity.Resolve(owner.DataDirectory,sprite.Skin.PickerKey,sprite.Skin.OfficialCharacterId,sprite.Skin.Id);
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.InvalidateFeedback();
         drop.Cancel(); sprite.ResetFrames(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
+        ApplyDesktopSize(); Clamp();
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);
         RefreshHoliday(true);
     }

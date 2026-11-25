@@ -52,6 +52,34 @@ namespace Dafeiyu.Tests
                 foreach(double width in new[]{460d,360d}){host.Width=width;Pump();host.UpdateLayout();Check(page.DesiredSize.Width<=page.ActualWidth+1,"the page measures within a "+width+" DIP host");foreach(string name in new[]{"PluginsSearch","ImportManagedSkill","ManagedSkillContent"})Inside(page,Control<FrameworkElement>(page,name));foreach(var row in All<Border>(page).Where(b=>b.Name=="ManagedSkillRow"))Inside(page,row);var scroll=All<ScrollViewer>(page).First();Check(scroll.ExtentWidth<=scroll.ViewportWidth+1,"skills content does not overflow horizontally at "+width+" DIP");Save(page,"plugins-narrow-"+width+".png");}
                 host.Width=1050;Pump();Click(page,"RemoveManagedSkill");Check(new ManagedSkillLibrary(directory).List().Count==2&&Control<TextBlock>(page,"ManagedSkillRemoveConfirmation").IsVisible,"first remove click requires explicit confirmation");Click(page,"CancelRemoveManagedSkill");Check(new ManagedSkillLibrary(directory).List().Count==2,"cancel preserves the managed skill");
                 Click(page,"PluginsMcpTab");Check(Control<McpSettingsPanel>(page,"McpSettingsPanel").IsVisible,"MCP tab exposes the retained actual configuration editor");Click(page,"AddMcpServer");var mcpName=Control<TextBox>(page,"McpServerName");mcpName.Text="unsaved plugin fixture";Check(page.HasUnsavedEdits,"an edited MCP draft is reported as unsaved");Click(page,"PluginsSkillsTab");Click(page,"PluginsMcpTab");Check(ReferenceEquals(Control<TextBox>(page,"McpServerName"),mcpName)&&mcpName.Text=="unsaved plugin fixture"&&page.HasUnsavedEdits,"tab switching preserves the original MCP editor and its unsaved draft");
+                var mcpTab=Control<Button>(page,"PluginsMcpTab");
+                var appsTab=Control<Button>(page,"PluginsAppsTab");
+                var tabs=(Panel)appsTab.Parent;
+                Check(tabs.Children.IndexOf(appsTab)==tabs.Children.IndexOf(mcpTab)+1&&ReferenceEquals(appsTab.Template,mcpTab.Template),
+                    "Apps follows MCP and uses the shared plugin tab style");
+                Click(page,"PluginsAppsTab");
+                Check(Control<GitHubAppPanel>(page,"GitHubAppPanel").IsVisible&&Control<GmailConnectionRow>(page,"GmailAppRow").IsVisible,
+                    "Apps displays both connection cards");
+                Check(Control<Border>(page,"GitHubAppLogo").Child is Viewbox&&
+                    ((Image)Control<Border>(page,"GmailAppLogo").Child).Source!=null,
+                    "both Apps cards render their built-in brand icons without a network request");
+                Check(!Control<Button>(page,"GmailConnect").IsEnabled&&!Control<Button>(page,"GmailView").IsVisible,
+                    "Gmail requires an embedded publisher configuration and a connected account");
+                Save(page,"plugins-apps.png");
+                ThemeManager.Apply("dark");Pump();Save(page,"plugins-apps-dark.png");ThemeManager.Apply("light");Pump();
+                host.Width=360;Pump();
+                var appsScroll=Control<ScrollViewer>(page,"ManagedAppsScroll");
+                Check(appsScroll.ExtentWidth<=appsScroll.ViewportWidth+1,"Apps fits the narrow plugin page");
+                Click(page,"ManageGitHubApp");
+                Check(Control<Button>(page,"ConnectGitHubCli").IsVisible&&Control<Button>(page,"AuthorizeGitHubCli").IsVisible&&
+                    Control<PasswordBox>(page,"GitHubAppToken").IsVisible&&String.IsNullOrEmpty(pet.Settings.GitHubCliAccount),
+                    "GitHub management keeps CLI device authorization and PAT available without signing in automatically");
+                Check(appsScroll.ExtentWidth<=appsScroll.ViewportWidth+1,"GitHub connection controls fit the narrow plugin page");
+                Click(page,"ManageGitHubApp");
+                host.Width=1050;Pump();
+                Click(page,"PluginsMcpTab");
+                Check(ReferenceEquals(Control<TextBox>(page,"McpServerName"),mcpName)&&mcpName.Text=="unsaved plugin fixture",
+                    "visiting Apps preserves the unsaved MCP editor");
                 Check(pet.McpConnections.Status.Length==0&&!File.Exists(Path.Combine(fixture,"executed.txt")),"opening tabs importing and viewing skills never connects MCP or executes bundled scripts");
                 Control<TextBox>(page,"McpServerEndpoint").Text="https://localhost.invalid/mcp";Click(page,"SaveMcpServers");
                 var saving=(System.Threading.Tasks.Task<bool>)typeof(PetWindow).GetField("explicitSettingsSave",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(pet);

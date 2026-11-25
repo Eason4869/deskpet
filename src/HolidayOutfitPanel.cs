@@ -29,7 +29,7 @@ namespace Dafeiyu
             outfits.SelectionChanged+=delegate {if(refreshing)return;var selected=outfits.SelectedItem as Choice;if(selected==null)return;if(!selected.Available){RefreshState();return;}controller.SelectOwnedOutfit(selected.Id);};Children.Add(outfits);
             // Keep the host's exact themed item style, including its disabled state.
             outfits.ItemContainerGenerator.StatusChanged+=delegate {foreach(Choice choice in outfits.Items){var container=outfits.ItemContainerGenerator.ContainerFromItem(choice) as ComboBoxItem;if(container!=null)container.IsEnabled=choice.Available;}};
-            enabled=LocalizedUi.Toggle(()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.toggle")),true,value=>{if(!refreshing)controller.SetEnabled(value);});enabled.Name="HolidayOutfitEnabled";enabled.FontSize=11;enabled.Foreground=Ui.Muted;enabled.Margin=new Thickness(0,3,0,0);Children.Add(enabled);
+            enabled=SettingsSurface.Toggle(()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.toggle")),true,value=>{if(!refreshing)controller.SetEnabled(value);});enabled.Name="HolidayOutfitEnabled";enabled.FontSize=11;enabled.Foreground=Ui.Muted;enabled.Margin=new Thickness(0,3,0,0);Children.Add(enabled);
             status=Ui.Text("",11,Ui.Muted);status.TextWrapping=TextWrapping.Wrap;Children.Add(status);
             controller.Changed+=Changed;RefreshState();
         }

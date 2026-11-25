@@ -18,6 +18,47 @@ internal static class SettingsVisual
     internal static IBrush Ink => DesktopTheme.Brush("#203754");
     internal static IBrush Muted => DesktopTheme.Brush("#61738B");
     internal static IBrush Accent => DesktopTheme.Brush("#357FF5");
+    internal static Slider StyleSlider(Slider slider,int precision=0)
+    {
+        var fill=DesktopTheme.Brush("#126BC4","#73AAFF");
+        var rail=DesktopTheme.Brush("#85858A","#65758C");
+        slider.Resources["SliderTrackThemeHeight"]=4d;
+        slider.Resources["SliderHorizontalThumbWidth"]=16d;
+        slider.Resources["SliderHorizontalThumbHeight"]=16d;
+        slider.Resources["SliderThumbCornerRadius"]=new CornerRadius(8);
+        foreach(var state in new[]{"","PointerOver","Pressed"})
+        {
+            slider.Resources["SliderTrackValueFill"+state]=fill;
+            slider.Resources["SliderTrackFill"+state]=rail;
+            slider.Resources["SliderThumbBackground"+state]=fill;
+        }
+        slider.TemplateApplied+=(_,e)=>
+        {
+            if(e.NameScope.Find<Track>("PART_Track")?.Thumb is not Thumb thumb)return;
+            thumb.BorderBrush=DesktopTheme.Surface;
+            thumb.BorderThickness=new Thickness(2);
+            var text=new TextBlock{Foreground=Ink,FontSize=12};
+            text.Bind(TextBlock.TextProperty,new Binding(nameof(Slider.Value)){Source=slider,StringFormat="{0:F"+precision+"}"});
+            var tooltip=new ToolTip
+            {
+                Content=text,Background=DesktopTheme.Surface,Foreground=Ink,BorderBrush=DesktopTheme.CardBorder,
+                BorderThickness=new Thickness(1),Padding=new Thickness(8,4),CornerRadius=new CornerRadius(6)
+            };
+            ToolTip.SetPlacement(thumb,PlacementMode.Top);
+            ToolTip.SetVerticalOffset(thumb,-4);
+            thumb.DragStarted+=(_,_)=>
+            {
+                ToolTip.SetTip(thumb,tooltip);
+                ToolTip.SetIsOpen(thumb,true);
+            };
+            thumb.DragCompleted+=(_,_)=>
+            {
+                ToolTip.SetIsOpen(thumb,false);
+                ToolTip.SetTip(thumb,null);
+            };
+        };
+        return slider;
+    }
     internal static TextBlock Text(string text,double size=14,bool muted=false) => new() {Text=text,FontSize=size,Foreground=muted?Muted:Ink,TextWrapping=TextWrapping.Wrap};
     internal static Control Icon(string kind,double size=22)
     {
@@ -62,6 +103,51 @@ internal static class SettingsVisual
         var row=new WrapPanel{Orientation=Orientation.Horizontal};foreach(var control in controls){control.Margin=new Thickness(0,0,8,8);row.Children.Add(control);}return row;
     }
     internal static Border Card(Control child) => new(){Child=child,Padding=new Thickness(18),CornerRadius=new CornerRadius(14),Background=DesktopTheme.CardSurface,BorderBrush=DesktopTheme.CardBorder,BorderThickness=new Thickness(1)};
+    internal const double BodyWidth = 650;
+    internal static ScrollViewer ScrollBody(Control content) => new()
+    {
+        Name = "SettingsScrollBody",
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        Content = new Border { MaxWidth = BodyWidth, Padding = new Thickness(20, 24), Child = content },
+    };
+    internal static Control SettingRow(Func<string> caption, Control input, double labelSize = 14, bool muted = false) =>
+        SettingRow(Text(caption, labelSize, muted), input);
+
+    private static Grid SettingRow(TextBlock label, Control input)
+    {
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 12 };
+        label.VerticalAlignment = VerticalAlignment.Center;
+        input.HorizontalAlignment = HorizontalAlignment.Right;
+        input.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(input, 1);
+        row.Children.Add(label);
+        row.Children.Add(input);
+        return row;
+    }
+
+    internal static Control CheckRow(Func<string> caption, bool value, Action<bool> changed, string? name = null)
+    {
+        var check = Ui.Check("", value, changed);
+        if (name != null) check.Name = name;
+        check.Content = null;
+        return CheckRow(caption, check);
+    }
+
+    internal static Control CheckRow(Func<string> caption, CheckBox check, double labelSize = 14, bool muted = false)
+    {
+        var label = Text(caption, labelSize, muted);
+        LocalizedUi.Automation(check, caption);
+        check.Padding = new Thickness(0);
+        label.PointerReleased += (_, e) =>
+        {
+            if (!check.IsEffectivelyEnabled || e.GetCurrentPoint(label).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonReleased) return;
+            check.Focus();
+            check.SetCurrentValue(ToggleButton.IsCheckedProperty, check.IsChecked != true);
+            e.Handled = true;
+        };
+        return SettingRow(label, check);
+    }
+
     internal static StackPanel Page(params Control[] groups)
     {
         var page=new StackPanel{Spacing=36,MaxWidth=900,HorizontalAlignment=HorizontalAlignment.Stretch};
@@ -79,7 +165,8 @@ internal static class SettingsVisual
         if(icon.Length>0)grid.Children.Add(new Border{Width=32,Height=32,CornerRadius=new CornerRadius(10),Background=DesktopTheme.Brush("#EDF3FF"),Child=Icon(icon,20),VerticalAlignment=VerticalAlignment.Top});
         else grid.ColumnDefinitions[0].Width=new GridLength(0);
         var words=new StackPanel{Spacing=5,Margin=new Thickness(icon.Length>0?10:0,0,12,0)};var heading=Text(()=> (title()),15);heading.FontWeight=FontWeight.SemiBold;words.Children.Add(heading);words.Children.Add(Text(()=> (description()),12,true));Grid.SetColumn(words,1);grid.Children.Add(words);grid.Children.Add(action);
-        void Reflow(){bool narrow=grid.Bounds.Width<490;Grid.SetRow(action,narrow?1:0);Grid.SetColumn(action,narrow?1:2);action.Margin=new Thickness(narrow&&icon.Length>0?10:0,narrow?14:0,0,0);Grid.SetColumnSpan(words,narrow?2:1);action.VerticalAlignment=narrow?VerticalAlignment.Top:VerticalAlignment.Center;
+        if(action is CheckBox check){check.Padding=new Thickness(0);check.HorizontalAlignment=HorizontalAlignment.Right;}
+        void Reflow(){bool narrow=grid.Bounds.Width<490&&action is not CheckBox;Grid.SetRow(action,narrow?1:0);Grid.SetColumn(action,narrow?1:2);action.Margin=new Thickness(narrow&&icon.Length>0?10:0,narrow?14:0,0,0);Grid.SetColumnSpan(words,narrow?2:1);action.VerticalAlignment=narrow?VerticalAlignment.Top:VerticalAlignment.Center;
             if(action is TextBox || action is SecretField){action.MinWidth=0;action.Width=narrow?double.NaN:280;action.HorizontalAlignment=HorizontalAlignment.Stretch;}
         }
         grid.SizeChanged+=(_,_)=>Reflow();Reflow();return grid;

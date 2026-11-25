@@ -42,7 +42,10 @@ namespace Dafeiyu
             DwmSetWindowAttribute(handle,20,ref dark,sizeof(int));
         }
         internal static bool IsDark {get;private set;}
+        internal static string Mode {get{return mode;}}
         internal static event Action Changed;
+        internal static event Action ModeChanged;
+        internal static event Action SystemAppearanceChanging, SystemAppearanceChanged;
         internal static Brush Surface {get{return Brush("#FFFFFF");}}
         internal static SolidColorBrush CardSurface {get{return Brush("#FFFFFF","#2B3545");}}
         internal static SolidColorBrush CardBorder {get{return Brush("#DCE5F4","#52637C");}}
@@ -65,20 +68,22 @@ namespace Dafeiyu
         }
         internal static void Apply(string preference)
         {
+            string previous=mode;
             mode=ThemeColors.Normalize(preference);
             if(!listening&&Application.Current!=null)
             {
                 SystemEvents.UserPreferenceChanged+=OnSystemPreferenceChanged;
                 Application.Current.Exit+=delegate{SystemEvents.UserPreferenceChanged-=OnSystemPreferenceChanged;listening=false;};listening=true;
             }
-            RefreshSystemTheme();
+            RefreshSystemTheme(false);
+            if(previous!=mode&&ModeChanged!=null)ModeChanged();
         }
         static void OnSystemPreferenceChanged(object sender,UserPreferenceChangedEventArgs args)
         {
             var app=Application.Current;
-            if(mode=="system"&&app!=null&&!app.Dispatcher.HasShutdownStarted)app.Dispatcher.BeginInvoke(new Action(RefreshSystemTheme));
+            if(mode=="system"&&app!=null&&!app.Dispatcher.HasShutdownStarted)app.Dispatcher.BeginInvoke(new Action(()=>RefreshSystemTheme(true)));
         }
-        internal static void RefreshSystemTheme()
+        static void RefreshSystemTheme(bool animate)
         {
             bool systemDark=false;
             if(mode=="system")try
@@ -87,15 +92,20 @@ namespace Dafeiyu
                     systemDark=key!=null&&Convert.ToInt32(key.GetValue("AppsUseLightTheme",1))==0;
             }
             catch(System.Security.SecurityException){}catch(UnauthorizedAccessException){}catch(System.IO.IOException){}
-            SetSystemTheme(systemDark);
+            SetSystemTheme(systemDark,animate);
         }
         // Separated from the OS query so system changes and explicit overrides are testable.
-        internal static void SetSystemTheme(bool systemDark)
+        internal static void SetSystemTheme(bool systemDark,bool animate=true)
         {
-            bool previous=IsDark;IsDark=mode=="dark"||(mode=="system"&&systemDark);
+            bool previous=IsDark;
+            bool next=mode=="dark"||(mode=="system"&&systemDark);
+            bool systemAppearanceChanged=animate&&mode=="system"&&previous!=next;
+            if(systemAppearanceChanged&&SystemAppearanceChanging!=null)SystemAppearanceChanging();
+            IsDark=next;
             foreach(var entry in colors.Values)entry.Refresh();
             if(Application.Current!=null)foreach(Window window in Application.Current.Windows)ApplyWindowChrome(window);
             if(previous!=IsDark&&Changed!=null)Changed();
+            if(systemAppearanceChanged&&SystemAppearanceChanged!=null)SystemAppearanceChanged();
         }
         internal static object Parse(string xaml)
         {

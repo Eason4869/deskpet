@@ -23,11 +23,13 @@ internal sealed class HolidayOutfitPanel : StackPanel, IDisposable
     {
         controller = holidays; currentSkin = skin ?? (() => null); avatars = assets ?? new SpriteAssets(); ownsAvatars = assets == null;
         Name = "HolidayOutfitPanel"; Spacing = 6;
-        enabled = LocalizedUi.With(new CheckBox { Name = "HolidayOutfitsEnabled", Content = TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content"), FontSize = 12, Foreground = DesktopTheme.Brush("#61738B"), MinHeight = 24 },"Content",()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content")));
+        enabled = new CheckBox { Name = "HolidayOutfitsEnabled", FontSize = 12, Foreground = SettingsVisual.Muted, MinHeight = 24 };
         choices = new ComboBox { Name = "HolidayOutfitPicker", MinWidth = 0, MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         choices.ItemTemplate = new FuncDataTemplate<Choice>((choice, _) => ItemRow(choice));
         status = Ui.Text(""); status.Name = "HolidayOutfitStatus"; status.FontSize = 12; status.Foreground = DesktopTheme.Brush("#61738B");
-        Children.Add(LocalizedUi.Text(()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.text")))); Children.Add(choices); Children.Add(enabled); Children.Add(status);
+        Children.Add(LocalizedUi.Text(()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.text")))); Children.Add(choices);
+        Children.Add(SettingsVisual.CheckRow(()=>TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content"),enabled,12,true));
+        Children.Add(status);
         enabled.IsCheckedChanged += (_, _) => { if (!refreshing) controller.SetEnabled(enabled.IsChecked == true); };
         choices.SelectionChanged += (_, _) => { if (!refreshing && choices.SelectedItem is Choice { Available: true } choice) controller.SelectOwnedOutfit(choice.Id); };
         choices.ContainerPrepared += ItemPrepared;

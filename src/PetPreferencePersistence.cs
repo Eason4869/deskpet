@@ -64,7 +64,8 @@ namespace Dafeiyu
         {if(scaleLayoutPending)scaleSaveRequested=true;else RequestScaleSave();}
         void ApplyScaleGeometry(bool persistPosition)
         {
-            double width=192*Settings.Scale,height=208*Settings.Scale;
+            double scale=OfficialCompanionProfiles.DesktopScale(Skin.BuiltinCharacterId,Settings.Scale);
+            double width=192*scale,height=208*scale;
             if(Width==width&&Height==height)return;
             if(handle==IntPtr.Zero){Width=width;Height=height;return;}
             if(!scaleLayoutPending)scaleAnchor=DesktopInterop.Bounds(handle);

@@ -59,9 +59,24 @@ jobs:
           if ($LASTEXITCODE) { throw 'Publication guard checks failed' }
       - name: Package verified artifacts
         shell: pwsh
+        env:
+          DESKPET_GMAIL_OAUTH_CLIENT_JSON: ${{ secrets.DESKPET_GMAIL_OAUTH_CLIENT_JSON }}
         run: |
           $artifacts = Join-Path $env:RUNNER_TEMP 'DeskPetArtifacts'
-          & ./Build.ps1 -Target App -OutputDirectory (Join-Path $artifacts 'DafeiyuDeskPet')
+          $appBuild = @{ Target = 'App'; OutputDirectory = (Join-Path $artifacts 'DafeiyuDeskPet') }
+          $gmailManifest = $null
+          try {
+            if ($env:DESKPET_GMAIL_OAUTH_CLIENT_JSON) {
+              $gmailManifest = Join-Path $env:RUNNER_TEMP ('deskpet-gmail-oauth-' + [Guid]::NewGuid().ToString('N') + '.json')
+              [IO.File]::WriteAllText($gmailManifest, $env:DESKPET_GMAIL_OAUTH_CLIENT_JSON)
+              Remove-Item Env:DESKPET_GMAIL_OAUTH_CLIENT_JSON
+              $appBuild.GmailOAuthClientManifest = $gmailManifest
+            }
+            & ./Build.ps1 @appBuild
+            if ($LASTEXITCODE) { throw 'Application build failed' }
+          } finally {
+            if ($gmailManifest -and (Test-Path -LiteralPath $gmailManifest)) { Remove-Item -LiteralPath $gmailManifest }
+          }
           python Package.py --output-directory $artifacts
           if ($LASTEXITCODE) { throw 'Packaging failed' }
           & ./BuildInstaller.ps1 -OutputDirectory $artifacts

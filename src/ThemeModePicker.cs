@@ -11,6 +11,7 @@ namespace Dafeiyu
         readonly Dictionary<string,Button> choices=new Dictionary<string,Button>();
         string value;
         internal event Action<string> Changed;
+        internal Button Origin(string mode) { return choices[ThemeColors.Normalize(mode)]; }
         internal string Value
         {
             get{return value;}
@@ -27,24 +28,26 @@ namespace Dafeiyu
         internal ThemeModePicker(string initial)
         {
             Name="ThemeModePicker";
-            var layout=new Grid();layout.ColumnDefinitions.Add(new ColumnDefinition());layout.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
-            var label=LocalizedUi.InlineText(()=>(TextResources.Get("themeModePicker.themeModePicker.inlineText")),13);label.FontWeight=FontWeights.SemiBold;layout.Children.Add(label);
+            LocalizedUi.Automation(this,()=>TextResources.Get("themeModePicker.themeModePicker.inlineText"));
             var row=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
             foreach(string mode in new[]{"system","light","dark"})
             {
-                string selected=mode,title=mode=="system"?TextResources.Get("themeModePicker.themeModePicker.titleModeMode"):mode=="light"?TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeA"):TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeB");
-                var button=new Button{Name="ThemeChoice"+mode,Content=Preview(mode),Width=84,Height=64,Margin=new Thickness(8,0,0,0),Padding=new Thickness(4),Background=Brushes.Transparent,BorderThickness=new Thickness(2),Cursor=System.Windows.Input.Cursors.Hand,ToolTip=title};
+                string selected=mode,title=ThemeSwitch.Label(mode);
+                var button=new Button{Name="ThemeChoice"+mode,Content=Preview(mode),Width=84,Height=64,Margin=new Thickness(row.Children.Count==0?0:8,0,0,0),Padding=new Thickness(4),Background=Brushes.Transparent,BorderThickness=new Thickness(2),Cursor=System.Windows.Input.Cursors.Hand,ToolTip=title};
                 var border=new FrameworkElementFactory(typeof(Border));border.Name="ThemeChoiceFrame";border.SetValue(Border.CornerRadiusProperty,new CornerRadius(10));
                 border.SetValue(Border.BackgroundProperty,new TemplateBindingExtension(Control.BackgroundProperty));border.SetValue(Border.BorderBrushProperty,new TemplateBindingExtension(Control.BorderBrushProperty));border.SetValue(Border.BorderThicknessProperty,new TemplateBindingExtension(Control.BorderThicknessProperty));border.SetValue(Border.PaddingProperty,new TemplateBindingExtension(Control.PaddingProperty));
                 border.AppendChild(new FrameworkElementFactory(typeof(ContentPresenter)));var template=new ControlTemplate(typeof(Button)){VisualTree=border};
                 var focus=new Trigger{Property=UIElement.IsKeyboardFocusedProperty,Value=true};focus.Setters.Add(new Setter(Border.BackgroundProperty,Ui.Pale,"ThemeChoiceFrame"));template.Triggers.Add(focus);button.Template=template;
                 System.Windows.Automation.AutomationProperties.SetName(button,title);
-                button.Click+=delegate{Value=selected;if(Changed!=null)Changed(selected);};choices.Add(mode,button);row.Children.Add(button);
+                button.Click+=delegate{if(Changed!=null)Changed(selected);RefreshMode();};choices.Add(mode,button);row.Children.Add(button);
             }
-            Grid.SetColumn(row,1);layout.Children.Add(row);
-            Content=new Border{CornerRadius=new CornerRadius(16),Background=ThemeManager.Brush("#FDFEFF","#2B3545"),BorderBrush=ThemeManager.CardBorder,BorderThickness=new Thickness(1),Padding=new Thickness(14,8,10,8),Child=layout};
+            var previews=new Viewbox{Child=row,Stretch=Stretch.Uniform,StretchDirection=StretchDirection.DownOnly,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Center};
+            Content=new Border{CornerRadius=new CornerRadius(16),Background=ThemeManager.Brush("#FDFEFF","#2B3545"),BorderBrush=ThemeManager.CardBorder,BorderThickness=new Thickness(1),Padding=new Thickness(10,8,10,8),Child=previews};
             Value=initial;
+            Loaded+=delegate{RefreshMode();ThemeManager.ModeChanged+=RefreshMode;};
+            Unloaded+=delegate{ThemeManager.ModeChanged-=RefreshMode;};
         }
+        void RefreshMode(){Value=ThemeManager.Mode;}
         static FrameworkElement Preview(string mode)
         {
             var grid=new Grid{Width=72,Height=52,Clip=new RectangleGeometry(new Rect(0,0,72,52),6,6)};

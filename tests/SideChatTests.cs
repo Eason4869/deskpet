@@ -50,13 +50,14 @@ namespace Dafeiyu.Tests
         static string DiskSnapshot(string root)
         {
             // Agent audit bookkeeping is distinct from user project content.
-            return String.Join("|",Directory.GetFiles(root,"*",SearchOption.AllDirectories).Where(p=>!p.StartsWith(Path.Combine(root,".deskpet-agent-kernel")+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)).OrderBy(p=>p).Select(p=>p+":"+Convert.ToBase64String(File.ReadAllBytes(p))));
+            string scheduledWriter=Path.Combine(root,"scheduled-tasks","writer.lock");
+            return String.Join("|",Directory.GetFiles(root,"*",SearchOption.AllDirectories).Where(p=>!p.StartsWith(Path.Combine(root,".deskpet-agent-kernel")+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)&&!String.Equals(p,scheduledWriter,StringComparison.OrdinalIgnoreCase)).OrderBy(p=>p).Select(p=>p+":"+Convert.ToBase64String(File.ReadAllBytes(p))));
         }
         static async Task Run()
         {
             PaneType=typeof(PetWindow).Assembly.GetType("Dafeiyu.SideChatPane");Check(PaneType!=null,"temporary project chat pane exists");
             string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","sidechat-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
-            var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,ShowPredictedMessages=false,SaveChatHistory=false,ReadReplies=false,OnboardingState="completed",AgentEnabled=true,AgentWorkspace=root,AgentSystemPrompt="项目工作提示词 {pet_name}"};
+            var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,ShowPredictedMessages=false,SaveChatHistory=false,ReadReplies=false,OnboardingState="completed",AgentEnabled=true,AgentWorkspace=root,AgentSystemPrompt="项目工作提示词 {pet_name}",AgentGoal="PARENT_ONLY_GOAL"};
             foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";cfg.Text.BaseUrl="http://127.0.0.1:1";cfg.Text.Model="fixture-original";cfg.Text.ToolSupport=CapabilitySupport.Supported;
             var pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);var host=new Window();object first=null,second=null,blocked=null;
             try
@@ -80,6 +81,7 @@ namespace Dafeiyu.Tests
                 Check(!apiA.Requests[0].Any(m=>m.Content=="latest-main-input")&&apiA.Requests[1].Any(m=>m.Content=="latest-main-input")&&apiA.Requests[1].All(m=>String.IsNullOrEmpty(m.Reasoning)&&!m.Content.Contains("PRIVATE_REASONING")),"each send refreshes parent context without copying reasoning");
                 Check(apiA.Requests[1].Any(m=>m.Content=="side-alpha")&&!apiA.Requests[1].Any(m=>m.Content.Contains("side-beta"))&&!apiB.Requests[0].Any(m=>m.Content=="side-alpha"),"side panes share parent context without sharing each other's messages");
                 string prompt=apiA.Requests[0][0].Content;Check(prompt.Contains("项目工作提示词")&&prompt.Contains("测试项目")&&prompt.Contains(root)&&!prompt.Contains("changed-prompt")&&!prompt.Contains("changed-after-open"),"project prompt and directory are frozen when the pane opens");
+                Check(!prompt.Contains("PARENT_ONLY_GOAL"),"side chat does not adopt its owning conversation's goal");
                 Check(apiA.Models.All(m=>m.Model=="fixture-original"),"model connection is copied rather than following global edits");
                 Check(prompt.Contains("read-only")&&prompt.Contains("project"),"system context describes read-only project access");
                 Check(pet.Conversation.ExportHistory()==main&&pet.Workspaces.OpenCount==workspaceCount,"temporary messages never change main history or register a workspace");
@@ -101,6 +103,23 @@ namespace Dafeiyu.Tests
                     Check(titlePane.SummaryTitle=="temporary title"&&titleWait.TitleRequests.Count==1,"the first question stays visible while a title request is pending");
                     titlePane.Dispose();
                     Check(await Task.WhenAny(titleWait.TitleCancelled.Task,Task.Delay(3000))==titleWait.TitleCancelled.Task,"closing a side chat cancels its pending title request");
+                }
+                var retainedApi=new FakeApi{BlockTitle=true};
+                using(var retained=new SideChatPane(pet,host,cfg,"Retained chat",retainedApi,allowProjectRead:false))
+                using(var tabs=new PreviewWorkspace(()=>{},()=>{},closeSideChat:chat=>chat.CancelPendingRequests()))
+                {
+                    tabs.AddPage("Retained chat","chat",retained);
+                    await retained.SendAsync("first retained turn");
+                    retainedApi.Block=true;
+                    Task pendingReply=retained.SendAsync("cancelled retained turn");
+                    tabs.Close(retained);
+                    try{await pendingReply;}catch(OperationCanceledException){}
+                    Check(retainedApi.Cancelled&&!retained.Session.IsBusy&&!retainedApi.Disposed,"closing a retained tab cancels its reply and leaves its transport available");
+                    Check(await Task.WhenAny(retainedApi.TitleCancelled.Task,Task.Delay(3000))==retainedApi.TitleCancelled.Task&&retained.SummaryTitle=="first retained turn","closing a retained tab cancels pending title generation and keeps its current title");
+                    tabs.AddPage("Retained chat","chat",retained);
+                    retainedApi.Block=retainedApi.BlockTitle=false;
+                    await retained.SendAsync("resumed retained turn");
+                    Check(retainedApi.Requests.Last().Any(message=>message.Content=="first retained turn")&&retained.Session.History.Messages.Any(message=>message.Content.Contains("临时回复")&&message.Content.Contains("resumed retained turn")),"the retained side chat can continue with its existing history");
                 }
                 preview.Dispose();((IDisposable)first).Dispose();((IDisposable)second).Dispose();
                 Check(apiA.Disposed&&apiB.Disposed&&DiskSnapshot(root)==disk,"closing is idempotent and creates no history, project or other files");

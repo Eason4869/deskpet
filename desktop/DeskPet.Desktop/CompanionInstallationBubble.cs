@@ -41,10 +41,15 @@ internal sealed class CompanionInstallationBubble : Window
     {
         string text=Status.Text;if(text!=previousText){previousText=text;message.Text=text;owner.ShowCompanionInstallationStatus(Status.Origin,text);}
         cancel.IsVisible=Status.CanCancel;retry.IsVisible=Status.CanRetry;
-        if(Status.Visible(owner.Pet.IsPetVisible)){
-            Topmost=owner.Settings.Topmost;if(!IsVisible)Show();
-            var pet=owner.Pet;double scale=pet.RenderScaling;var work=pet.Screens.ScreenFromWindow(pet)?.WorkingArea;
-            int x=pet.Position.X+(int)((pet.Bounds.Width-Bounds.Width)*scale/2),y=pet.Position.Y-(int)((Bounds.Height+8)*scale);
+        var pet=owner.Pet;
+        var anchor=Status.Origin=="MainWindow"&&!pet.IsPetVisible?owner.CompanionInstallationAnchor:null;
+        var target=anchor==null?pet:TopLevel.GetTopLevel(anchor) as Window;
+        if(target!=null&&Status.Visible(pet.IsPetVisible||anchor!=null)){
+            Topmost=anchor==null&&owner.Settings.Topmost;if(!IsVisible)Show();
+            double scale=target.RenderScaling;var work=target.Screens.ScreenFromWindow(target)?.WorkingArea;
+            var point=anchor?.PointToScreen(new Point(anchor.Bounds.Width/2,0))??
+                new PixelPoint(pet.Position.X+(int)(pet.Bounds.Width*scale/2),pet.Position.Y);
+            int x=point.X-(int)(Bounds.Width*scale/2),y=point.Y-(int)((Bounds.Height+8)*scale);
             if(work is { } area){x=Math.Clamp(x,area.X,Math.Max(area.X,area.Right-(int)(Bounds.Width*scale)));y=Math.Clamp(y,area.Y,Math.Max(area.Y,area.Bottom-(int)(Bounds.Height*scale)));}
             Position=new PixelPoint(x,y);
         }else if(IsVisible)Hide();
@@ -55,6 +60,7 @@ internal sealed class CompanionInstallationBubble : Window
 internal sealed partial class DesktopController
 {
     private CompanionInstallationBubble? companionInstallationBubble;
+    internal Control? CompanionInstallationAnchor=>fullChat?.CompanionInstallationAnchor;
     private void PresentCompanionInstallation(CompanionSelectionUpdate update){companionInstallationBubble??=new(this);companionInstallationBubble.Accept(update);}
     internal void ShowCompanionInstallationStatus(string origin,string text){if(origin is "Settings" or "Onboarding"){CompanionSelectionNotice=text;Changed?.Invoke();}}
 }

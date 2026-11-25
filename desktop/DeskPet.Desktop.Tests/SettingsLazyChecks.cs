@@ -3,10 +3,13 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.LogicalTree;
+using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Dafeiyu;
@@ -95,12 +98,52 @@ internal static class SettingsLazyChecks
             window.SelectSection("text");window.SelectSection("partner");window.SelectSection("voice");Dispatcher.UIThread.RunJobs();
             Check(ReferenceEquals(voice,Named<TextBox>(window,"VoiceName"))&&voice.Text=="unsaved voice name","voice draft survives model and category navigation");
             Check(pages.Cast<object?>().All(x=>x!=null),"every page can be materialized");
+            window.SelectSection("partner");Dispatcher.UIThread.RunJobs();
+            var companionMotion=Named<ComboBox>(window,"CompanionTransitionEffect");
+            Check(companionMotion.Items.Cast<ComboBoxItem>().Select(item=>item.Tag as string)
+                .SequenceEqual(new[]{"off","ripple","zipper","random"}),"partner settings provide the four transition options in order");
+            Check(companionMotion.SelectedIndex==1,"avatar ripple is selected initially");
+            companionMotion.SelectedIndex=3;Dispatcher.UIThread.RunJobs();
+            Check(new SettingsStore(Path.Combine(directory,"settings.json")).Load().CompanionTransitionEffect=="random",
+                "partner motion choice persists independently of the theme");
             var aboutButton=Named<Button>(window,"SettingsAboutAndUpdates");var guideButton=Named<Button>(window,"SettingsGuide");
             Check(guideButton.TranslatePoint(default,window)!.Value.X>aboutButton.TranslatePoint(default,window)!.Value.X,"about and the real configuration guide sit side by side beneath main navigation");
             var captures=Path.GetFullPath(Path.Combine("work","settings-layout-native",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(captures);
-            foreach(var theme in new[]{"light","dark"})foreach(var width in new[]{570,960})foreach(var section in new[]{"partner","companion-behavior","greetings","text","conversation","work","tools","channels","behavior"}){
+            foreach(var theme in new[]{"light","dark"})foreach(var width in new[]{570,960})foreach(var section in new[]{"partner","companion-behavior","greetings","text","image","asr","speech","live","conversation","work","tools","channels","behavior","storage"}){
                 DesktopTheme.Apply(theme);window.Width=width;window.SelectSection(section);Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var frame=window.CaptureRenderedFrame();frame!.Save(Path.Combine(captures,section+"-"+theme+"-"+width+".png"),new PngBitmapEncoderOptions());
+                var body=window.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(view=>view.Name=="SettingsScrollBody");
+                Check(body?.Content is Border bodyContent&&bodyContent.Bounds.Width<=SettingsVisual.BodyWidth&&bodyContent.Bounds.Width<=body.Bounds.Width,
+                    "settings page uses the shared responsive scroll body "+section+" "+theme+" "+width);
+                if(section=="behavior"){
+                    double Right(Control control)=>control.TranslatePoint(new Point(control.Bounds.Width,0),window)!.Value.X;
+                    var language=Named<Button>(window,"SettingsLanguage");
+                    var effect=Named<ComboBox>(window,"ThemeTransitionEffect");
+                    var volume=Named<Slider>(window,"ThemeTransitionSoundVolume");
+                    var picker=Named<ThemeModePicker>(window,"ThemeModePicker");
+                    var themeSound=Named<CheckBox>(window,"ThemeTransitionSoundEnabled");
+                    var imageMotion=Named<CheckBox>(window,"ImageGenerationMotionEnabled");
+                    Check(Math.Abs(Right(effect)-Right(language))<1&&Math.Abs(Right(volume)-Right(language))<1,
+                        "language, animation and volume controls share a right edge "+theme+" "+width);
+                    Check(picker.Bounds.Width<=291&&Math.Abs(Right(picker)-Right(language))<1,"theme frame fits its cards at the trailing edge "+theme+" "+width);
+                    var track=volume.GetVisualDescendants().OfType<Track>().Single();
+                    var thumb=track.Thumb!;
+                    var expectedColor=Color.Parse(theme=="dark"?"#73AAFF":"#126BC4");
+                    Check(thumb.Bounds.Width==16&&((ISolidColorBrush)thumb.Background!).Color==expectedColor,
+                        "volume thumb uses the current palette and round sizing "+theme+" "+width);
+                    if(width==960){
+                        var previousVolume=volume.Value;volume.Value=53;
+                        thumb.RaiseEvent(new VectorEventArgs{RoutedEvent=Thumb.DragStartedEvent});Dispatcher.UIThread.RunJobs();
+                        var tip=ToolTip.GetTip(thumb) as ToolTip;
+                        Check(ToolTip.GetIsOpen(thumb)&&tip?.Content is TextBlock number&&number.Text=="53"&&tip.Background==DesktopTheme.Surface,
+                            "dragging shows a theme-matched value "+theme);
+                        thumb.RaiseEvent(new VectorEventArgs{RoutedEvent=Thumb.DragCompletedEvent});Dispatcher.UIThread.RunJobs();
+                        Check(!ToolTip.GetIsOpen(thumb),"releasing closes the drag value "+theme);
+                        volume.Value=previousVolume;
+                    }
+                    Check(themeSound.Content==null&&imageMotion.Content==null&&Math.Abs(Right(themeSound)-Right(language))<1&&Math.Abs(Right(imageMotion)-Right(language))<1,
+                        "theme sound and image animation retain named toggles on the right "+theme+" "+width);
+                }
                 if(section=="work"){
                     var directoryInput=Named<TextBox>(window,"AgentWorkspaceInput");var right=directoryInput.TranslatePoint(new Point(directoryInput.Bounds.Width,0),window);
                     Check(right.HasValue&&right.Value.X<=window.Bounds.Width,"long workspace directory remains inside the settings viewport "+theme+" "+width);

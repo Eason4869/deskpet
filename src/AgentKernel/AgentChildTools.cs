@@ -10,7 +10,12 @@ namespace Dafeiyu
     {
         AgentSubagentRunner childWorkers;int childToolCalls;
         public int ChildToolBudget {get;set;}
-        internal Task StopChildWorkersAsync(){return childWorkers==null?Task.FromResult(0):childWorkers.StopAsync();}
+        internal async Task StopChildWorkersAsync()
+        {
+            if(childWorkers==null)return;
+            try { await childWorkers.StopAsync().ConfigureAwait(false); }
+            finally { if(childWorkers.List().Length!=0)PublishChildren(); }
+        }
         internal void ConfigureWorkers(Func<IAgentConversationApi> factory,ConnectionSettings model)
         {
             if(factory==null||subagentScheduler==null)return;
@@ -25,11 +30,17 @@ namespace Dafeiyu
             if(childWorkers==null)throw new InvalidOperationException(TextResources.Get("agentChildTools.executeChildToolAsync.text"));object result;
             if(name=="spawn_subagent"){
                 string profile=GetString(args,"profile","explore");if(profile!="explore")throw new UnauthorizedAccessException(TextResources.Get("agentChildTools.executeChildToolAsync.text.alternativeA"));
-                result=childWorkers.Spawn(kernelTaskId,GetString(args,"input",null));PublishChildren();
+                result=ChildToolResult(childWorkers.Spawn(kernelTaskId,GetString(args,"input",null)));PublishChildren();
             }else if(name=="interrupt_subagent"){result=new{stopped=childWorkers.Interrupt(GetString(args,"id",null))};PublishChildren();}
-            else if(name=="get_subagent"){string id=GetString(args,"id",null);result=childWorkers.List().SingleOrDefault(c=>c.Id==id);if(result==null)throw new UnauthorizedAccessException(TextResources.Get("agentChildTools.executeChildToolAsync.text.alternativeB"));}
-            else{object raw;if(!args.TryGetValue("ids",out raw)||!(raw is object[]))throw new ArgumentException(TextResources.Get("agentChildTools.executeChildToolAsync.text.alternativeC"));var ids=((object[])raw).Select(v=>v as string).ToArray();result=await childWorkers.WaitAsync(ids,GetInt(args,"timeout_seconds",10,0,30),cancel).ConfigureAwait(false);}
+            else if(name=="get_subagent"){string id=GetString(args,"id",null);var child=childWorkers.List().SingleOrDefault(c=>c.Id==id);if(child==null)throw new UnauthorizedAccessException(TextResources.Get("agentChildTools.executeChildToolAsync.text.alternativeB"));result=ChildToolResult(child);}
+            else{object raw;if(!args.TryGetValue("ids",out raw)||!(raw is object[]))throw new ArgumentException(TextResources.Get("agentChildTools.executeChildToolAsync.text.alternativeC"));var ids=((object[])raw).Select(v=>v as string).ToArray();var workers=await childWorkers.WaitAsync(ids,GetInt(args,"timeout_seconds",10,0,30),cancel).ConfigureAwait(false);result=workers.Select(ChildToolResult).ToArray();}
             PublishChildren();return new JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(result);
+        }
+
+        static object ChildToolResult(AgentChildResult child)
+        {
+            return new {child.Id,child.Status,child.Input,child.Result,child.Source,child.ToolCalls,child.EstimatedTokens,
+                child.ModelRequests,child.EstimatedTotalTokens};
         }
     }
 }

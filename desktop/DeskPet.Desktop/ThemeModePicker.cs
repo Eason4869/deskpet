@@ -11,6 +11,7 @@ internal sealed class ThemeModePicker : UserControl
     private readonly Dictionary<string, Button> choices = new();
     private string value = "system";
     internal event Action<string>? Changed;
+    internal Button Origin(string mode) => choices[ThemeColors.Normalize(mode)];
     internal string Value
     {
         get => value;
@@ -23,23 +24,24 @@ internal sealed class ThemeModePicker : UserControl
     internal ThemeModePicker(string initial)
     {
         Name = "ThemeModePicker";
-        var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), RowDefinitions = new RowDefinitions("Auto,Auto") };
-        layout.Children.Add(LocalizedUi.With(new TextBlock { Text = TextResources.Get("themeModePicker.themeModePicker.text"), FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center },"Text",()=>(TextResources.Get("themeModePicker.themeModePicker.text"))));
+        HorizontalAlignment = HorizontalAlignment.Right;
+        LocalizedUi.Automation(this, () => TextResources.Get("themeModePicker.themeModePicker.text"));
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var mode in new[] { "system", "light", "dark" })
         {
-            var title = mode == "system" ? TextResources.Get("themeModePicker.themeModePicker.titleModeMode") : mode == "light" ? TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeA") : TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeB");
+            var title = ThemeSwitch.Label(mode);
             var button = new Button { Name = "ThemeChoice" + mode, Content = Preview(mode), Width = 84, Height = 64, Padding = new Thickness(4), Background = Brushes.Transparent, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(10) };
             button.Classes.Add("theme-choice");
             ToolTip.SetTip(button, title); Avalonia.Automation.AutomationProperties.SetName(button, title);
-            button.Click += (_, _) => { Value = mode; Changed?.Invoke(mode); }; choices.Add(mode, button); row.Children.Add(button);
+            button.Click += (_, _) => { Changed?.Invoke(mode); RefreshMode(); }; choices.Add(mode, button); row.Children.Add(button);
         }
-        Grid.SetColumn(row, 1); layout.Children.Add(row);
-        void Reflow(){bool narrow=layout.Bounds.Width<420;Grid.SetColumn(row,narrow?0:1);Grid.SetRow(row,narrow?1:0);Grid.SetColumnSpan(row,narrow?2:1);row.Margin=new Thickness(0,narrow?12:0,0,0);}
-        layout.SizeChanged+=(_,_)=>Reflow();Reflow();
-        Content = new Border { CornerRadius = new CornerRadius(16), Background = DesktopTheme.Brush("#FDFEFF"), BorderBrush = DesktopTheme.Brush("#DCE5F4"), BorderThickness = new Thickness(1), Padding = new Thickness(14, 8), Child = layout };
+        var previews = new Viewbox { Child = row, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Right };
+        Content = new Border { CornerRadius = new CornerRadius(16), Background = DesktopTheme.Brush("#FDFEFF"), BorderBrush = DesktopTheme.Brush("#DCE5F4"), BorderThickness = new Thickness(1), Padding = new Thickness(10, 8), Child = previews };
         Value = initial;
+        AttachedToVisualTree += (_, _) => { RefreshMode(); DesktopTheme.ModeChanged += RefreshMode; };
+        DetachedFromVisualTree += (_, _) => DesktopTheme.ModeChanged -= RefreshMode;
     }
+    private void RefreshMode() => Value = DesktopTheme.Mode;
     private static Control Preview(string mode)
     {
         var grid = new Grid { Width = 72, Height = 52, Clip = new RectangleGeometry(new Rect(0, 0, 72, 52), 6, 6) };

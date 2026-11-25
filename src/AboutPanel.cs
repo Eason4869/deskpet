@@ -32,13 +32,14 @@ namespace Dafeiyu
         public AboutPanel(PetWindow companion)
         {
             pet=companion;updates=pet.Updates;savedMirror=pet.Settings.UpdateUseMirror?pet.Settings.UpdateMirrorAddress:null;Margin=new Thickness(24,20,24,20);
-            RowDefinitions.Add(new RowDefinition());RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var panel=new StackPanel();Children.Add(Ui.Scroll(panel));
+            RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});RowDefinitions.Add(new RowDefinition());RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
+            var header=new StackPanel();Children.Add(header);
+            var panel=new StackPanel();var scroll=SettingsSurface.Scroll(panel);Grid.SetRow(scroll,1);Children.Add(scroll);
             var hero=new DockPanel{Margin=new Thickness(0,0,0,18)};
             var logo=new Image{Source=Ui.ApplicationIcon(),Width=62,Height=62,Stretch=Stretch.Uniform,Margin=new Thickness(0,0,16,0)};RenderOptions.SetBitmapScalingMode(logo,BitmapScalingMode.HighQuality);DockPanel.SetDock(logo,Dock.Left);hero.Children.Add(logo);
             var brand=new StackPanel{VerticalAlignment=VerticalAlignment.Center};var title=LocalizedUi.Text(()=>(TextResources.Get("app.displayName")),27);title.FontWeight=FontWeights.SemiBold;brand.Children.Add(title);
-            brand.Children.Add(LocalizedUi.Text(()=>(TextResources.Format("aboutPanel.aboutPanel.template",ReleaseInfo.DisplayVersion,ReleaseInfo.Author)),12,Ui.Muted));hero.Children.Add(brand);panel.Children.Add(hero);
-            var introduction=LocalizedUi.Text(()=>(TextResources.Get("aboutPanel.aboutPanel.text")),13,Ui.Muted);introduction.Margin=new Thickness(0,0,0,20);panel.Children.Add(introduction);
+            brand.Children.Add(LocalizedUi.Text(()=>(TextResources.Format("aboutPanel.aboutPanel.template",ReleaseInfo.DisplayVersion,ReleaseInfo.Author)),12,Ui.Muted));hero.Children.Add(brand);header.Children.Add(hero);
+            var introduction=LocalizedUi.Text(()=>(TextResources.Get("aboutPanel.aboutPanel.text")),13,Ui.Muted);introduction.Margin=new Thickness(0,0,0,20);header.Children.Add(introduction);
             var update=new StackPanel();update.Children.Add(Heading(()=>(TextResources.Get("aboutPanel.aboutPanel.heading")),17));
             channel=LocalizedUi.Options(new ComboBox{Name="UpdateChannel",ItemsSource=new[]{TextResources.Get("aboutPanel.aboutPanel.itemsSource"),TextResources.Get("aboutPanel.aboutPanel.itemsSource.alternativeA")},SelectedIndex=pet.Settings.UpdateChannel==UpdateChannel.Preview?1:0,Margin=new Thickness(0,8,0,4)},()=>(new[]{TextResources.Get("aboutPanel.aboutPanel.itemsSource"),TextResources.Get("aboutPanel.aboutPanel.itemsSource.alternativeA")}));update.Children.Add(channel);
             channelNotice=Ui.Text("",11,Ui.Muted);update.Children.Add(channelNotice);
@@ -48,7 +49,7 @@ namespace Dafeiyu
             cancel=LocalizedUi.Button(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeB")));cancel.Name="CancelUpdate";cancel.Click+=delegate{updates.Cancel();};actions.Children.Add(cancel);update.Children.Add(actions);
             progress=new ProgressBar{Name="UpdateProgress",Minimum=0,Maximum=100,Height=5,Margin=new Thickness(0,12,0,0),Visibility=Visibility.Collapsed};update.Children.Add(progress);
             progressLabel=Ui.Text("",11,Ui.Blue);update.Children.Add(progressLabel);routeLabel=Ui.Text("",11,Ui.Muted);routeLabel.Name="UpdateRoute";routeLabel.Margin=new Thickness(0,6,0,0);update.Children.Add(routeLabel);
-            var automatic=LocalizedUi.Toggle(()=>(TextResources.Get("aboutPanel.aboutPanel.toggle")),pet.Settings.AutoUpdate,v=>{pet.Settings.AutoUpdate=v;updates.AutomaticChanged();});automatic.Name="AutoUpdate";automatic.Margin=new Thickness(0,16,0,5);update.Children.Add(automatic);
+            var automatic=SettingsSurface.Toggle(()=>(TextResources.Get("aboutPanel.aboutPanel.toggle")),pet.Settings.AutoUpdate,v=>{pet.Settings.AutoUpdate=v;updates.AutomaticChanged();});automatic.Name="AutoUpdate";automatic.Margin=new Thickness(0,16,0,5);update.Children.Add(automatic);
             panel.Children.Add(GlassSurface.Card(update));
             var network=LocalizedUi.With(new Expander{Name="UpdateNetwork",Header=TextResources.Get("aboutPanel.aboutPanel.header"),IsExpanded=false,Margin=new Thickness(0,0,0,18),FontSize=14,Foreground=Ui.Ink},"Header",()=>(TextResources.Get("aboutPanel.aboutPanel.header")));SettingsSurface.StyleExpander(network);
             var networkBody=new StackPanel{Margin=new Thickness(2,10,0,0)};
@@ -73,7 +74,7 @@ namespace Dafeiyu
             openFolder=LocalizedUi.Button(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeH")));openFolder.Name="OpenDownloads";openFolder.Click+=delegate{Open(Path.Combine(pet.Store.DirectoryPath,"updates"));};links.Children.Add(openFolder);panel.Children.Add(links);
             var footer=new DockPanel{Margin=new Thickness(0,12,0,0)};uninstall=LocalizedUi.Button(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeI")));uninstall.Name="UninstallApplication";uninstall.Foreground=Ui.Brush("#AC4A57");uninstall.Margin=new Thickness(12,0,0,0);uninstall.Click+=delegate{Uninstall();};DockPanel.SetDock(uninstall,Dock.Right);footer.Children.Add(uninstall);
             var cache=LocalizedUi.Button(()=>(TextResources.Get("cache.title")));cache.Name="ClearCache";cache.Foreground=Ui.Muted;cache.Margin=new Thickness(12,0,0,0);cache.Click+=delegate{var dialog=new CacheMaintenanceWindow(pet.Store.DirectoryPath){Owner=Window.GetWindow(this)};dialog.ShowDialog();};DockPanel.SetDock(cache,Dock.Right);cache.Visibility=Visibility.Collapsed;footer.Children.Add(cache);
-            footer.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeJ")),11,Ui.Muted));var footerBorder=new Border{Child=footer,BorderBrush=Ui.Line,BorderThickness=new Thickness(0,1,0,0)};Grid.SetRow(footerBorder,1);Children.Add(footerBorder);
+            footer.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeJ")),11,Ui.Muted));var footerBorder=new Border{Child=footer,BorderBrush=Ui.Line,BorderThickness=new Thickness(0,1,0,0)};Grid.SetRow(footerBorder,2);Children.Add(footerBorder);
             initializing=false;RefreshNetwork();updates.Changed+=Refresh;Refresh();
         }
         static TextBlock Heading(string text,double size){var label=Ui.Text(text,size);label.FontWeight=FontWeights.SemiBold;return label;}

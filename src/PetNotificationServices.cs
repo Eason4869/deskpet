@@ -17,8 +17,13 @@ namespace Dafeiyu
         internal void EnableNotificationAudio(){notificationAudioReady=true;}
         internal void StopNotificationSounds(){if(notificationSounds!=null)notificationSounds.Stop();}
         internal void RefreshCompanionSoundSettings(){RefreshNotificationSounds();}
-        void RefreshNotificationSounds(){if(notificationSounds!=null)notificationSounds.Refresh();}
+        internal void RefreshNotificationSounds(){if(notificationSounds!=null)notificationSounds.Refresh();}
         NotificationSoundPlayer SoundPlayer(){return notificationSounds??(notificationSounds=new NotificationSoundPlayer(()=>Settings,()=>new PcmOutput(),()=>ProactiveGreetingSpeechActive||LiveActive||DictationActive||ConversationSessions.Any(s=>s.Stage==ConversationStage.Speaking)));}
+        internal ILiquidThemeSound PlayThemeSound(bool dark,TimeSpan duration,bool shortFeedback,string motion)
+        {
+            if(closing||!notificationAudioReady||Dispatcher.HasShutdownStarted||!Settings.ThemeTransitionSoundEnabled)return null;
+            return SoundPlayer().TryPlayTheme(dark,duration,shortFeedback,motion);
+        }
         internal void PreviewCompanionOperation(CompanionOperationCue cue){PlayCompanionOperation(cue,true);}
         void PlayCompanionOperation(CompanionOperationCue cue,bool preview=false)
         {

@@ -81,7 +81,7 @@ namespace Dafeiyu.Tests
             if(!await services.InitializeAsync())throw new Exception("Host lease initialization failed");
             string pids=Path.Combine(root,"owned.pids");
             string pendingPids=pids+".tmp";
-            string command="$child=Start-Process -FilePath "+Quote(AgentCommandExecutor.PowerShellPath())+" -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 120' -WindowStyle Hidden -PassThru; "+
+            string command="$ErrorActionPreference='Stop'; $child=Start-Process -FilePath "+Quote(AgentCommandExecutor.PowerShellPath())+" -ArgumentList '-NoProfile -NonInteractive -Command Start-Sleep -Seconds 120' -WindowStyle Hidden -PassThru; "+
                 "[IO.File]::WriteAllText("+Quote(pendingPids)+",([string]$PID+[Environment]::NewLine+[string]$child.Id)); "+
                 "[IO.File]::Move("+Quote(pendingPids)+","+Quote(pids)+"); Start-Sleep -Seconds 120";
             var spec=new AgentJobSpec(command,"Independent job exit fixture",root,1800);
@@ -89,7 +89,20 @@ namespace Dafeiyu.Tests
             var invocation=new AgentToolInvocation("start_job",new Dictionary<string,object>{{"command",spec.Command},{"title",spec.Title},{"working_directory",spec.WorkingDirectory},{"timeout_seconds",spec.TimeoutSeconds}},new AgentToolExecutionContext{ProjectId=owner.ProjectId,AgentId="primary",TaskId="host-task",CallId="host-start"});
             var context=new AgentJobStartContext(owner,invocation,new Approval(),()=>new AgentJobPolicySnapshot(root,"fixture-directory",1,1800,true,false,false,AgentApprovalMode.Full,null),()=>new Lease(),()=>{});
             var job=await services.Manager.StartAsync(context,spec,CancellationToken.None);
-            await WaitAsync(()=>File.Exists(pids)&&File.ReadAllLines(pids).Length==2,5000,"Native host tree readiness");
+            Exception readinessFailure=null;
+            try
+            {
+                // The parent still bounds the whole host startup. Give the
+                // nested PowerShell process time within that same startup budget.
+                await WaitAsync(()=>File.Exists(pids)||!services.Manager.HasActiveJobs,10000,"Native host tree readiness");
+                if(!File.Exists(pids)||File.ReadAllLines(pids).Length!=2)throw new IOException("The native job did not publish both process IDs.");
+            }
+            catch(Exception error){readinessFailure=error;}
+            if(readinessFailure!=null)
+            {
+                var page=await services.Manager.GetAsync(owner,job.Id,null,4096,CancellationToken.None);
+                throw new InvalidOperationException("Native host tree readiness ("+page.Snapshot.State+"): "+String.Join("",page.Records.Select(record=>record.Text)),readinessFailure);
+            }
             File.WriteAllText(Path.Combine(root,"job.id"),job.Id);
             File.WriteAllText(Path.Combine(root,"ready.tmp"),File.ReadAllText(pids));File.Move(Path.Combine(root,"ready.tmp"),Path.Combine(root,"host.ready"));
             await WaitAsync(()=>File.Exists(Path.Combine(root,"exit.request")),30000,"Parent exit request");

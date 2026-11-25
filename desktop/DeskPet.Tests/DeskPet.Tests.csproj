@@ -8,6 +8,7 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/ScheduledTaskTests.cs" Link="Tests/ScheduledTaskTests.cs" />
     <Compile Include="../../tests/FileCompatibilityTests.cs;../../tests/TabularCompatibilityChecks.cs;../../tests/DocumentCompatibilityChecks.cs;../../tests/ContainerCompatibilityChecks.cs;../../tests/MediaCompatibilityChecks.cs;../../tests/MediaHeaderCompatibilityChecks.cs" Link="Regression/%(Filename)%(Extension)" />
     <Reference Include="../../vendor/file-compat/doc/net10.0/OpenMcdf.dll"><Private>true</Private></Reference>
     <Compile Include="../../tests/DesktopObservationPolicyTests.cs;../../tests/DesktopObservationServiceTests.cs" Link="Tests/%(Filename)%(Extension)" />

@@ -53,15 +53,18 @@ new_keys |= {'fileActionsMenu.chooseApplication', 'sideChatPane.contextHint'}
 formatted = {'desktopObservation.'+key for key in ['countdown', 'consentBody', 'imageDestination', 'textDestination', 'lastObserved']}
 formatted |= {renamed_keys[key] for key in formatted if key in renamed_keys}
 sentinels = re.compile(r'PLACE(?:HOLDER|WAY)ZERO|PLATZHALTERZERO|प्लेसहोल्डरशून्य|プレースホルダーゼロ', re.I)
+protected = json.loads(Path('tests/fixtures/localization/protected-originals.json').read_text(encoding='utf-8'))
+corrections = {(row['locale'], row['key']): row['expected'] for row in protected.get('historicalCorrections', [])}
 keys = None
 for path in Path('assets/locales').glob('*.json'):
     old = json.loads(subprocess.check_output(['git', '-c', 'safe.directory=' + Path.cwd().as_posix(), 'show', base + ':' + path.as_posix()], encoding='utf-8'))
     current = json.loads(path.read_bytes())
     added = {k: v for k, v in current.items() if k.startswith('desktopObservation.')}
-    assert all(current[k] == v for k, v in old.items()), path
+    for key, value in old.items():
+        assert current.get(key) == corrections.get((path.stem, key), value), (path, key)
     assert len(added) == 76 + sum(key.startswith('desktopObservation.') for key in renamed_keys.values()), path
     # Other features may add resources; the complete localization audit owns their contracts.
-    # Required observation keys, their exact count and all historical values stay protected.
+    # The complete audit also pins approved historical translations to their source commit.
     assert new_keys <= set(current) - set(old), path
     for key, value in added.items():
         assert re.fullmatch(r'[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9]*)*', key), (path, key)

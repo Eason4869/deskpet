@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
@@ -56,12 +57,70 @@ internal static class WorkBindingUiChecks
             var firstQuestion=owner.Questions.AskAsync(new AgentQuestionRequest{SessionId=first.QuestionSessionId,TaskId="first-question",CallId="first-call",Question="Only first window"},questionsCancellation.Token);
             var secondQuestion=owner.Questions.AskAsync(new AgentQuestionRequest{SessionId=second.QuestionSessionId,TaskId="second-question",CallId="second-call",Question="Only second window"},questionsCancellation.Token);Dispatcher.UIThread.RunJobs();
             bool HasQuestion(ChatWindow host,string text)=>host.GetLogicalDescendants().OfType<TextBlock>().Any(block=>block.Text==text);
-            Check(HasQuestion(first,"Only first window")&&!HasQuestion(first,"Only second window")&&HasQuestion(second,"Only second window")&&!HasQuestion(second,"Only first window"),"ask_user cards render only in their source conversation");questionsCancellation.Cancel();
+            Check(HasQuestion(first,"Only first window")&&!HasQuestion(first,"Only second window")&&HasQuestion(second,"Only second window")&&!HasQuestion(second,"Only first window"),"ask_user cards render only in their source conversation");
+            foreach (var host in new[] { first, second })
+            {
+                var composer = host.GetLogicalDescendants().OfType<Border>().Single(control => control.Name == "ComposerSurface");
+                var card = host.GetLogicalDescendants().OfType<Border>().Single(control => control.Name == "AgentQuestionCard");
+                var composerCorner = composer.TranslatePoint(default, host)!.Value;
+                var cardCorner = card.TranslatePoint(new Point(0, card.Bounds.Height), host)!.Value;
+                double gap = composerCorner.Y - cardCorner.Y;
+                Check(Math.Abs(composerCorner.X - cardCorner.X) < 1 && Math.Abs(composer.Bounds.Width - card.Bounds.Width) < 1 && gap >= 0 && gap <= 12,
+                    "the visible question card aligns immediately above the composer");
+            }
+            questionsCancellation.Cancel();
+            var previousSize = new Size(first.Width, first.Height);
+            first.Width = first.MinWidth;
+            first.Height = first.MinHeight;
+            using (var longQuestionCancellation = new CancellationTokenSource())
+            {
+                _ = owner.Questions.AskAsync(new AgentQuestionRequest
+                {
+                    SessionId = first.QuestionSessionId,
+                    TaskId = "long-question",
+                    CallId = "long-call",
+                    Question = string.Join("\n", Enumerable.Repeat("Details for the pending question", 80))
+                }, longQuestionCancellation.Token);
+                Dispatcher.UIThread.RunJobs();
+                var scroll = first.GetLogicalDescendants().OfType<ScrollViewer>().Single(control => control.Name == "AgentQuestionScroll");
+                var composer = first.GetLogicalDescendants().OfType<Border>().Single(control => control.Name == "ComposerSurface");
+                var composerBottom = composer.TranslatePoint(new Point(0, composer.Bounds.Height), first)!.Value.Y;
+                Check(scroll.Viewport.Height > 0 && scroll.Extent.Height > scroll.Viewport.Height && composerBottom <= first.Bounds.Height,
+                    $"a long question scrolls while the narrow window's composer stays visible (viewport {scroll.Viewport.Height}, extent {scroll.Extent.Height}, composer bottom {composerBottom}, window {first.Bounds.Height})");
+                longQuestionCancellation.Cancel();
+            }
+            first.Width = previousSize.Width;
+            first.Height = previousSize.Height;
             first.BoundSession.AddLiveTurn(first.BoundSession.PersonaId,"second user","second reply");Dispatcher.UIThread.RunJobs();
             Check(first.BoundSession.ExportHistory().Contains("second reply")&&!first.BoundSession.ExportHistory().Contains("bound reply"),"export resolves the active work history");
             first.BoundSession.Clear();Dispatcher.UIThread.RunJobs();Check(first.BoundSession.History.Messages.Count==0&&second.BoundSession.History.Messages.Count==2,"clear affects only the bound history and refreshes its view");
             var workSettings=owner.WorkBindings.ProjectSettings(other.Id);Check(workSettings.AgentWorkspace==first.EffectiveSettings().AgentWorkspace,"work settings resolve the bound project");
-            Check(owner.WorkBindings.TryChangeProject(other.Id,value=>value.Goal="second goal")&&first.EffectiveSettings().AgentGoal=="second goal"&&second.EffectiveSettings().AgentGoal!="second goal"&&owner.Settings.AgentGoal!="second goal","project settings update only workspaces in that project");
+            const string updatedGoal = "second goal";
+            const int updatedContextLimit = 65536;
+            var otherProjectGoalBefore = project.Goal;
+            var unaffectedSettingsBefore = second.EffectiveSettings();
+            var globalSettingsBefore = owner.Settings.Copy();
+            Check(owner.WorkBindings.TryChangeProject(other.Id, value =>
+            {
+                value.Goal = updatedGoal;
+                value.ContextTokenLimit = updatedContextLimit;
+            }), "the bound project settings update succeeds");
+            var savedProjects = new ProjectCatalogStore(Path.Combine(directory, "projects.json")).Load().Projects;
+            Check(savedProjects.Single(value => value.Id == other.Id).Goal == updatedGoal &&
+                savedProjects.Single(value => value.Id == project.Id).Goal == otherProjectGoalBefore,
+                "the goal persists only for the updated project");
+            var updatedSettings = first.EffectiveSettings();
+            var unaffectedSettings = second.EffectiveSettings();
+            Check(updatedSettings.AgentContextTokenLimit == updatedContextLimit &&
+                unaffectedSettings.AgentContextTokenLimit == unaffectedSettingsBefore.AgentContextTokenLimit &&
+                unaffectedSettings.AgentGoal == unaffectedSettingsBefore.AgentGoal &&
+                owner.Settings.AgentContextTokenLimit == globalSettingsBefore.AgentContextTokenLimit &&
+                owner.Settings.AgentGoal == globalSettingsBefore.AgentGoal,
+                "project settings update only workspaces in that project");
+            Check(OperatingSystem.IsWindows()
+                ? updatedSettings.AgentGoal == updatedGoal
+                : !updatedSettings.AgentEnabled && updatedSettings.AgentGoal.Length == 0,
+                "the effective goal is available only with local agent support");
             Complete(first.BindWorkAsync(project.Id,conversation.Id));Check(first.GetLogicalDescendants().OfType<Border>().Any(control=>control.Name=="AttachmentCard"),"returning to a work binding restores only its attachment buffer");
             string catalogPath=Path.Combine(directory,"projects.json");var independentStore=new ProjectCatalogStore(catalogPath);var ordinaryCatalog=independentStore.Load();
             ordinaryCatalog.UnassignedConversations.Add(new ConversationDefinition{Id="ordinary-added-by-other-host",Name="ordinary",Mode="chat",PetId=owner.Skin.Id,SectionId=ProjectCatalogStore.DefaultChatSectionId});independentStore.Save(ordinaryCatalog);
@@ -76,7 +135,27 @@ internal static class WorkBindingUiChecks
                 var approval=owner.WorkBindings.Manager.ApprovalProvider;var pending=((ICancellableAgentApprovalProvider)approval).ApproveAsync(request,cancelApproval.Token);Dispatcher.UIThread.RunJobs();
                 var dialog=first.OwnedWindows.Concat(second.OwnedWindows).Single(window=>window.Name=="WorkApprovalDialog");var details=dialog.GetLogicalDescendants().OfType<TextBox>().Single(value=>value.Name=="WorkApprovalDetails").Text??"";
                 Check(details.Contains(project.Id)&&details.Contains(first.QuestionSessionId)&&details.Contains("approval-call")&&details.Contains("timeout_seconds=60")&&details.Contains(directory)&&details.Contains("sandbox fixture")&&details.Contains("fixture-hash"),"approval exposes the immutable source, complete payload, directory, isolation, timeout and hash");
+                var host = (ChatWindow)dialog.Owner!;
+                var composer = host.GetLogicalDescendants().OfType<Border>().Single(control => control.Name == "ComposerSurface");
+                void CheckApprovalPlacement()
+                {
+                    var composerCorner = composer.PointToScreen(default);
+                    var dialogCorner = dialog.PointToScreen(new Point(0, dialog.Bounds.Height));
+                    int gap = composerCorner.Y - dialogCorner.Y;
+                    Check(Math.Abs(composerCorner.X - dialogCorner.X) <= 1 && Math.Abs(composer.Bounds.Width - dialog.Bounds.Width) < 1 && gap >= 0 && gap <= 12,
+                        $"the modal approval aligns immediately above its source composer's current bounds (composer {composerCorner} width {composer.Bounds.Width}, dialog {dialogCorner} width {dialog.Bounds.Width}, requested size {dialog.Width}x{dialog.Height}, gap {gap})");
+                }
+                CheckApprovalPlacement();
+                var previousPosition = host.Position;
+                host.Width = host.MinWidth;
+                host.Height = host.MinHeight;
+                host.Position = new PixelPoint(previousPosition.X + 20, previousPosition.Y + 30);
+                Dispatcher.UIThread.RunJobs();
+                CheckApprovalPlacement();
                 cancelApproval.Cancel();Complete(pending);Check(!pending.Result,"cancelled approval cannot authorize a different or hidden window");
+                host.Position = previousPosition;
+                host.Width = previousSize.Width;
+                host.Height = previousSize.Height;
             }
             var settingsHost=new Window();var settingsView=new WorkSettingsView(owner,settingsHost,project.Id);settingsHost.Content=settingsView;settingsHost.Show();
             var terminal=settingsView.GetLogicalDescendants().OfType<ComboBox>().Single(value=>value.Name=="AgentTerminalPolicy");

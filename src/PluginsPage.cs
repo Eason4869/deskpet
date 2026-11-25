@@ -24,13 +24,15 @@ namespace Dafeiyu
         readonly Grid searchSurface=new Grid();
         readonly TextBox search=Ui.Field();
         readonly TextBlock status=Ui.Text("",12,Ui.Muted),warning=Ui.Text("",12,Ui.Brush("#91682E"));
-        readonly Button skillsTab,mcpTab,add;
-        readonly ScrollViewer skillScroll;
+        readonly Button skillsTab,mcpTab,appsTab,add;
+        readonly ScrollViewer skillScroll,appsScroll;
+        GmailConnectionRow gmailApp;
+        GitHubAppPanel gitHubApp;
         readonly TextBlock footer=Ui.Text("",11,Ui.Muted);
         static readonly ControlTemplate pillTemplate=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Border x:Name='pill' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='18'><ContentPresenter Margin='{TemplateBinding Padding}' HorizontalAlignment='Center' VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='pill' Property='Opacity' Value='.75'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
         IList<ManagedSkillInfo> installed=new ManagedSkillInfo[0];
         string detailId,removeId;
-        bool onMcp,disposed;
+        bool onMcp,onApps,disposed;
 
         internal PluginsPage(PetWindow pet,SkillRepositoryClient repositoryClient=null)
         {
@@ -52,8 +54,9 @@ namespace Dafeiyu
             var tabs=new WrapPanel{Margin=new Thickness(0,0,0,16)};
             skillsTab=LocalizedUi.Button(()=>(TextResources.Get("pluginsPage.pluginsPage.text.alternativeA")));skillsTab.Name="PluginsSkillsTab";skillsTab.Click+=delegate{SelectSkills();};
             mcpTab=Ui.Button("MCP  0");mcpTab.Name="PluginsMcpTab";mcpTab.Click+=delegate{SelectMcp();};
-            skillsTab.Template=pillTemplate;mcpTab.Template=pillTemplate;skillsTab.Padding=mcpTab.Padding=new Thickness(17,5,17,5);
-            tabs.Children.Add(skillsTab);tabs.Children.Add(mcpTab);controls.Children.Add(tabs);
+            appsTab=LocalizedUi.Button(()=>TextResources.Get("apps.tab"));appsTab.Name="PluginsAppsTab";appsTab.Click+=delegate{SelectApps();};
+            foreach(var tab in new[]{skillsTab,mcpTab,appsTab}){tab.Template=pillTemplate;tab.Padding=new Thickness(17,5,17,5);tabs.Children.Add(tab);}
+            controls.Children.Add(tabs);
             search.Name="PluginsSearch";LocalizedUi.Set(search,"ToolTip",()=>(TextResources.Get("pluginsPage.pluginsPage.searchToolTip")));search.Height=search.MinHeight=36;search.FontSize=13;search.Padding=new Thickness(12,0,12,0);search.Foreground=Ui.PageInk;
             search.Template=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Border Background='{TemplateBinding Background}' BorderBrush='#E0E3E8' BorderThickness='1' CornerRadius='18'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}' VerticalAlignment='Center'/></Border></ControlTemplate>");
             LocalizedUi.Automation(search,()=>(TextResources.Get("pluginsPage.pluginsPage.automationAutomationPropertiesSetName")));
@@ -65,6 +68,7 @@ namespace Dafeiyu
             warning.Name="ManagedSkillsWarning";warning.Margin=new Thickness(0,0,0,14);warning.Visibility=Visibility.Collapsed;skills.Children.Add(warning);skills.Children.Add(rows);
             skillScroll=Ui.Scroll(skills);skillScroll.Name="ManagedSkillsScroll";skillScroll.Padding=new Thickness(0,0,3,0);content.Children.Add(skillScroll);
             mcp=new McpSettingsPanel(pet){Visibility=Visibility.Collapsed,Background=Brushes.Transparent};mcp.UseHeaderAddButton();mcp.Saved+=McpSaved;mcp.EditorVisibilityChanged+=McpEditorVisibilityChanged;content.Children.Add(mcp);Grid.SetRow(content,2);layout.Children.Add(content);
+            appsScroll=Ui.Scroll(new StackPanel());appsScroll.Name="ManagedAppsScroll";appsScroll.Visibility=Visibility.Collapsed;content.Children.Add(appsScroll);
             discovery=new SkillDiscoveryPanel(library,new SkillRepositoryCatalog(Path.Combine(pet.Store.DirectoryPath,"skill-discovery")),repositoryClient??new SkillRepositoryClient());
             var bottom=new StackPanel{Margin=new Thickness(0,15,0,0)};status.Name="PluginsStatus";status.Visibility=Visibility.Collapsed;status.Margin=new Thickness(0,0,0,7);bottom.Children.Add(status);footer.Name="PluginsScope";bottom.Children.Add(footer);Grid.SetRow(bottom,3);layout.Children.Add(bottom);
             library.Changed+=LibraryChanged;pet.McpConnections.Changed+=McpChanged;
@@ -74,9 +78,27 @@ namespace Dafeiyu
 
         internal bool HasUnsavedEdits {get{return mcp.HasUnsavedChanges;}}
         internal void OpenMcpEditor(){SelectMcp();mcp.OpenEditor();}
-        internal void SelectMcp(){skillOverlay.Close();onMcp=true;add.Visibility=mcp.EditorVisible?Visibility.Collapsed:Visibility.Visible;skillScroll.Visibility=Visibility.Collapsed;mcp.Visibility=Visibility.Visible;search.Visibility=Visibility.Collapsed;((FrameworkElement)search.Parent).Visibility=Visibility.Collapsed;add.Name="AddMcpServer";LocalizedUi.Set(add,"Content",()=>(TextResources.Get("pluginsPage.selectMcp.addContent")));LocalizedUi.Automation(add,()=>(TextResources.Get("pluginsPage.selectMcp.automationAutomationPropertiesSetName")));StyleTabs();LocalizedUi.Set(footer,"Text",()=>(TextResources.Get("pluginsPage.selectMcp.footer")));}
-        internal void SelectSkills(){skillOverlay.Close();onMcp=false;add.Visibility=Visibility.Visible;skillScroll.Visibility=Visibility.Visible;mcp.Visibility=Visibility.Collapsed;search.Visibility=Visibility.Visible;((FrameworkElement)search.Parent).Visibility=Visibility.Visible;add.Name="ImportManagedSkill";LocalizedUi.Set(add,"Content",()=>(TextResources.Get("pluginsPage.selectSkills.addContent")));LocalizedUi.Automation(add,()=>(TextResources.Get("pluginsPage.selectSkills.automationAutomationPropertiesSetName")));StyleTabs();LocalizedUi.Set(footer,"Text",()=>(TextResources.Get("pluginsPage.selectSkills.footer")));}
-        void StyleTabs(){foreach(var button in new[]{skillsTab,mcpTab}){bool selected=button==(onMcp?mcpTab:skillsTab);button.Background=selected?ThemeManager.SelectedSurface:Brushes.Transparent;button.BorderBrush=selected?ThemeManager.SelectedBorder:Brushes.Transparent;button.Foreground=selected?Ui.Brush("#282A2F"):Ui.Muted;button.FontWeight=selected?FontWeights.SemiBold:FontWeights.Normal;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?TextResources.Get("pluginsPage.styleTabs.automationAutomationPropertiesSetItemStatus"):"");}}
+        internal void SelectMcp(){skillOverlay.Close();onMcp=true;onApps=false;appsScroll.Visibility=Visibility.Collapsed;add.Visibility=mcp.EditorVisible?Visibility.Collapsed:Visibility.Visible;skillScroll.Visibility=Visibility.Collapsed;mcp.Visibility=Visibility.Visible;search.Visibility=Visibility.Collapsed;((FrameworkElement)search.Parent).Visibility=Visibility.Collapsed;add.Name="AddMcpServer";LocalizedUi.Set(add,"Content",()=>(TextResources.Get("pluginsPage.selectMcp.addContent")));LocalizedUi.Automation(add,()=>(TextResources.Get("pluginsPage.selectMcp.automationAutomationPropertiesSetName")));StyleTabs();LocalizedUi.Set(footer,"Text",()=>(TextResources.Get("pluginsPage.selectMcp.footer")));}
+        internal void SelectSkills(){skillOverlay.Close();onMcp=false;onApps=false;appsScroll.Visibility=Visibility.Collapsed;add.Visibility=Visibility.Visible;skillScroll.Visibility=Visibility.Visible;mcp.Visibility=Visibility.Collapsed;search.Visibility=Visibility.Visible;((FrameworkElement)search.Parent).Visibility=Visibility.Visible;add.Name="ImportManagedSkill";LocalizedUi.Set(add,"Content",()=>(TextResources.Get("pluginsPage.selectSkills.addContent")));LocalizedUi.Automation(add,()=>(TextResources.Get("pluginsPage.selectSkills.automationAutomationPropertiesSetName")));StyleTabs();LocalizedUi.Set(footer,"Text",()=>(TextResources.Get("pluginsPage.selectSkills.footer")));}
+        internal void SelectApps()
+        {
+            skillOverlay.Close();
+            onApps=true;onMcp=false;
+            add.Visibility=skillScroll.Visibility=mcp.Visibility=searchSurface.Visibility=status.Visibility=Visibility.Collapsed;
+            var list=(StackPanel)appsScroll.Content;
+            if(gmailApp==null)
+            {
+                gitHubApp=new GitHubAppPanel(pet);
+                list.Children.Add(gitHubApp);
+                gmailApp=new GmailConnectionRow(pet);
+                list.Children.Add(gmailApp);
+            }
+            gmailApp.Refresh();
+            appsScroll.Visibility=Visibility.Visible;
+            StyleTabs();
+            LocalizedUi.Set(footer,"Text",()=>TextResources.Get("apps.footer"));
+        }
+        void StyleTabs(){foreach(var button in new[]{skillsTab,mcpTab,appsTab}){bool selected=button==(onApps?appsTab:onMcp?mcpTab:skillsTab);button.Background=selected?ThemeManager.SelectedSurface:Brushes.Transparent;button.BorderBrush=selected?ThemeManager.SelectedBorder:Brushes.Transparent;button.Foreground=selected?Ui.Brush("#282A2F"):Ui.Muted;button.FontWeight=selected?FontWeights.SemiBold:FontWeights.Normal;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?TextResources.Get("pluginsPage.styleTabs.automationAutomationPropertiesSetItemStatus"):"");}}
         void Adapt(){layout.Margin=ActualWidth<480?new Thickness(16,20,16,20):new Thickness(30,40,30,24);double available=Math.Max(0,Math.Min(Ui.PageContentWidth,ActualWidth-layout.Margin.Left-layout.Margin.Right));bool narrow=available<680;Grid.SetRow(actions,narrow?1:0);Grid.SetColumn(actions,narrow?0:1);Grid.SetColumnSpan(actions,narrow?2:1);actions.HorizontalAlignment=narrow?HorizontalAlignment.Left:HorizontalAlignment.Right;actions.Width=narrow?available:Double.NaN;actions.Margin=narrow?new Thickness(0,14,0,0):new Thickness(0);searchSurface.Width=narrow?Math.Max(100,available-110):260;LayoutSkillRows();}
         void LayoutSkillRows(){double width=rows.ActualWidth;if(width<=0)return;bool paired=width>=700;int index=0;foreach(FrameworkElement child in rows.Children){bool tile=child.Name=="ManagedSkillRow";child.Width=tile&&paired?Math.Floor((width-16)/2):width;child.Margin=tile?new Thickness(0,0,paired&&index++%2==0?16:0,12):new Thickness(0);}}
         static Button ActionButton(string title,string name,Action action){var button=Ui.Button(title);button.Name=name;button.FontSize=12;button.Foreground=Ui.PageInk;button.Margin=new Thickness(0,0,8,5);button.Padding=new Thickness(12,5,12,5);button.Click+=delegate{action();};System.Windows.Automation.AutomationProperties.SetName(button,title);return button;}
@@ -95,7 +117,7 @@ namespace Dafeiyu
         void LocalImportFinished(){if(!disposed)Refresh();}
         internal bool ImportDirectory(string directory){try{var item=library.Import(directory);detailId=null;removeId=null;Refresh();Notify(TextResources.Format("pluginsPage.importDirectory.notify",item.Name));return true;}catch(Exception e){if(!Expected(e))throw;Notify(TextResources.Format("pluginsPage.importDirectory.notify.alternativeA",e.Message));return false;}}
         static bool Expected(Exception e){return e is IOException||e is UnauthorizedAccessException||e is ArgumentException||e is InvalidOperationException;}
-        void Notify(string text){status.Text=text;status.Visibility=Visibility.Visible;}
+        void Notify(string text){status.Text=text;status.Visibility=onApps?Visibility.Collapsed:Visibility.Visible;}
         void Refresh(){if(disposed||folderImport!=null&&folderImport.IsBusy)return;try{installed=library.List();warning.Text=library.Warning;warning.Visibility=String.IsNullOrEmpty(warning.Text)?Visibility.Collapsed:Visibility.Visible;LocalizedUi.Set(skillsTab,"Content",()=>(TextResources.Format("pluginsPage.refresh.contentInstalledCount",installed.Count)));McpCount();RenderRows();}catch(Exception e){if(!Expected(e))throw;installed=new ManagedSkillInfo[0];LocalizedUi.Set(warning,"Text",()=>(TextResources.Format("pluginsPage.refresh.warningEMessage",e.Message)));warning.Visibility=Visibility.Visible;LocalizedUi.Set(skillsTab,"Content",()=>(TextResources.Get("pluginsPage.refresh.skillsTabContent")));RenderRows();}}
         void McpCount(){mcpTab.Content="MCP  "+(pet.Settings.McpServers??new List<McpServerConfiguration>()).Count(c=>c!=null);}
         void RenderRows(){rows.Children.Clear();string query=search.Text.Trim();var shown=installed.Where(s=>query.Length==0||(s.Name??"").IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0||(s.Description??"").IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0).ToArray();
@@ -120,6 +142,6 @@ namespace Dafeiyu
         void McpEditorVisibilityChanged(){if(onMcp)add.Visibility=mcp.EditorVisible?Visibility.Collapsed:Visibility.Visible;}
         void McpSaved(){McpCount();}
         void McpChanged(){if(disposed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(McpChanged));return;}McpCount();}
-        public void Dispose(){if(disposed)return;disposed=true;library.Changed-=LibraryChanged;pet.McpConnections.Changed-=McpChanged;mcp.Saved-=McpSaved;mcp.EditorVisibilityChanged-=McpEditorVisibilityChanged;skillOverlay.Closed-=CloseSkillOverlay;skillOverlay.Close();if(folderImport!=null){folderImport.Finished-=LocalImportFinished;folderImport.Dispose();}discovery.Dispose();mcp.Dispose();}
+        public void Dispose(){if(disposed)return;disposed=true;library.Changed-=LibraryChanged;pet.McpConnections.Changed-=McpChanged;mcp.Saved-=McpSaved;mcp.EditorVisibilityChanged-=McpEditorVisibilityChanged;skillOverlay.Closed-=CloseSkillOverlay;skillOverlay.Close();if(folderImport!=null){folderImport.Finished-=LocalImportFinished;folderImport.Dispose();}discovery.Dispose();mcp.Dispose();if(gmailApp!=null)gmailApp.Dispose();if(gitHubApp!=null)gitHubApp.Dispose();}
 static Button ActionButton(System.Func<string> title,string name,Action action){return LocalizedUi.With(ActionButton(title(),name,action),"Content",title);}    }
 }

@@ -56,7 +56,7 @@ namespace Dafeiyu
             Queue(new[]{record});
         }
 
-        internal void FinishSegment(string content,string outcome,IEnumerable<AgentToolEvent> tools=null,bool transfer=false)
+        internal void FinishSegment(string content,string outcome,IEnumerable<AgentToolEvent> tools=null,bool transfer=false,bool generatedPlan=false)
         {
             // Only a terminal event makes the replacement authoritative during replay.
             // A torn batch leaves the previous public fragments intact.
@@ -74,6 +74,7 @@ namespace Dafeiyu
             records.Add(step);
             var turn=Record("turn.finished");
             turn.Outcome=outcome;
+            turn.IsGeneratedPlan=generatedPlan&&outcome=="complete"&&!transfer;
             if(content=="")turn.Text="";
             records.Add(turn);
             Queue(records);
@@ -180,11 +181,11 @@ namespace Dafeiyu
             return operation.TurnRecording;
         }
 
-        void FinishAgentTurnSegment(Operation operation,string content,string status,bool close,IEnumerable<AgentToolEvent> tools)
+        void FinishAgentTurnSegment(Operation operation,string content,string status,bool close,IEnumerable<AgentToolEvent> tools,bool generatedPlan=false)
         {
             var recording=ActiveAgentTurnRecording(operation);
             if(recording==null)return;
-            recording.FinishSegment(String.Equals(content,operation.Partial.ToString(),StringComparison.Ordinal)?null:content,status,tools,!close);
+            recording.FinishSegment(String.Equals(content,operation.Partial.ToString(),StringComparison.Ordinal)?null:content,status,tools,!close,generatedPlan);
             operation.History.MarkAgentTurn(operation.ReplyId,recording.StreamId,recording.Revision);
             if(close)CloseAgentTurnRecording(operation);
         }
@@ -258,6 +259,7 @@ namespace Dafeiyu
             var tools=reply.ToolEvents==null?new List<AgentToolEvent>():reply.ToolEvents.Where(tool=>tool!=null).Select(tool=>tool.Copy()).ToList();
             long checkpoint=reply.AgentTurnRevision;
             string status=reply.Status;
+            bool generatedPlan=false;
             foreach(var item in events)
             {
                 if(item.Kind=="reply.final.part")finalText.Append(item.Text);
@@ -279,12 +281,14 @@ namespace Dafeiyu
                         break;
                     case "turn.finished":
                         status=item.Outcome;
+                        generatedPlan=item.IsGeneratedPlan;
                         if(!recovery&&(item.Text!=null||finalText.Length>0)){publicText.Clear();publicText.Append(item.Text??finalText.ToString());}
                         break;
                 }
             }
             if(status!="pending")foreach(var tool in tools.Where(AgentTurnRecording.IsUnfinished))InterruptTool(tool);
             reply.Update(publicText.ToString(),status);
+            reply.IsGeneratedPlan=status=="complete"&&generatedPlan;
             reply.SetTools(tools);
         }
 

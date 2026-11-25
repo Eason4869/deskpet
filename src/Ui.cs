@@ -13,7 +13,7 @@ namespace Dafeiyu
         public static readonly Brush PageInk=Brush("#1C2024");
         public static TextBlock PageHeading(string title){var heading=Text(title,26,PageInk);heading.FontWeight=FontWeights.Bold;return heading;}
         private static Style buttonStyle;
-        private static Style comboStyle,navigationStyle,fieldStyle,toggleStyle,passwordStyle,tooltipStyle,emptyFocusStyle;
+        private static Style comboStyle,navigationStyle,fieldStyle,toggleStyle,settingsToggleStyle,passwordStyle,tooltipStyle,emptyFocusStyle;
         public static Style NavigationItemStyle {get{return navigationStyle;}}
         private static System.Windows.Media.Imaging.BitmapSource applicationIcon;
         public static System.Windows.Media.Imaging.BitmapSource ApplicationIcon()
@@ -66,12 +66,31 @@ namespace Dafeiyu
         // Inline labels use natural font metrics; paragraph spacing belongs in Text().
         public static TextBlock InlineText(string text, double size = 13, Brush color = null)
         { return new TextBlock { Text=text, FontSize=size, Foreground=color??Ink, TextWrapping=TextWrapping.NoWrap, TextTrimming=TextTrimming.CharacterEllipsis, VerticalAlignment=VerticalAlignment.Center }; }
-        internal static FrameworkElement SettingRow(Func<string> title,Func<string> description,FrameworkElement control,bool emphasizeTitle=true)
+        internal static FrameworkElement SettingRow(Func<string> title,Func<string> description,FrameworkElement control,bool emphasizeTitle=true,bool alignRight=false,double stackBelow=0)
         {
-            var row=new Grid{Margin=new Thickness(0,0,0,14)};row.ColumnDefinitions.Add(new ColumnDefinition());row.ColumnDefinitions.Add(new ColumnDefinition());
+            bool trailing=alignRight||control is CheckBox||control is Button;
+            var row=new Grid{Margin=new Thickness(0,0,0,14)};
+            row.ColumnDefinitions.Add(new ColumnDefinition());row.ColumnDefinitions.Add(new ColumnDefinition{Width=trailing?GridLength.Auto:new GridLength(stackBelow>0?1.5:1,GridUnitType.Star)});
             var labels=new StackPanel{Margin=new Thickness(0,4,20,0)};var caption=LocalizedUi.Text(title,13,Ink);caption.FontWeight=emphasizeTitle?FontWeights.SemiBold:FontWeights.Normal;labels.Children.Add(caption);
             if(description!=null){var help=LocalizedUi.Text(description,11,Muted);help.Margin=new Thickness(0,5,0,0);labels.Children.Add(help);}row.Children.Add(labels);
-            LocalizedUi.Automation(control,title);control.HorizontalAlignment=control is CheckBox || control is Button?HorizontalAlignment.Right:HorizontalAlignment.Stretch;control.VerticalAlignment=VerticalAlignment.Center;control.Margin=new Thickness(0);Grid.SetColumn(control,1);row.Children.Add(control);return row;
+            if(control is CheckBox&&toggleStyle!=null&&ReferenceEquals(control.Style,toggleStyle))control.Style=ToggleStyle(true);
+            LocalizedUi.Automation(control,title);control.HorizontalAlignment=trailing?HorizontalAlignment.Right:HorizontalAlignment.Stretch;control.VerticalAlignment=VerticalAlignment.Center;control.Margin=new Thickness(0);Grid.SetColumn(control,1);row.Children.Add(control);
+            if(stackBelow>0)
+            {
+                row.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
+                row.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
+                row.SizeChanged+=delegate(object sender,SizeChangedEventArgs args)
+                {
+                    bool stacked=args.NewSize.Width<stackBelow;
+                    if(stacked==(Grid.GetRow(control)==1))return;
+                    Grid.SetColumnSpan(labels,stacked?2:1);
+                    Grid.SetColumn(control,stacked?0:1);
+                    Grid.SetColumnSpan(control,stacked?2:1);
+                    Grid.SetRow(control,stacked?1:0);
+                    control.Margin=new Thickness(0,stacked?8:0,0,0);
+                };
+            }
+            return row;
         }
         public static TextBox Field(string value = "", bool multiline = false)
         {
@@ -84,15 +103,43 @@ namespace Dafeiyu
         {
             var label = Text(caption, 12, Ink); label.Margin = new Thickness(0, 12, 0, 6); panel.Children.Add(label); panel.Children.Add(field);
         }
-        public static CheckBox Toggle(string label, bool value, Action<bool> changed)
+        public static CheckBox Toggle(string label, bool value, Action<bool> changed){return Toggle(label,value,changed,false);}
+        internal static CheckBox Toggle(string label,bool value,Action<bool> changed,bool trailing)
         {
-            if(toggleStyle==null)toggleStyle=(Style)ThemeManager.Parse("<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='CheckBox'><Setter Property='FocusVisualStyle' Value='{x:Null}'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='CheckBox'><Border x:Name='highlight' CornerRadius='7' Background='Transparent' Padding='3'><StackPanel Orientation='Horizontal' Background='Transparent'><Border x:Name='track' Width='32' Height='20' CornerRadius='10' BorderThickness='1' BorderBrush='Transparent' Background='{TemplateBinding Background}' VerticalAlignment='Center' Margin='0,0,9,0'><Ellipse x:Name='thumb' Width='12' Height='12' Fill='White' HorizontalAlignment='Left' Margin='3,0,0,0'/></Border><ContentPresenter RecognizesAccessKey='True' VerticalAlignment='Center'/></StackPanel></Border><ControlTemplate.Triggers><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='highlight' Property='Background' Value='#EFEFEF'/></Trigger><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='highlight' Property='Background' Value='#EFEFEF'/></Trigger><Trigger Property='IsChecked' Value='True'><Setter TargetName='track' Property='Background' Value='#456DE6'/><Setter TargetName='thumb' Property='HorizontalAlignment' Value='Right'/><Setter TargetName='thumb' Property='Margin' Value='0,0,3,0'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>");
-            var toggle = new CheckBox { Style=toggleStyle,Background=ThemeManager.ToggleOffSurface,Foreground=Ink,Content = label, IsChecked = value, MinHeight=24,Margin = new Thickness(0, 6, 0, 9), VerticalContentAlignment = VerticalAlignment.Center };
+            var toggle = new CheckBox { Style=ToggleStyle(trailing),Background=ThemeManager.ToggleOffSurface,Foreground=Ink,Content = label, IsChecked = value, MinHeight=24,Margin = new Thickness(0, 6, 0, 9), VerticalContentAlignment = VerticalAlignment.Center };
             toggle.Checked += delegate { changed(true); }; toggle.Unchecked += delegate { changed(false); }; return toggle;
         }
-        public static CheckBox ReplySpeechToggle(PetWindow pet)
+        static Style ToggleStyle(bool trailing)
         {
-            var toggle=Toggle(()=>(TextResources.Get("ui.replySpeechToggle.toggle")),pet.Settings.ReadReplies,pet.SetReplySpeech);toggle.Name="TtsOutput";
+            var cached=trailing?settingsToggleStyle:toggleStyle;
+            if(cached!=null)return cached;
+            var track=@"<Border x:Name='track' Width='32' Height='20' CornerRadius='10' BorderThickness='1' BorderBrush='Transparent' Background='{TemplateBinding Background}' VerticalAlignment='Center' "+
+                (trailing?"Grid.Column='1'":"Margin='0,0,9,0'")+@"><Ellipse x:Name='thumb' Width='12' Height='12' Fill='White' HorizontalAlignment='Left' Margin='3,0,0,0'/></Border>";
+            var body=trailing?@"<Grid Background='Transparent'>
+  <Grid.ColumnDefinitions><ColumnDefinition Width='*'/><ColumnDefinition Width='Auto'/></Grid.ColumnDefinitions>
+  <ContentPresenter RecognizesAccessKey='True' VerticalAlignment='Center' Margin='0,0,12,0'>
+    <ContentPresenter.ContentTemplate><DataTemplate><AccessText Text='{Binding}' TextWrapping='Wrap'/></DataTemplate></ContentPresenter.ContentTemplate>
+  </ContentPresenter>"+track+"</Grid>":"<StackPanel Orientation='Horizontal' Background='Transparent'>"+track+"<ContentPresenter RecognizesAccessKey='True' VerticalAlignment='Center'/></StackPanel>";
+            var style=(Style)ThemeManager.Parse(@"<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='CheckBox'>
+  <Setter Property='FocusVisualStyle' Value='{x:Null}'/>
+  <Setter Property='Template'><Setter.Value><ControlTemplate TargetType='CheckBox'>
+    <Border x:Name='highlight' CornerRadius='7' Background='Transparent' Padding='3'>"+body+@"</Border>
+    <ControlTemplate.Triggers>
+      <Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='highlight' Property='Background' Value='#EFEFEF'/></Trigger>
+      <Trigger Property='IsMouseOver' Value='True'><Setter TargetName='highlight' Property='Background' Value='#EFEFEF'/></Trigger>
+      <Trigger Property='IsChecked' Value='True'><Setter TargetName='track' Property='Background' Value='#456DE6'/><Setter TargetName='thumb' Property='HorizontalAlignment' Value='Right'/><Setter TargetName='thumb' Property='Margin' Value='0,0,3,0'/></Trigger>
+      <Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger>
+    </ControlTemplate.Triggers>
+  </ControlTemplate></Setter.Value></Setter>
+</Style>");
+            if(trailing)settingsToggleStyle=style;else toggleStyle=style;
+            return style;
+        }
+        public static CheckBox ReplySpeechToggle(PetWindow pet){return ReplySpeechToggle(pet,false);}
+        internal static CheckBox ReplySpeechToggle(PetWindow pet,bool trailing)
+        {
+            Func<string> label=()=>TextResources.Get("ui.replySpeechToggle.toggle");
+            var toggle=LocalizedUi.With(Toggle(label(),pet.Settings.ReadReplies,pet.SetReplySpeech,trailing),"Content",label);toggle.Name="TtsOutput";
             LocalizedUi.Set(toggle,"ToolTip",()=>(TextResources.Get("ui.replySpeechToggle.toggleToolTip")));
             Action sync=()=>toggle.IsChecked=pet.Settings.ReadReplies;
             toggle.Loaded+=delegate {sync();pet.ReplySpeechChanged+=sync;};

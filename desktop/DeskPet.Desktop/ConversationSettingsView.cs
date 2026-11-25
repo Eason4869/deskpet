@@ -29,10 +29,9 @@ internal sealed class ConversationSettingsView : Grid
         var displayPage=SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("settingsLayout.displayGroup"),
             SettingsVisual.ActionRow("",()=>TextResources.Get("settingsLayout.readReplies"),()=>TextResources.Get("settingsLayout.readRepliesHelp"),readReplies),
             SettingsVisual.ActionRow("",()=>TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeAF"),()=>TextResources.Get("settingsLayout.processDescription"),detailed)));
-        Control Scroll(Control content)=>new ScrollViewer{HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,Content=new Border{Padding=new Thickness(24),Child=content}};
         var tabs=new TabControl{Name="ConversationSettingsTabs",HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,
             ItemsPanel=new Avalonia.Controls.Templates.FuncTemplate<Panel?>(()=>new WrapPanel{Orientation=Orientation.Horizontal}),
-            ItemsSource=new[]{LocalizedUi.With(new TabItem{Content=Scroll(defaultsPage),FontSize=12,Padding=new Thickness(8,10)},"Header",()=>TextResources.Get("settingsLayout.modeGroup")),LocalizedUi.With(new TabItem{Content=Scroll(displayPage),FontSize=12,Padding=new Thickness(8,10)},"Header",()=>TextResources.Get("settingsLayout.displayGroup"))},SelectedIndex=0};
+            ItemsSource=new[]{LocalizedUi.With(new TabItem{Content=SettingsVisual.ScrollBody(defaultsPage),FontSize=12,Padding=new Thickness(8,10)},"Header",()=>TextResources.Get("settingsLayout.modeGroup")),LocalizedUi.With(new TabItem{Content=SettingsVisual.ScrollBody(displayPage),FontSize=12,Padding=new Thickness(8,10)},"Header",()=>TextResources.Get("settingsLayout.displayGroup"))},SelectedIndex=0};
         Children.Add(tabs);
         var save=LocalizedUi.Button(()=>TextResources.Get("settingsLayout.save"),Save);save.Name="SaveConversationSettings";
         var restore=LocalizedUi.Button(()=>TextResources.Get("settingsLayout.restore"),RefreshRestoredPreferences);restore.Name="RestoreConversationSettings";

@@ -14,7 +14,7 @@ namespace Dafeiyu
         private readonly PetWindow pet;
         private readonly TextBlock name,notice,sizeLabel;
         private readonly Image avatar;
-        private readonly ComboBox skins;
+        private readonly ComboBox skins,companionEffect;
         private readonly HolidayOutfitPanel holidayOutfits;
         private readonly ColumnDefinition wardrobeColumn,wardrobeGap;
         private readonly TextBlock wardrobeHeading;
@@ -89,24 +89,39 @@ namespace Dafeiyu
             appearance.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeD")),11,Ui.Muted));
             pet.Holidays.Changed+=HolidayWardrobeChanged;RefreshHolidayLayout();
             restoreCompanions=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeE")));restoreCompanions.Name="RestoreCompanions";restoreCompanions.HorizontalAlignment=HorizontalAlignment.Left;restoreCompanions.FontSize=11;restoreCompanions.MinHeight=26;restoreCompanions.Padding=new Thickness(0);restoreCompanions.Background=Brushes.Transparent;restoreCompanions.BorderThickness=new Thickness(0);restoreCompanions.Click+=delegate {if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}if(HasUnsavedEdits || pet.DialogueBusy || pet.DictationActive){ShowNotice(()=>(TextResources.Get("settingsPage.settingsPage.showNotice.alternativeA")));return;}pet.Catalog.RestoreRemoved();pet.Catalog.PreserveActive(pet.Skin);RefreshSkinChoices();ShowNotice(()=>(TextResources.Get("settingsPage.settingsPage.showNotice.alternativeB")));};appearance.Children.Add(restoreCompanions);
+            companionEffect=new ComboBox{Name="CompanionTransitionEffect",SelectedValuePath="Tag",Width=180,MinHeight=36};
+            foreach(string effect in CompanionTransitionMotion.Choices)
+            {
+                string choice=effect;
+                companionEffect.Items.Add(LocalizedUi.With(new ComboBoxItem{Tag=choice},"Content",()=>CompanionTransitionMotion.Label(choice)));
+            }
+            companionEffect.SelectedValue=pet.Settings.CompanionTransitionEffect;
+            companionEffect.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args){
+                var item=args.AddedItems.Count==0?null:args.AddedItems[0] as ComboBoxItem;
+                var selected=item==null?null:item.Tag as string;
+                if(refreshing||selected==null||selected==pet.Settings.CompanionTransitionEffect)return;
+                pet.Settings.CompanionTransitionEffect=selected;
+                pet.SaveSettings();
+            };
+            appearance.Children.Add(Ui.SettingRow(CompanionTransitionMotion.Caption,null,companionEffect,alignRight:true));
             var guide=LocalizedUi.With(new Expander{Name="ImportGuide",Header=TextResources.Get("settingsPage.settingsPage.header"),Margin=new Thickness(0,12,0,0)},"Header",()=>(TextResources.Get("settingsPage.settingsPage.header")));var tutorial=new StackPanel{Margin=new Thickness(0,8,0,0)};
             tutorial.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeF")),12,Ui.Muted));
             var guideButtons=new WrapPanel{Margin=new Thickness(0,10,0,0)};var templates=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeG")));templates.Name="OpenTemplates";templates.Click+=delegate {Process.Start(new ProcessStartInfo(ReleaseInfo.RepositoryUrl+"/releases/tag/v"+ReleaseInfo.DisplayVersion){UseShellExecute=true});};guideButtons.Children.Add(templates);var fullGuide=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeH")));fullGuide.Name="OpenImportGuide";fullGuide.Click+=delegate {OpenGuide(Path.Combine("docs","skin-format.md"));};guideButtons.Children.Add(fullGuide);tutorial.Children.Add(guideButtons);guide.Content=tutorial;SettingsSurface.StyleExpander(guide);appearance.Children.Add(guide);var appearanceCard=GlassSurface.Card(appearance);appearanceCard.Padding=new Thickness(12);appearanceCard.Margin=new Thickness(0,0,0,12);root.Children.Add(appearanceCard);
 
             var behavior=new StackPanel{Name="GuideBehaviorSection"}; behavior.Children.Add(Heading(()=>(TextResources.Get("settingsPage.settingsPage.heading.alternativeB"))));
-            follow=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle")),pet.Settings.FollowCursor,delegate(bool value) { if(!refreshing) { pet.Settings.FollowCursor=value; pet.ApplySettings(); } }); follow.Name="FollowCursor"; behavior.Children.Add(follow);
-            wander=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeA")),pet.Settings.Wander,delegate(bool value) { if(!refreshing) { pet.Settings.Wander=value; pet.ApplySettings(); } }); wander.Name="Wander"; behavior.Children.Add(wander);
-            stumble=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeB")),pet.Settings.StumbleEnabled,delegate(bool value) {if(!refreshing){pet.Settings.StumbleEnabled=value;pet.ApplySettings();}});stumble.Name="StumbleEnabled";behavior.Children.Add(stumble);
+            follow=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle")),pet.Settings.FollowCursor,delegate(bool value) { if(!refreshing) { pet.Settings.FollowCursor=value; pet.ApplySettings(); } }); follow.Name="FollowCursor"; behavior.Children.Add(follow);
+            wander=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeA")),pet.Settings.Wander,delegate(bool value) { if(!refreshing) { pet.Settings.Wander=value; pet.ApplySettings(); } }); wander.Name="Wander"; behavior.Children.Add(wander);
+            stumble=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeB")),pet.Settings.StumbleEnabled,delegate(bool value) {if(!refreshing){pet.Settings.StumbleEnabled=value;pet.ApplySettings();}});stumble.Name="StumbleEnabled";behavior.Children.Add(stumble);
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("companions.behavior.stumbleHint")),11,Ui.Muted));
-            autoSleep=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeC")),pet.Settings.AutoSleepEnabled,delegate(bool value){if(!refreshing){pet.Settings.AutoSleepEnabled=value;pet.ApplySettings();}});autoSleep.Name="AutoSleepEnabled";behavior.Children.Add(autoSleep);
+            autoSleep=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeC")),pet.Settings.AutoSleepEnabled,delegate(bool value){if(!refreshing){pet.Settings.AutoSleepEnabled=value;pet.ApplySettings();}});autoSleep.Name="AutoSleepEnabled";behavior.Children.Add(autoSleep);
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeJ")),11,Ui.Muted));
-            top=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeD")),pet.Settings.Topmost,delegate(bool value) { if(!refreshing) { pet.Settings.Topmost=value; pet.ApplySettings(); } }); top.Name="Topmost"; behavior.Children.Add(top);
-            autoStart=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeE")),false,SetAutoStart);autoStart.Name="AutoStart";behavior.Children.Add(autoStart);
+            top=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeD")),pet.Settings.Topmost,delegate(bool value) { if(!refreshing) { pet.Settings.Topmost=value; pet.ApplySettings(); } }); top.Name="Topmost"; behavior.Children.Add(top);
+            autoStart=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeE")),false,SetAutoStart);autoStart.Name="AutoStart";behavior.Children.Add(autoStart);
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeK")),11,Ui.Muted));
-            pause=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeF")),pet.Paused,delegate(bool value) { if(!refreshing) pet.SetPaused(value); }); pause.Name="Pause"; behavior.Children.Add(pause);
+            pause=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeF")),pet.Paused,delegate(bool value) { if(!refreshing) pet.SetPaused(value); }); pause.Name="Pause"; behavior.Children.Add(pause);
             var sizeRow=new DockPanel { Margin=new Thickness(0,10,0,8) };
             sizeLabel=Ui.Text("",12,Ui.Blue); DockPanel.SetDock(sizeLabel,Dock.Right); sizeRow.Children.Add(sizeLabel); sizeRow.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeL")),12)); behavior.Children.Add(sizeRow);
-            size=new Slider { Name="SizeSlider",Minimum=.75,Maximum=2.25,Value=pet.Settings.Scale,TickFrequency=.05,IsSnapToTickEnabled=true,SmallChange=.05,LargeChange=.25,Margin=new Thickness(0,0,0,4) };
+            size=SettingsSurface.StyleSlider(new Slider { Name="SizeSlider",Minimum=.75,Maximum=2.25,Value=pet.Settings.Scale,TickFrequency=.05,IsSnapToTickEnabled=true,SmallChange=.05,LargeChange=.25,Margin=new Thickness(0,0,0,4) },2);
             bool draggingSize=false;
             size.ValueChanged+=delegate { sizeLabel.Text=Math.Round(size.Value*100)+"%"; if(!refreshing) { pet.PreviewScale(size.Value);pet.RequestScaleSave(); } }; behavior.Children.Add(size);
             size.AddHandler(System.Windows.Controls.Primitives.Thumb.DragStartedEvent,new System.Windows.Controls.Primitives.DragStartedEventHandler(delegate{if(!draggingSize){pet.BeginPreferenceEdit();draggingSize=true;}}));
@@ -115,10 +130,10 @@ namespace Dafeiyu
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeM")),11,Ui.Muted)); behaviorPage.Children.Add(GlassSurface.Card(behavior));
 
             var hello=new StackPanel{Name="GuideGreetingSection"};hello.Children.Add(Heading(()=>(TextResources.Get("settingsPage.settingsPage.heading.alternativeC"))));
-            greetings=LocalizedUi.Toggle(()=>(TextResources.Get("greeting.proactive")),pet.Settings.GreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingEnabled=value;pet.ConfigureGreetings();}});greetings.Name="GreetingEnabled";hello.Children.Add(greetings);
-            greetingAutoRead=LocalizedUi.Toggle(()=>TextResources.Get("greeting.autoRead"),pet.Settings.GreetingAutoReadEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingAutoReadEnabled=value;pet.RefreshProactiveGreetingSpeech();pet.SaveSettings();}});greetingAutoRead.Name="GreetingAutoReadEnabled";hello.Children.Add(greetingAutoRead);
+            greetings=SettingsSurface.Toggle(()=>(TextResources.Get("greeting.proactive")),pet.Settings.GreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingEnabled=value;pet.ConfigureGreetings();}});greetings.Name="GreetingEnabled";hello.Children.Add(greetings);
+            greetingAutoRead=SettingsSurface.Toggle(()=>TextResources.Get("greeting.autoRead"),pet.Settings.GreetingAutoReadEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingAutoReadEnabled=value;pet.RefreshProactiveGreetingSpeech();pet.SaveSettings();}});greetingAutoRead.Name="GreetingAutoReadEnabled";hello.Children.Add(greetingAutoRead);
             hello.Children.Add(LocalizedUi.Text(()=>TextResources.Get("greeting.autoReadHelp"),12,Ui.Muted));
-            aiGreetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.greeting.aiEnabled")),pet.Settings.AiGreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.AiGreetingEnabled=value;pet.ConfigureGreetings();}});aiGreetings.Name="AiGreetingEnabled";hello.Children.Add(aiGreetings);
+            aiGreetings=SettingsSurface.Toggle(()=>(TextResources.Get("settingsPage.greeting.aiEnabled")),pet.Settings.AiGreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.AiGreetingEnabled=value;pet.ConfigureGreetings();}});aiGreetings.Name="AiGreetingEnabled";hello.Children.Add(aiGreetings);
             hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.greeting.aiHelp")),12,Ui.Muted));
             hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.greeting.quietHelp")),12,Ui.Muted));
             var interval=new WrapPanel{Margin=new Thickness(0,12,0,4),VerticalAlignment=VerticalAlignment.Center};
@@ -136,7 +151,7 @@ namespace Dafeiyu
             hello.Children.Add(LocalizedUi.Text(()=>TextResources.Get("settingsPage.greetingPreviewHelp"),11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));var observationCard=GlassSurface.Card(CreateObservationSettingsGroup());observationCard.Margin=new Thickness(0,36,0,0);greetingPage.Children.Add(observationCard);
 
             notice=Ui.Text("",11,Ui.Muted); notice.Margin=new Thickness(0,12,0,0);
-            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
+            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(SettingsSurface.Scroll(root),SettingsSurface.Scroll(behaviorPage),SettingsSurface.Scroll(greetingPage),notice);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
             navigation=new ListBox{Name="SettingsNavigation",BorderThickness=new Thickness(0),Background=Brushes.Transparent,Margin=new Thickness(10,0,10,0),Padding=new Thickness(0)};
             ScrollViewer.SetHorizontalScrollBarVisibility(navigation,ScrollBarVisibility.Disabled);
             int[] routeIds={0,1,6,2,7,3};
@@ -272,7 +287,8 @@ namespace Dafeiyu
             if(restoreCompanions!=null)restoreCompanions.IsEnabled=pet.Catalog.HasRemoved;
             refreshing=true; follow.IsChecked=pet.Settings.FollowCursor; wander.IsChecked=pet.Settings.Wander;stumble.IsChecked=pet.Settings.StumbleEnabled;autoSleep.IsChecked=pet.Settings.AutoSleepEnabled;
             top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;greetingAutoRead.IsChecked=pet.Settings.GreetingAutoReadEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
-            sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin; refreshing=false;
+            sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin;
+            companionEffect.SelectedValue=pet.Settings.CompanionTransitionEffect; refreshing=false;
             RefreshAutoStart();if(observationGroup!=null)RefreshObservation();if(IsVisible)RefreshActiveCategory();
         }
         private void HolidayWardrobeChanged(object sender,EventArgs args)

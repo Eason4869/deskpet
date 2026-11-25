@@ -145,6 +145,7 @@ internal sealed partial class DesktopController : IDisposable
         if(Skin.Snapshot!=null||Skin.Bundle!=null)activeCompanionPins=Task.Run(()=>companionAssets.Prepare(Skin)).GetAwaiter().GetResult();
         Pet = new PetWindow(this, companionAssets);ObserveNotificationSession(Session);
         relationshipFeedback=new RelationshipFeedback(Relationships,id=>!exiting&&id==RelationshipCompanionId&&!Settings.QuietMode&&Pet.RelationshipFeedbackAllowed,ShowRelationshipFeedback,null,action=>Dispatcher.UIThread.Post(action));
+        ScheduledTasks = new ScheduledTaskRuntime(DataDirectory, DataMaintenance, Api, () => Settings.Copy());
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
@@ -162,6 +163,7 @@ internal sealed partial class DesktopController : IDisposable
     public void Start()
     {
         RegisterHotkeys();
+        StartScheduledTasks();
         if (startupReleaseNotes != null || showAutomaticGuide) Dispatcher.UIThread.Post(() => Run(ShowStartupWindowsAsync));
         Dispatcher.UIThread.Post(() => Run(StartOfficialCompanionsAsync));
         if (!string.IsNullOrWhiteSpace(store.Warning)) Dispatcher.UIThread.Post(() => Error(new InvalidOperationException(store.Warning)));
@@ -215,6 +217,14 @@ internal sealed partial class DesktopController : IDisposable
     internal void SaveWebSearchDraft(WebSearchSettings search)
     {
         using(DataMaintenance.EnterActivity()){var draft=Settings.Copy();draft.WebSearch=search.Copy();store.Save(draft);Settings.WebSearch=search.Copy();Notify();}
+    }
+    internal void SetThemeMode(string mode)
+    {
+        mode = ThemeColors.Normalize(mode);
+        bool changed = Settings.ThemeMode != mode;
+        Settings.ThemeMode = mode;
+        if (DesktopTheme.Mode != mode) DesktopTheme.Apply(mode);
+        if (changed) Save();
     }
     public void Save() { Observation.Invalidate();if(DataMaintenance.IsMaintenanceActive||observationSaving){deferredSettingsSave=true;return;}store.Save(Settings);deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
     internal async Task<string> FlushDeferredSettingsAsync()
@@ -345,6 +355,7 @@ internal sealed partial class DesktopController : IDisposable
             await WorkBindings.StopForExitAsync(deadline.Token).WaitAsync(deadline.Token);
             await ordinary;
             await HolidayKeepsakes.ShutdownAsync();
+            await StopScheduledTasksAsync();
             await Dispatcher.UIThread.InvokeAsync(()=>{exitPrepared=true;lifetime.Shutdown();});
         }
         catch(OperationCanceledException error){exiting=false;throw new InvalidOperationException(TextResources.Get("agentJobs.exitBlocked"),error);}
@@ -381,6 +392,7 @@ internal sealed partial class DesktopController : IDisposable
         companionAssets.DefaultClipFailed-=DefaultCompanionFailed;
         companionInstallationBubble?.Shutdown();companionRefreshProgress?.Dispose();
         var companions=ShutdownCompanionsAsync();
+        var scheduled = StopScheduledTasksAsync();
         lifetime.ShutdownRequested-=ShutdownRequested;
         CloseAgentJobViews();DisposeNotificationServices();DisposeProactiveGreetingSpeech();
         proactiveHistory?.Close();
@@ -392,6 +404,8 @@ internal sealed partial class DesktopController : IDisposable
         foreach(var binding in hotkeys)binding.Dispose();
         var independent=Task.Run(async()=>
         {
+            await scheduled;
+            ScheduledTasks.Dispose();
             await ObservationSettingsIdle;
             await Observation.DrainAsync();await DrainProactiveBindingsAsync();
             try{await applicationExitDrain;}catch(Exception){}
