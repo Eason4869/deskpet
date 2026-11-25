@@ -90,6 +90,7 @@ foreach ($sound in @('task-complete','review-needed','permission-needed','attent
 }
 $localeAssets = @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES') | ForEach-Object { '/resource:' + (Join-Path $projectRoot ('assets/locales/' + $_ + '.json')) + ',Dafeiyu.Locales.' + $_ + '.json' }
 $assets += $localeAssets
+$assets += @('CHANGELOG.md','CHANGELOG.en.md') | ForEach-Object { '/resource:' + (Join-Path $projectRoot $_) + ',Dafeiyu.ReleaseNotes.' + $_ }
 # Fixed selected scene list; production and focused fixtures preserve all originals.
 foreach ($sceneCharacter in @('e-bao','dafeiyu','marfu','xiaobei','gugugaga')) {
     foreach ($sceneStage in @('first_meeting','familiar','close','trusted','heartfelt','best_friend','halloween','christmas','spring-festival','lantern','valentines-day','qingming','dragon-boat','mid-autumn','national-day','qixi')) {

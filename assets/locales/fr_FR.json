@@ -5091,5 +5091,14 @@
   "operationSounds.appear": "Écouter l’apparition",
   "operationSounds.switch": "Écouter le changement",
   "operationSounds.hide": "Écouter le masquage",
-  "onboarding.companionOfflineDefaults": "Les actions habituelles d’Ebao fonctionnent hors ligne ; ses tenues de fête sont préparées en arrière-plan après sélection. Vos compagnons et tenues restent utilisables, et les mises à jour s’appliquent automatiquement dès qu’elles sont prêtes. Les autres compagnons s’installent à leur première sélection. Les préférences de personnalité et de voix sont enregistrées par compagnon."
+  "onboarding.companionOfflineDefaults": "Les actions habituelles d’Ebao fonctionnent hors ligne ; ses tenues de fête sont préparées en arrière-plan après sélection. Vos compagnons et tenues restent utilisables, et les mises à jour s’appliquent automatiquement dès qu’elles sont prêtes. Les autres compagnons s’installent à leur première sélection. Les préférences de personnalité et de voix sont enregistrées par compagnon.",
+  "releaseNotes.updated": "Mise à jour vers la v{0}",
+  "releaseNotes.since": "Modifications depuis la v{0}",
+  "releaseNotes.latest": "Modifications de cette version",
+  "releaseNotes.preview": "Aperçu de développement",
+  "releaseNotes.stable": "Version stable",
+  "releaseNotes.details": "Détails ↗",
+  "releaseNotes.full": "Voir le journal complet",
+  "releaseNotes.dismiss": "Compris",
+  "releaseNotes.empty": "Les notes de cette version sont disponibles sur la page de publication."
 }

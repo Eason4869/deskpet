@@ -5091,5 +5091,14 @@
   "operationSounds.appear": "試聽顯示",
   "operationSounds.switch": "試聽切換",
   "operationSounds.hide": "試聽隱藏",
-  "onboarding.companionOfflineDefaults": "鵝寶的一般動作可離線使用，節日服裝在選取後於背景補齊。已有夥伴和服裝可繼續使用，更新準備好後自動套用。其他夥伴首次選取時按需安裝；人格與聲音偏好依夥伴分別儲存。"
+  "onboarding.companionOfflineDefaults": "鵝寶的一般動作可離線使用，節日服裝在選取後於背景補齊。已有夥伴和服裝可繼續使用，更新準備好後自動套用。其他夥伴首次選取時按需安裝；人格與聲音偏好依夥伴分別儲存。",
+  "releaseNotes.updated": "已更新至 v{0}",
+  "releaseNotes.since": "自 v{0} 以來的更新",
+  "releaseNotes.latest": "此版本的更新",
+  "releaseNotes.preview": "開發預覽版",
+  "releaseNotes.stable": "正式版",
+  "releaseNotes.details": "詳細資料 ↗",
+  "releaseNotes.full": "查看完整更新內容",
+  "releaseNotes.dismiss": "知道了",
+  "releaseNotes.empty": "這個版本的更新說明可在發行頁面查看。"
 }

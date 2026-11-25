@@ -27,6 +27,7 @@ internal sealed partial class DesktopController : IDisposable
     private Window? imageNotification;
     private string? imageNotificationId;
     private readonly bool showAutomaticGuide;
+    private readonly ReleaseNotes? startupReleaseNotes;
     internal bool ShouldShowAutomaticGuide => showAutomaticGuide;
     internal bool IsExiting=>exiting;
     public Dictionary<string, string> Drafts { get; } = new();
@@ -82,6 +83,8 @@ internal sealed partial class DesktopController : IDisposable
         bool firstLaunch = !File.Exists(settingsPath);
         store = new SettingsStore(settingsPath); Settings = store.Load();
         TextResources.ConfigureStartupLanguage(Settings.UiLanguage);
+        try { startupReleaseNotes = ReleaseNotes.ForStartup(DataDirectory, ReleaseInfo.DisplayVersion, !firstLaunch, Settings.LastCompanionUpgradeVersion); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.TraceWarning(error.GetType().Name); }
         DesktopTheme.Apply(Settings.ThemeMode);
         // The Avalonia client starts in chat; Mac has no local file Agent.
         // Shared settings also serve the WPF client, whose default is work.
@@ -159,9 +162,30 @@ internal sealed partial class DesktopController : IDisposable
     public void Start()
     {
         RegisterHotkeys();
-        if (showAutomaticGuide) Dispatcher.UIThread.Post(ShowGuide);
+        if (startupReleaseNotes != null || showAutomaticGuide) Dispatcher.UIThread.Post(() => Run(ShowStartupWindowsAsync));
         Dispatcher.UIThread.Post(() => Run(StartOfficialCompanionsAsync));
         if (!string.IsNullOrWhiteSpace(store.Warning)) Dispatcher.UIThread.Post(() => Error(new InvalidOperationException(store.Warning)));
+    }
+
+    private async Task ShowStartupWindowsAsync()
+    {
+        if (startupReleaseNotes is { } notes)
+        {
+            var window = new ReleaseNotesWindow(notes, Error);
+            window.Opened += (_, _) => {
+                try { notes.MarkSeen(); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.TraceWarning(error.GetType().Name); }
+            };
+            if (Pet.IsVisible) await window.ShowDialog(Pet);
+            else
+            {
+                var closed = new TaskCompletionSource();
+                window.Closed += (_, _) => closed.SetResult();
+                window.Show();
+                await closed.Task;
+            }
+        }
+        if (!exiting && showAutomaticGuide) ShowGuide();
     }
     private void ImageTaskCompleted(ImageGenerationTaskSnapshot task)
     {

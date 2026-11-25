@@ -5091,5 +5091,14 @@
   "operationSounds.appear": "表示音を試聴",
   "operationSounds.switch": "切り替え音を試聴",
   "operationSounds.hide": "非表示音を試聴",
-  "onboarding.companionOfflineDefaults": "鵝宝の通常動作はオフラインで使えます。選択すると祝日衣装をバックグラウンドで準備します。既存の仲間や衣装は引き続き使え、準備が整うと更新が自動で適用されます。他の仲間は初回選択時にインストールします。人格と音声の設定は仲間ごとに保存されます。"
+  "onboarding.companionOfflineDefaults": "鵝宝の通常動作はオフラインで使えます。選択すると祝日衣装をバックグラウンドで準備します。既存の仲間や衣装は引き続き使え、準備が整うと更新が自動で適用されます。他の仲間は初回選択時にインストールします。人格と音声の設定は仲間ごとに保存されます。",
+  "releaseNotes.updated": "v{0} に更新しました",
+  "releaseNotes.since": "v{0} 以降の変更",
+  "releaseNotes.latest": "このバージョンの変更",
+  "releaseNotes.preview": "開発プレビュー版",
+  "releaseNotes.stable": "正式版",
+  "releaseNotes.details": "詳細 ↗",
+  "releaseNotes.full": "変更履歴をすべて表示",
+  "releaseNotes.dismiss": "確認しました",
+  "releaseNotes.empty": "このバージョンの変更内容はリリースページで確認できます。"
 }

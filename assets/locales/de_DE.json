@@ -5091,5 +5091,14 @@
   "operationSounds.appear": "Erscheinen anhören",
   "operationSounds.switch": "Wechsel anhören",
   "operationSounds.hide": "Ausblenden anhören",
-  "onboarding.companionOfflineDefaults": "Ebaos normale Aktionen funktionieren offline; Festtagskostüme werden nach der Auswahl im Hintergrund vorbereitet. Vorhandene Begleiter und Kostüme bleiben nutzbar. Fertige Updates werden automatisch angewendet. Andere Begleiter werden bei der ersten Auswahl installiert. Persönlichkeit und Stimme werden je Begleiter gespeichert."
+  "onboarding.companionOfflineDefaults": "Ebaos normale Aktionen funktionieren offline; Festtagskostüme werden nach der Auswahl im Hintergrund vorbereitet. Vorhandene Begleiter und Kostüme bleiben nutzbar. Fertige Updates werden automatisch angewendet. Andere Begleiter werden bei der ersten Auswahl installiert. Persönlichkeit und Stimme werden je Begleiter gespeichert.",
+  "releaseNotes.updated": "Auf v{0} aktualisiert",
+  "releaseNotes.since": "Änderungen seit v{0}",
+  "releaseNotes.latest": "Änderungen in dieser Version",
+  "releaseNotes.preview": "Entwicklungsvorschau",
+  "releaseNotes.stable": "Stabile Version",
+  "releaseNotes.details": "Details ↗",
+  "releaseNotes.full": "Vollständiges Änderungsprotokoll anzeigen",
+  "releaseNotes.dismiss": "Verstanden",
+  "releaseNotes.empty": "Die Hinweise zu dieser Version stehen auf der Release-Seite."
 }

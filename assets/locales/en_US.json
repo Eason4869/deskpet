@@ -5091,5 +5091,14 @@
   "operationSounds.appear": "Preview appear",
   "operationSounds.switch": "Preview switch",
   "operationSounds.hide": "Preview hide",
-  "onboarding.companionOfflineDefaults": "Ebao’s regular actions work offline; holiday outfits prepare in the background when selected. Existing companions and outfits remain usable, and updates apply automatically when ready. Other companions install on first selection. Persona and voice preferences are saved separately for each companion."
+  "onboarding.companionOfflineDefaults": "Ebao’s regular actions work offline; holiday outfits prepare in the background when selected. Existing companions and outfits remain usable, and updates apply automatically when ready. Other companions install on first selection. Persona and voice preferences are saved separately for each companion.",
+  "releaseNotes.updated": "Updated to v{0}",
+  "releaseNotes.since": "Changes since v{0}",
+  "releaseNotes.latest": "Changes in this release",
+  "releaseNotes.preview": "Development preview",
+  "releaseNotes.stable": "Stable release",
+  "releaseNotes.details": "Details ↗",
+  "releaseNotes.full": "View full changelog",
+  "releaseNotes.dismiss": "Got it",
+  "releaseNotes.empty": "See the release page for the notes for this version."
 }

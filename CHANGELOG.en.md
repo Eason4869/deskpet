@@ -2,7 +2,15 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
-## 1.0.6-dev.3 · Development preview
+## 1.0.6 · Production release
+
+- A scrollable release notes dialog opens the first time DeskPet starts after an upgrade. Stable and development preview builds show their own release notes. When the previous version is known, the dialog includes the relevant versions skipped during the upgrade. Chinese and English notes are bundled for offline reading.
+- The Windows work agent stores execution logs per task and migrates older logs automatically. It tracks completion, failure, cancellation and restart interruption separately, preserves confirmed results when a task resumes, and prompts for review when an outcome is uncertain.
+- The work task panel shows model request counts and recorded token usage, with controls to stop or resume a task.
+- Work agent reply fragments, tool progress and result summaries are saved as encrypted events. Reopening an interrupted conversation restores those details and marks the turn as incomplete in Windows and macOS. Replay makes no model or tool calls.
+- The Windows uninstaller shows progress and a dedicated completion page. It keeps application data by default and offers to remove settings, chat history and remaining files from the current installation after uninstalling.
+
+## [1.0.6-dev.3](https://github.com/Eason4869/deskpet/releases/tag/v1.0.6-dev.3) · Development preview
 
 - The Windows uninstall wizard uses the installer’s branding and companion artwork, with a progress view and a dedicated completion page.
 - The completion page keeps application data by default and lets you remove settings, chat history, and app files stored in the current installation.

@@ -5091,5 +5091,14 @@
   "operationSounds.appear": "Ouvir aparição",
   "operationSounds.switch": "Ouvir troca",
   "operationSounds.hide": "Ouvir ocultação",
-  "onboarding.companionOfflineDefaults": "As ações normais de Ebao funcionam offline; os trajes festivos são preparados em segundo plano ao selecioná-lo. Os companheiros e trajes existentes continuam disponíveis, e as atualizações são aplicadas automaticamente quando prontas. Outros companheiros são instalados na primeira seleção. Preferências de personalidade e voz são salvas por companheiro."
+  "onboarding.companionOfflineDefaults": "As ações normais de Ebao funcionam offline; os trajes festivos são preparados em segundo plano ao selecioná-lo. Os companheiros e trajes existentes continuam disponíveis, e as atualizações são aplicadas automaticamente quando prontas. Outros companheiros são instalados na primeira seleção. Preferências de personalidade e voz são salvas por companheiro.",
+  "releaseNotes.updated": "Atualizado para v{0}",
+  "releaseNotes.since": "Alterações desde v{0}",
+  "releaseNotes.latest": "Alterações nesta versão",
+  "releaseNotes.preview": "Prévia de desenvolvimento",
+  "releaseNotes.stable": "Versão estável",
+  "releaseNotes.details": "Detalhes ↗",
+  "releaseNotes.full": "Ver todas as alterações",
+  "releaseNotes.dismiss": "Entendi",
+  "releaseNotes.empty": "As notas desta versão estão na página de lançamento."
 }

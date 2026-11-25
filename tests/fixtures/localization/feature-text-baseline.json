@@ -3516,6 +3516,60 @@
       "expected": "视频帧",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "releaseNotes.details",
+      "expected": "详情 ↗",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "releaseNotes.dismiss",
+      "expected": "知道了",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "releaseNotes.empty",
+      "expected": "这个版本的更新说明可在发布页查看。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "releaseNotes.full",
+      "expected": "查看完整更新内容",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "releaseNotes.latest",
+      "expected": "本版本更新",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "releaseNotes.preview",
+      "expected": "开发预览版",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "releaseNotes.since",
+      "expected": "自 v{0} 以来的更新",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "releaseNotes.stable",
+      "expected": "正式版",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "releaseNotes.updated",
+      "expected": "已更新到 v{0}",
+      "format": true,
+      "argument_count": 1
     }
   ]
 }

@@ -5091,5 +5091,14 @@
   "operationSounds.appear": "Pratinjau suara muncul",
   "operationSounds.switch": "Pratinjau suara ganti",
   "operationSounds.hide": "Pratinjau suara sembunyi",
-  "onboarding.companionOfflineDefaults": "Gerakan biasa Ebao tersedia offline; kostum hari raya disiapkan di latar belakang saat dipilih. Pendamping dan kostum yang ada tetap dapat digunakan, dan pembaruan diterapkan otomatis saat siap. Pendamping lain dipasang saat pertama dipilih. Preferensi kepribadian dan suara disimpan terpisah untuk tiap pendamping."
+  "onboarding.companionOfflineDefaults": "Gerakan biasa Ebao tersedia offline; kostum hari raya disiapkan di latar belakang saat dipilih. Pendamping dan kostum yang ada tetap dapat digunakan, dan pembaruan diterapkan otomatis saat siap. Pendamping lain dipasang saat pertama dipilih. Preferensi kepribadian dan suara disimpan terpisah untuk tiap pendamping.",
+  "releaseNotes.updated": "Diperbarui ke v{0}",
+  "releaseNotes.since": "Perubahan sejak v{0}",
+  "releaseNotes.latest": "Perubahan dalam versi ini",
+  "releaseNotes.preview": "Pratinjau pengembangan",
+  "releaseNotes.stable": "Rilis stabil",
+  "releaseNotes.details": "Detail ↗",
+  "releaseNotes.full": "Lihat semua perubahan",
+  "releaseNotes.dismiss": "Mengerti",
+  "releaseNotes.empty": "Catatan untuk versi ini tersedia di halaman rilis."
 }

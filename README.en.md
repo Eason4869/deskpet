@@ -4,9 +4,9 @@
 
 A desktop companion for interactions, conversation and project work.
 
-**1.0.5 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
+**Source version 1.0.6 (stable)** · [Download the latest published stable release](https://github.com/Eason4869/deskpet/releases/latest) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Version 1.0.5 adds local attachment reading with selectable ranges for legacy Word and Excel files, modern Office documents, PDFs, archives, SQLite, and common media formats. It also adds per-model removal in Windows and improves installer startup and companion switching. See the [changelog](CHANGELOG.en.md).
+Version 1.0.6 adds post-update release notes, improves work agent records and interrupted conversation recovery, and adds a Windows uninstall wizard. See the [1.0.6 changelog](CHANGELOG.en.md#106--production-release).
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
@@ -16,12 +16,14 @@ Version 1.0.5 adds local attachment reading with selectable ranges for legacy Wo
 
 | Platform | Requirements | Download and scope |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.5 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.5) and choose the `DeskPet-Windows-Setup-1.0.5.exe` installer or `DeskPet-Windows-1.0.5.zip` portable package. This page primarily describes Windows. |
+| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [latest stable release](https://github.com/Eason4869/deskpet/releases/latest) and choose the `DeskPet-Windows-Setup-<version>.exe` installer or `DeskPet-Windows-<version>.zip` portable package. This page primarily describes Windows. |
 | **macOS preview** | macOS 14+, Apple Silicon or Intel | Choose the matching `preview` DMG / ZIP on the same release page. The Mac app shares part of the core and has its own interface. Windows file-Agent, tool-tab and terminal support does not imply Mac support. |
 
 The release also provides source, companion packs, an authoring template and SHA256 checksums; consult its actual asset list. Windows packages are currently not code-signed. Mac previews are ad-hoc signed, without Developer ID signing or notarization. Download from [Eason4869/deskpet](https://github.com/Eason4869/deskpet).
 
 The Windows installer installs for the current user, normally without administrator privileges, under `%LOCALAPPDATA%\Programs\EbaoDeskPet`. For a portable installation, fully extract the ZIP to a writable folder and launch **桌面伙伴.exe**. Do not run it inside the archive.
+
+Starting with 1.0.6, DeskPet shows release notes on the first launch after an upgrade. Stable builds show stable release changes. Development previews with a `-dev.N` suffix show preview changes. The dialog works offline, and **Details** opens the corresponding release page.
 
 ## Quick start
 

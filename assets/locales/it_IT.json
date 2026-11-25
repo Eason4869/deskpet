@@ -5091,5 +5091,14 @@
   "operationSounds.appear": "Ascolta comparsa",
   "operationSounds.switch": "Ascolta cambio",
   "operationSounds.hide": "Ascolta scomparsa",
-  "onboarding.companionOfflineDefaults": "Le azioni normali di Ebao funzionano offline; gli abiti festivi vengono preparati in sottofondo alla selezione. I compagni e gli abiti esistenti restano utilizzabili e gli aggiornamenti si applicano automaticamente quando pronti. Gli altri compagni si installano alla prima selezione. Personalità e voce sono salvate per ogni compagno."
+  "onboarding.companionOfflineDefaults": "Le azioni normali di Ebao funzionano offline; gli abiti festivi vengono preparati in sottofondo alla selezione. I compagni e gli abiti esistenti restano utilizzabili e gli aggiornamenti si applicano automaticamente quando pronti. Gli altri compagni si installano alla prima selezione. Personalità e voce sono salvate per ogni compagno.",
+  "releaseNotes.updated": "Aggiornato alla v{0}",
+  "releaseNotes.since": "Modifiche dalla v{0}",
+  "releaseNotes.latest": "Modifiche in questa versione",
+  "releaseNotes.preview": "Anteprima di sviluppo",
+  "releaseNotes.stable": "Versione stabile",
+  "releaseNotes.details": "Dettagli ↗",
+  "releaseNotes.full": "Vedi il registro completo",
+  "releaseNotes.dismiss": "Ho capito",
+  "releaseNotes.empty": "Le note di questa versione sono disponibili nella pagina di rilascio."
 }
