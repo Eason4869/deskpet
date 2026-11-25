@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.6-dev.5 · Development preview
+
+- Windows and macOS add scheduled tasks. Approval and question prompts now align above the composer.
+- The Windows workspace summary scrolls over its content, hides empty sections, and shows Git changes, plans, and goals separately. Completed subagents stay listed and open in the right-hand pane.
+- In Windows Work mode, use `+` or `@` to enable per-conversation goal or plan mode. Once a plan is ready, confirm to exit plan mode and execute the approved plan.
+- The Windows Plugins page adds GitHub and Gmail integrations with app icons. The workspace supports Git commits, pushes, and pull requests. Gmail uses read-only access. One-click authorization requires the official DeskPet Google OAuth configuration and Google verification.
+
 ## 1.0.6 · Production release
 
 - A scrollable release notes dialog opens the first time DeskPet starts after an upgrade. Stable and development preview builds show their own release notes. When the previous version is known, the dialog includes the relevant versions skipped during the upgrade. Chinese and English notes are bundled for offline reading.

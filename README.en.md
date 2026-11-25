@@ -4,9 +4,9 @@
 
 A desktop companion for interactions, conversation and project work.
 
-**Source version 1.0.6 (stable)** · [Download the latest published stable release](https://github.com/Eason4869/deskpet/releases/latest) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
+**Source version 1.0.6-dev.5 (development preview)** · [Download the latest published stable release](https://github.com/Eason4869/deskpet/releases/latest) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Version 1.0.6 adds post-update release notes, an updated Windows work summary with a GitHub repository shortcut, improved work agent recovery and a Windows uninstall wizard. See the [1.0.6 changelog](CHANGELOG.en.md#106--production-release).
+Version 1.0.6-dev.5 adds scheduled tasks and refines workspace and approval interactions. On Windows, it also adds conversation-scoped goals and planning, plus GitHub and Gmail integrations. See the [1.0.6-dev.5 changelog](CHANGELOG.en.md#106-dev5--development-preview).
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
