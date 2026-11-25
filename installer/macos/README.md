@@ -2,7 +2,7 @@
 
 目标：macOS 14+；分别支持 Apple Silicon（arm64）与 Intel（x86_64）。当前用户没有 Apple Developer 签名证书，默认构建 **preview**：仅做 ad-hoc 完整性签名，不是 Developer ID 签名、不经过 Apple 公证、不自动发布 GitHub Release。
 
-预览包提供双架构 DMG 与 ZIP。发布预览包不等于通过正式签名、公证及全部人工验收。平台支持范围见 [项目说明](../../README.md#平台与升级)；图像工作区与 Windows 文件 Agent 的区别见 [功能说明](../../docs/image-generation.md#对话中的图片与工具)。
+预览包提供双架构 DMG 与 ZIP。发布预览包不等于通过正式签名、公证及全部人工验收。平台支持范围见 [项目说明](../../README.md#下载安装)；图像工作区与 Windows 文件 Agent 的区别见 [功能说明](../../docs/image-generation.md#对话中的图片与工具)。
 
 ## 在 Mac 构建预览
 
