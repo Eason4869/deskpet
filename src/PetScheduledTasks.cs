@@ -54,14 +54,12 @@ namespace Dafeiyu
         void ScheduledTaskCompleted(ScheduledTaskWork work, ScheduledRunState state, string result)
         {
             if (closing || Settings.QuietMode) return;
-            var status = state == ScheduledRunState.Succeeded ? "scheduledTasks.succeeded"
-                : state == ScheduledRunState.Interrupted ? "scheduledTasks.interrupted" : "scheduledTasks.failed";
             var reminder = work.Definition.Kind == ScheduledTaskKind.Reminder ? result : null;
             scheduledTaskNotifications.Enqueue(() =>
             {
                 ShowTrayNotification(
                     () => TextResources.Format("scheduledTasks.notificationResult", work.Definition.Title),
-                    () => reminder ?? TextResources.Get(status),
+                    () => reminder ?? ScheduledTasksPage.StateText(state),
                     () => TextResources.Get("scheduledTasks.openResult"),
                     () => OpenScheduledTaskResult(work.Run.TaskId, work.Run.Id));
                 PlayNotificationCue(state == ScheduledRunState.Succeeded ? NotificationCue.Complete : NotificationCue.Failure,

@@ -86,15 +86,9 @@ internal sealed partial class DesktopController
         }
         var (work, state, result) = scheduledNotices.Dequeue();
         bool reminder = work.Definition.Kind == ScheduledTaskKind.Reminder;
-        string status = state switch
-        {
-            ScheduledRunState.Succeeded => "scheduledTasks.succeeded",
-            ScheduledRunState.Interrupted => "scheduledTasks.interrupted",
-            _ => "scheduledTasks.failed"
-        };
         var notice = ShowTrayNotification(
             () => TextResources.Format("scheduledTasks.notificationResult", work.Definition.Title),
-            () => reminder ? result ?? work.Definition.Content : TextResources.Get(status),
+            () => reminder ? result ?? work.Definition.Content : ScheduledTasksPage.StateText(state),
             () => TextResources.Get("scheduledTasks.openResult"),
             () => OpenScheduledTaskResult(work.Run.TaskId, work.Run.Id),
             ScheduledNoticeName);

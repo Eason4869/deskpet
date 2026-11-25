@@ -350,7 +350,7 @@ namespace Dafeiyu
             return next.HasValue ? TextResources.Format("scheduledTasks.next", FormatLocal(next.Value.Utc)) : TextResources.Get("scheduledTasks.noNext");
         }
 
-        static string StateText(ScheduledRunState state)
+        internal static string StateText(ScheduledRunState state)
         {
             switch (state)
             {
