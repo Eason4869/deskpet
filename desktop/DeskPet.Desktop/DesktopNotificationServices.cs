@@ -15,7 +15,7 @@ internal sealed partial class DesktopController
     internal void StopNotificationSounds()=>notificationSounds?.Stop();
     internal bool NotificationAudioBusy=>ProactiveGreetingSpeechActive||Live.IsActive||Dictation.IsBusy||new[]{Session}.Concat(WorkBindings.Manager.OpenWorkspaces.Select(w=>w.Session)).Concat(ProactiveBindingsSnapshot().Select(b=>b.Session)).Any(s=>s.Stage==ConversationStage.Speaking);
     internal void RefreshCompanionSoundSettings()=>RefreshNotificationSounds();
-    void RefreshNotificationSounds()=>notificationSounds?.Refresh();
+    internal void RefreshNotificationSounds()=>notificationSounds?.Refresh();
     NotificationSoundPlayer SoundPlayer()=>notificationSounds??=new NotificationSoundPlayer(()=>Settings,runtime.CreateLiveOutput,()=>NotificationAudioBusy);
     internal void PreviewCompanionOperation(CompanionOperationCue cue)=>PlayCompanionOperation(cue,true);
     void PlayCompanionOperation(CompanionOperationCue cue,bool preview=false)

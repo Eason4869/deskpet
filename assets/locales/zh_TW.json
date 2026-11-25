@@ -3988,6 +3988,8 @@
   "themeModePicker.themeModePicker.titleModeMode.alternativeB": "深色",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus": "已選取",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus.alternativeA": "未選取",
+  "themeTransition.sound.enabled": "主題切換音效",
+  "themeTransition.sound.volume": "主題切換音量",
   "ui.readOnlyMenu.header": "全選",
   "ui.replySpeechToggle.toggle": "TTS 輸出",
   "ui.replySpeechToggle.toggleToolTip": "自動朗讀文字回覆和 ASR 對話回覆。關閉會停止目前朗讀。Live 音訊由即時語音模式輸出。",

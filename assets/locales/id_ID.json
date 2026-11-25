@@ -3988,6 +3988,8 @@
   "themeModePicker.themeModePicker.titleModeMode.alternativeB": "Gelap",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus": "Terpilih",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus.alternativeA": "Belum dipilih",
+  "themeTransition.sound.enabled": "Suara saat tema berganti",
+  "themeTransition.sound.volume": "Volume suara saat tema berganti",
   "ui.readOnlyMenu.header": "Pilih semua",
   "ui.replySpeechToggle.toggle": "Keluaran TTS",
   "ui.replySpeechToggle.toggleToolTip": "Baca otomatis balasan percakapan teks dan ASR. Mematikannya menghentikan pemutaran saat ini. Audio Live memakai mode suara waktu nyata.",

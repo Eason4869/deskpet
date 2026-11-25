@@ -3988,6 +3988,8 @@
   "themeModePicker.themeModePicker.titleModeMode.alternativeB": "어둡게",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus": "선택됨",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus.alternativeA": "선택되지 않음",
+  "themeTransition.sound.enabled": "테마 전환 효과음",
+  "themeTransition.sound.volume": "테마 전환 음량",
   "ui.readOnlyMenu.header": "모두 선택",
   "ui.replySpeechToggle.toggle": "TTS 출력",
   "ui.replySpeechToggle.toggleToolTip": "텍스트 답변과 ASR 대화 답변을 자동으로 읽어줍니다. 끄면 현재 읽어주기를 중지합니다. Live 오디오는 실시간 음성 모드에서 출력합니다.",

@@ -3988,6 +3988,8 @@
   "themeModePicker.themeModePicker.titleModeMode.alternativeB": "गहरा",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus": "चुना गया",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus.alternativeA": "नहीं चुना गया",
+  "themeTransition.sound.enabled": "थीम बदलने की ध्वनि",
+  "themeTransition.sound.volume": "थीम बदलने की ध्वनि का स्तर",
   "ui.readOnlyMenu.header": "सभी चुनें",
   "ui.replySpeechToggle.toggle": "TTS आउटपुट",
   "ui.replySpeechToggle.toggleToolTip": "टेक्स्ट और ASR बातचीत के उत्तर अपने आप पढ़कर सुनाएँ। बंद करने पर वर्तमान प्लेबैक रुकता है। Live ऑडियो रीयल टाइम आवाज़ मोड उपयोग करता है।",

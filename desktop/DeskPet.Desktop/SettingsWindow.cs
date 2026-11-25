@@ -215,8 +215,25 @@ internal sealed class SettingsWindow : Window
     {
         var s=owner.Settings;
         var theme=new ThemeModePicker(s.ThemeMode);theme.Changed+=owner.SetThemeMode;
+        var themeSound=LocalizedUi.Check(()=>TextResources.Get("themeTransition.sound.enabled"),s.ThemeTransitionSoundEnabled,enabled=>
+        {
+            s.ThemeTransitionSoundEnabled=enabled;
+            owner.RefreshNotificationSounds();
+            owner.Save();
+        });
+        themeSound.Name="ThemeTransitionSoundEnabled";
+        var themeVolume=new Slider{Name="ThemeTransitionSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,
+            IsSnapToTickEnabled=true,Value=s.ThemeTransitionSoundVolume,MinWidth=120};
+        LocalizedUi.Automation(themeVolume,()=>TextResources.Get("themeTransition.sound.volume"));
+        themeVolume.ValueChanged+=(_,_) =>
+        {
+            s.ThemeTransitionSoundVolume=(int)themeVolume.Value;
+            owner.RefreshNotificationSounds();
+            owner.Save();
+        };
         var language=LocalizedUi.AsyncButton(()=>TextResources.Get("menus.language"),async()=>{await new LanguagePickerWindow(s.UiLanguage,owner.SetUiLanguage).ShowDialog(this);},owner.Error);language.Name="SettingsLanguage";
-        var general=SettingsVisual.Group(()=>TextResources.Get("settingsLayout.appearanceGroup"),SettingsVisual.Text(()=>TextResources.Get("settingsLayout.instantSave"),12,true),theme,language);
+        var general=SettingsVisual.Group(()=>TextResources.Get("settingsLayout.appearanceGroup"),SettingsVisual.Text(()=>TextResources.Get("settingsLayout.instantSave"),12,true),
+            theme,themeSound,SettingsVisual.Text(()=>TextResources.Get("themeTransition.sound.volume"),12,true),themeVolume,language);
         var imageMotion=LocalizedUi.Check(()=>TextResources.Get("settingsWindow.behavior.check.alternativeI"),s.ImageGenerationMotionEnabled,v=>{s.ImageGenerationMotionEnabled=v;owner.Save();});imageMotion.Name="ImageGenerationMotionEnabled";
         var notificationSounds=LocalizedUi.Check(()=>TextResources.Get("notificationSounds.enabled"),s.NotificationSoundsEnabled,v=>{s.NotificationSoundsEnabled=v;if(!v)owner.StopNotificationSounds();owner.Save();});notificationSounds.Name="NotificationSoundsEnabled";
         var operationVolume=new Slider{Name="CompanionOperationSoundVolume",Minimum=0,Maximum=100,TickFrequency=1,IsSnapToTickEnabled=true,Value=s.CompanionOperationSoundVolume};LocalizedUi.Automation(operationVolume,()=>TextResources.Get("operationSounds.volume"));operationVolume.ValueChanged+=(_,_)=>{s.CompanionOperationSoundVolume=(int)operationVolume.Value;owner.RefreshCompanionSoundSettings();owner.Save();};

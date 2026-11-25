@@ -3988,6 +3988,8 @@
   "themeModePicker.themeModePicker.titleModeMode.alternativeB": "ダーク",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus": "選択済み",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus.alternativeA": "未選択",
+  "themeTransition.sound.enabled": "テーマ切り替え音",
+  "themeTransition.sound.volume": "テーマ切り替え音の音量",
   "ui.readOnlyMenu.header": "すべて選択",
   "ui.replySpeechToggle.toggle": "TTS出力",
   "ui.replySpeechToggle.toggleToolTip": "テキストの返信と ASR 会話の返信を自動で読み上げます。無効にすると現在の読み上げも停止します。Live の音声はリアルタイム音声モードから出力します。",

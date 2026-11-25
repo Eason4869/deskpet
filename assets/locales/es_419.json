@@ -3988,6 +3988,8 @@
   "themeModePicker.themeModePicker.titleModeMode.alternativeB": "Oscuro",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus": "Seleccionado",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus.alternativeA": "Sin seleccionar",
+  "themeTransition.sound.enabled": "Sonido al cambiar de tema",
+  "themeTransition.sound.volume": "Volumen al cambiar de tema",
   "ui.readOnlyMenu.header": "Seleccionar todo",
   "ui.replySpeechToggle.toggle": "Salida TTS",
   "ui.replySpeechToggle.toggleToolTip": "Lee texto y ASR automáticamente. Apagar detiene audio. Live usa tiempo real.",

@@ -3988,6 +3988,8 @@
   "themeModePicker.themeModePicker.titleModeMode.alternativeB": "Sombre",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus": "Sélectionné",
   "themeModePicker.value.automationAutomationPropertiesSetItemStatus.alternativeA": "Non sélectionné",
+  "themeTransition.sound.enabled": "Son du changement de thème",
+  "themeTransition.sound.volume": "Volume du changement de thème",
   "ui.readOnlyMenu.header": "Tout sélectionner",
   "ui.replySpeechToggle.toggle": "Sortie TTS",
   "ui.replySpeechToggle.toggleToolTip": "Lit automatiquement les réponses écrites et ASR. Désactiver arrête la lecture actuelle. L’audio Live utilise le mode vocal en temps réel.",
