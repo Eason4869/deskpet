@@ -14,6 +14,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Element = Avalonia.Controls.Control;
 namespace DeskPet.Desktop
 #else
@@ -22,12 +23,15 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Element = System.Windows.FrameworkElement;
 namespace Dafeiyu
 #endif
 {
     internal sealed partial class ScheduledTasksPage : UserControl, IDisposable
     {
+        const double RailWidth = 244;
+        const double TemplateInset = 6;
         readonly ScheduledTaskRuntime runtime;
         readonly ListBox tasks = new ListBox { Name = "ScheduledTaskList", BorderThickness = new Thickness(0) };
         readonly TextBox search;
@@ -35,8 +39,17 @@ namespace Dafeiyu
         readonly StackPanel composer = new StackPanel();
         readonly StackPanel pendingAccess = new StackPanel();
         readonly TextBlock error = new TextBlock { TextWrapping = TextWrapping.Wrap };
+        readonly Grid rail = new Grid { Margin = new Thickness(16) };
+        readonly Grid content = new Grid { MaxWidth = 920, Margin = new Thickness(26, 18, 26, 18) };
         readonly ScrollViewer detailScroll;
+        readonly ColumnDefinition railColumn = new ColumnDefinition { Width = new GridLength(RailWidth) };
         readonly List<ChatMessage> turns = new List<ChatMessage>();
+#if NET10_0
+        readonly List<Bitmap> templateImages = new List<Bitmap>();
+#endif
+        UniformGrid starterTemplates;
+        double pageWidth;
+        bool showingTemplates;
         string selectedId, selectedRun;
         string draftInput = "";
         string draftError;
@@ -62,19 +75,22 @@ namespace Dafeiyu
                 drafting = false;
                 RenderDetails(true);
             };
-            var rail = new Grid { Margin = new Thickness(16) };
             Row(rail, Caption(() => TextResources.Get("scheduledTasks.title"), 21, true), GridLength.Auto);
             Row(rail, Actions(
-                ButtonFor(() => TextResources.Get("scheduledTasks.new"), "NewScheduledTask", () => Edit(null), true),
-                ButtonFor(() => TextResources.Get("scheduledTasks.draft"), "DraftScheduledTask", () => OpenDraft(null))), GridLength.Auto);
+                RailAction(() => TextResources.Get("scheduledTasks.new"), "NewScheduledTask", () => Edit(null), true),
+                RailAction(() => TextResources.Get("scheduledTasks.draft"), "DraftScheduledTask", () => OpenDraft(null))), GridLength.Auto);
             Row(rail, Field(() => TextResources.Get("scheduledTasks.search"), search), GridLength.Auto);
             Row(rail, pendingAccess, GridLength.Auto);
             Row(rail, tasks, new GridLength(1, GridUnitType.Star));
             var root = new Grid();
-            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(244) });
+            root.ColumnDefinitions.Add(railColumn);
             root.ColumnDefinitions.Add(new ColumnDefinition());
+            root.SizeChanged += delegate(object sender, SizeChangedEventArgs args)
+            {
+                pageWidth = args.NewSize.Width;
+                ResizeRail();
+            };
             root.Children.Add(new Border { Background = SubtleSurface(), Child = rail });
-            var content = new Grid { MaxWidth = 920, Margin = new Thickness(26, 18, 26, 18) };
             Row(content, error, GridLength.Auto);
             detailScroll = Scroll(details);
             Row(content, detailScroll, new GridLength(1, GridUnitType.Star));
@@ -84,6 +100,17 @@ namespace Dafeiyu
             Content = root;
             runtime.Changed += Refresh;
             Refresh();
+        }
+
+        static Button RailAction(Func<string> label, string name, Action open, bool primary = false)
+        {
+            var button = ButtonFor(label, name, open, primary);
+#if !NET10_0
+            LiveTextBindings.TakeRender(button, "Content", button.Content);
+            button.Content = LocalizedUi.Text(label, button.FontSize, button.Foreground);
+#endif
+            LocalizedUi.Tooltip(button, label);
+            return button;
         }
 
         internal void ShowTask(string id, string runId = null)
@@ -135,21 +162,23 @@ namespace Dafeiyu
 
         void RenderDetails(bool scrollTop)
         {
-            var task = runtime.List().FirstOrDefault(item => item.Definition.Id == selectedId);
+            var snapshots = runtime.List();
+            var task = snapshots.FirstOrDefault(item => item.Definition.Id == selectedId);
+            bool empty = snapshots.Count == 0;
+            if (empty && showingTemplates && !scrollTop) return;
             details.Children.Clear();
             composer.Children.Clear();
+            SetStarterLayout(empty);
             if (scrollTop) detailScroll.ScrollToHome();
             if (task == null)
             {
-                var empty = runtime.List().Count == 0;
                 details.Children.Add(Caption(empty ? (Func<string>)(() => TextResources.Get("scheduledTasks.empty"))
                     : () => TextResources.Get("scheduledTasks.noSelection"), 25, true));
                 if (empty)
                 {
                     details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.emptyHint")));
-                    AddTemplate(() => TextResources.Get("scheduledTasks.templateWater"), () => TextResources.Get("scheduledTasks.templateWaterPrompt"), "WaterTaskTemplate");
-                    AddTemplate(() => TextResources.Get("scheduledTasks.templateReport"), () => TextResources.Get("scheduledTasks.templateReportPrompt"), "ReportTaskTemplate");
-                    AddTemplate(() => TextResources.Get("scheduledTasks.templateWeekend"), () => TextResources.Get("scheduledTasks.templateWeekendPrompt"), "WeekendTaskTemplate");
+                    if (starterTemplates == null) starterTemplates = CreateStarterTemplates();
+                    details.Children.Add(starterTemplates);
                 }
                 return;
             }
@@ -184,17 +213,127 @@ namespace Dafeiyu
             }
         }
 
-        void AddTemplate(Func<string> heading, Func<string> description, string name)
+        void SetStarterLayout(bool show)
         {
-            var title = Caption(heading, 15, true);
-            var subtitle = Caption(description);
-            var card = ButtonFor(() => "", name, () => OpenDraft(description()));
+            showingTemplates = show;
+            details.MaxWidth = show ? 760 : Double.PositiveInfinity;
+            ResizeRail();
+        }
+
+        void ResizeRail()
+        {
+            double width = showingTemplates && pageWidth > 0 ? Math.Max(120, Math.Min(RailWidth, pageWidth * .29)) : RailWidth;
+            if (Math.Abs(railColumn.Width.Value - width) >= .5) railColumn.Width = new GridLength(width);
+            var railMargin = new Thickness(width < 180 ? 10 : 16, 16, width < 180 ? 10 : 16, 16);
+            if (rail.Margin != railMargin) rail.Margin = railMargin;
+            double inset = showingTemplates && pageWidth < 540 ? 16 : 26;
+            var contentMargin = new Thickness(inset, 18, inset, 18);
+            if (content.Margin != contentMargin) content.Margin = contentMargin;
+        }
+
+        UniformGrid CreateStarterTemplates()
+        {
+            var grid = new UniformGrid { Name = "ScheduledTaskTemplates", Columns = 3, Margin = new Thickness(0, 7, 0, 0) };
+            grid.Children.Add(TemplateTile(() => TextResources.Get("scheduledTasks.templateWater"), () => TextResources.Get("scheduledTasks.templateWaterPrompt"), "WaterTaskTemplate", "water"));
+            grid.Children.Add(TemplateTile(() => TextResources.Get("scheduledTasks.templateReport"), () => TextResources.Get("scheduledTasks.templateReportPrompt"), "ReportTaskTemplate", "report"));
+            grid.Children.Add(TemplateTile(() => TextResources.Get("scheduledTasks.templateWeekend"), () => TextResources.Get("scheduledTasks.templateWeekendPrompt"), "WeekendTaskTemplate", "weekend"));
+            grid.Children.Add(TemplateTile(() => TextResources.Get("scheduledTasks.templatePlan"), () => TextResources.Get("scheduledTasks.templatePlanPrompt"), "PlanningTaskTemplate", "planning"));
+            grid.Children.Add(TemplateTile(() => TextResources.Get("scheduledTasks.templateStretch"), () => TextResources.Get("scheduledTasks.templateStretchPrompt"), "StretchTaskTemplate", "stretch"));
+            grid.Children.Add(TemplateTile(() => TextResources.Get("scheduledTasks.templateReading"), () => TextResources.Get("scheduledTasks.templateReadingPrompt"), "ReadingTaskTemplate", "reading"));
+            grid.SizeChanged += delegate(object sender, SizeChangedEventArgs args)
+            {
+                double width = args.NewSize.Width;
+                if (width <= 0) return;
+                int columns = width >= 552 ? 3 : 2;
+                if (grid.Columns != columns) grid.Columns = columns;
+                double side = Math.Max(1, width / columns - TemplateInset * 2);
+                foreach (Button tile in grid.Children)
+                    if (Math.Abs(tile.Height - side) >= .5 || Double.IsNaN(tile.Height)) tile.Height = side;
+            };
+            return grid;
+        }
+
+        Button TemplateTile(Func<string> heading, Func<string> prompt, string name, string icon)
+        {
+            var title = Caption(heading, 14, true);
+            title.Margin = new Thickness(0, 0, 0, 4);
+            title.LineHeight = 17;
+            title.MaxHeight = 34;
+            title.TextTrimming = TextTrimming.CharacterEllipsis;
+            var description = Caption(prompt, 12);
+            description.Margin = new Thickness(0);
+            description.LineHeight = 15;
+            description.MaxHeight = 45;
+            description.TextTrimming = TextTrimming.CharacterEllipsis;
+            var face = new Grid();
+            var artwork = TemplateImage(icon);
+            if (artwork != null) Row(face, artwork, GridLength.Auto);
+            Row(face, title, GridLength.Auto);
+            Row(face, description, new GridLength(1, GridUnitType.Star));
+            var card = ButtonFor(heading, name, () => OpenDraft(prompt()));
             LiveTextBindings.TakeRender(card, "Content", card.Content);
-            card.Content = Column(title, subtitle);
-            LocalizedUi.Automation(card, heading);
+            card.Content = face;
+            card.MinHeight = 0;
+            card.Height = 140;
+            card.Margin = new Thickness(TemplateInset);
+            card.Padding = new Thickness(11);
             card.HorizontalAlignment = HorizontalAlignment.Stretch;
-            card.HorizontalContentAlignment = HorizontalAlignment.Left;
-            details.Children.Add(card);
+            card.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            card.VerticalContentAlignment = VerticalAlignment.Center;
+#if NET10_0
+            card.Background = DesktopTheme.CardSurface;
+            card.BorderBrush = DesktopTheme.CardBorder;
+            description.Foreground = SettingsVisual.Muted;
+            title.MaxLines = 2;
+            description.MaxLines = 3;
+            LiveTextBindings.Bind(card, "AutomationHelpText", prompt,
+                value => Avalonia.Automation.AutomationProperties.GetHelpText((Button)value),
+                (value, text) => Avalonia.Automation.AutomationProperties.SetHelpText((Button)value, (string)text));
+#else
+            card.Background = ThemeManager.CardSurface;
+            card.BorderBrush = ThemeManager.CardBorder;
+            description.Foreground = Ui.Muted;
+            title.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            description.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            LocalizedUi.HelpText(card, prompt);
+#endif
+            LocalizedUi.Tooltip(card, prompt);
+            card.SizeChanged += delegate(object sender, SizeChangedEventArgs args)
+            {
+                bool compact = args.NewSize.Width < 150;
+                double padding = compact ? 8 : 14;
+                card.Padding = new Thickness(padding);
+                description.MaxHeight = compact ? 30 : 45;
+#if NET10_0
+                description.MaxLines = compact ? 2 : 3;
+#else
+                face.Width = Math.Max(0, args.NewSize.Width - 2 * (padding + 1));
+#endif
+                if (artwork != null)
+                    artwork.Width = artwork.Height = Math.Max(24, Math.Min(62, args.NewSize.Width * .25));
+            };
+            return card;
+        }
+
+        Image TemplateImage(string icon)
+        {
+            using (var stream = typeof(ScheduledTasksPage).Assembly.GetManifestResourceStream("Dafeiyu.ScheduledTasks." + icon + ".png"))
+            {
+                if (stream == null) return null;
+#if NET10_0
+                var bitmap = new Bitmap(stream);
+                templateImages.Add(bitmap);
+#else
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+                bitmap.Freeze();
+#endif
+                return new Image { Source = bitmap, Width = 40, Height = 40, Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 7), IsHitTestVisible = false };
+            }
         }
 
         void OpenDraft(string seed)
@@ -213,6 +352,7 @@ namespace Dafeiyu
 
         void RenderDraft(bool focus)
         {
+            SetStarterLayout(false);
             details.Children.Clear();
             composer.Children.Clear();
             details.Children.Add(Caption(() => TextResources.Get("scheduledTasks.draft"), 25, true));
@@ -369,6 +509,10 @@ namespace Dafeiyu
             disposed = true;
             runtime.Changed -= Refresh;
             if (draftCancellation != null) draftCancellation.Cancel();
+#if NET10_0
+            foreach (var image in templateImages) image.Dispose();
+            templateImages.Clear();
+#endif
         }
     }
 }

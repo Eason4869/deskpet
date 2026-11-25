@@ -90,17 +90,16 @@ namespace Dafeiyu.Tests
                 Pump(850);
                 return;
             }
-            var button=All<Button>(chat).Single(b=>b.Name=="AppThemeMode");
-            Click(button);
+            var dark=All<Button>(chat).Single(b=>b.Name=="AppThemeDark");
+            var light=All<Button>(chat).Single(b=>b.Name=="AppThemeLight");
+            var system=All<Button>(chat).Single(b=>b.Name=="AppThemeSystem");
+            Click(dark);
             PumpReveal(effect);
-            Click(button);
-            if(manualOnly&&ThemeManager.IsDark)
-            {
-                Pump(180);
-                Click(button);
-            }
+            Click(light);
             PumpReveal(effect);
             if(manualOnly){Pump(850);return;}
+            Click(system);
+            PumpReveal(effect);
             bool systemDark=ThemeManager.IsDark;
             ThemeManager.SetSystemTheme(!systemDark);
             PumpReveal(effect);
@@ -143,15 +142,22 @@ namespace Dafeiyu.Tests
                 var ink=Ui.Ink;Check(ink.Color.R>160,"startup applies saved dark palette");
                 var main=Window.GetWindow(picker);
                 var motion=All<ComboBox>(main).SingleOrDefault(b=>b.Name=="ThemeTransitionEffect");
-                Check(motion!=null&&Equals(motion.SelectedValue,"flow"),"visual style shows Flow as the default theme animation");
+                Check(motion!=null&&Equals(motion.SelectedValue,ThemeTransitionMotion.RandomSelection),"visual style shows Random as the default theme animation");
                 Check(motion.Items.Cast<ComboBoxItem>().Select(item=>(string)item.Tag).SequenceEqual(ThemeTransitionMotion.Choices),
-                    "the same dropdown contains Off, Flow, Ripple, Refraction and Zipper in order");
+                    "the theme dropdown contains the four effects, Off and Random in order");
+                Check(Enumerable.Range(0,32).All(_=>ThemeTransitionMotion.AnimatedEffects.Contains(ThemeTransitionMotion.Resolve(ThemeTransitionMotion.RandomSelection))),
+                    "Random resolves only to an animated preset");
                 var themeSound=All<CheckBox>(main).Single(b=>b.Name=="ThemeTransitionSoundEnabled");
                 var themeVolume=All<Slider>(main).Single(s=>s.Name=="ThemeTransitionSoundVolume");
                 Check(themeSound.IsChecked==false&&themeVolume.Value==30,"appearance settings expose opt-in sound and 30 percent volume");
                 themeSound.IsChecked=true;themeVolume.Value=41;
                 Check(store.Load().ThemeTransitionSoundEnabled&&store.Load().ThemeTransitionSoundVolume==41,"appearance controls persist both theme audio preferences");
-                Check(All<Button>(main).Count(button=>button.Name=="AppThemeMode") == 1,"main title bar exposes one persistent theme button");
+                var titleSwitch=All<ThemeTitleSwitch>(main).Single();
+                var titleLight=All<Button>(titleSwitch).Single(b=>b.Name=="AppThemeLight");
+                var titleDark=All<Button>(titleSwitch).Single(b=>b.Name=="AppThemeDark");
+                var titleSystem=titleSwitch.SystemButton;
+                var thumb=All<FrameworkElement>(titleSwitch).Single(e=>e.Name=="AppThemeThumb");
+                Check(titleLight.Focusable&&titleDark.Focusable&&titleSystem.Focusable,"main title bar provides direct keyboard-accessible theme choices");
                 var behavior=All<Border>(main).Single(b=>b.Child is Panel&&((Panel)b.Child).Children.OfType<CheckBox>().Any(c=>c.Name=="QuietMode"));
                 Check(Contrast(Painted(behavior.Background),Painted(ThemeManager.Surface))>=1.18,"dark behavior card visibly separates from the settings page");
                 Check(Contrast(Painted(behavior.BorderBrush),Painted(behavior.Background))>=1.5,"dark behavior card has a visible perimeter");
@@ -170,19 +176,30 @@ namespace Dafeiyu.Tests
                 Check(ink.Color.R>160&&HasOverlay(main)==SystemParameters.ClientAreaAnimation,"settings choice also reveals the dark palette");
                 CompleteReveal(main);
                 Check(store.Load().ThemeMode=="dark"&&!HasOverlay(main),"settings selection persists the resulting mode and releases its snapshot");
-                var titleTheme=All<Button>(main).Single(b=>b.Name=="AppThemeMode");
                 Click(lightChoice);CompleteReveal(main);
-                Click(titleTheme);
+                var slide=(TranslateTransform)thumb.RenderTransform;
+                double lightPosition=slide.X;
+                Click(titleDark);
                 if(SystemParameters.ClientAreaAnimation)
                 {
                     Check(HasOverlay(main)&&store.Load().ThemeMode=="light","transition retains the previous stored mode while the reveal is active");
-                    Click(titleTheme);
-                    Check(ThemeManager.Mode=="dark","repeat click coalesces into the current reveal");
+                    var overlay=All<FrameworkElement>(main).Single(e=>e.Name=="LiquidThemeOverlay");
+                    var capsule=titleSwitch.Capsule;
+                    var switchCenter=capsule.TranslatePoint(new Point(capsule.ActualWidth/2,capsule.ActualHeight/2),overlay);
+                    var switchCorner=capsule.TranslatePoint(new Point(1,1),overlay);
+                    var monitorCenter=titleSystem.TranslatePoint(new Point(titleSystem.ActualWidth/2,titleSystem.ActualHeight/2),overlay);
+                    Check(overlay.Clip!=null&&!overlay.Clip.FillContains(switchCenter),"the snapshot leaves the live title thumb visible");
+                    Check(overlay.Clip.FillContains(switchCorner)&&overlay.Clip.FillContains(monitorCenter),"the snapshot covers the title background outside the rounded capsule");
+                    Check(DependencyPropertyHelper.GetValueSource(slide,TranslateTransform.XProperty).IsAnimated,"the title thumb slides during the reveal");
+                    Click(titleDark);
+                    Check(ThemeManager.Mode=="dark","selecting the same side coalesces into the current reveal");
                     CompleteReveal(main);
                 }
-                Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&picker.Value=="dark","title switch saves the mode, updates settings and removes the layer");
-                Click(titleTheme);CompleteReveal(main);
-                Check(store.Load().ThemeMode=="system"&&picker.Value=="system","title button reaches follow-system mode");
+                Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&picker.Value=="dark"&&slide.X>lightPosition,"dark side saves the mode and rests with the thumb on the right");
+                Click(titleLight);CompleteReveal(main);
+                Check(store.Load().ThemeMode=="light"&&slide.X==lightPosition,"light side switches directly from dark and returns the thumb to the left");
+                Click(titleSystem);CompleteReveal(main);
+                Check(store.Load().ThemeMode=="system"&&picker.Value=="system","the separate monitor selects follow-system mode");
                 foreach(bool systemDark in new[]{!ThemeManager.IsDark,ThemeManager.IsDark})
                 {
                     ThemeManager.SetSystemTheme(systemDark);
@@ -191,30 +208,37 @@ namespace Dafeiyu.Tests
                     CompleteReveal(main);
                     Check(!HasOverlay(main)&&store.Load().ThemeMode=="system","system reveal clears without changing the saved preference");
                 }
-                Click(titleTheme);CompleteReveal(main);
-                Check(store.Load().ThemeMode=="light"&&picker.Value=="light","title button cycles back to light");
-                Click(titleTheme);
+                Click(titleLight);CompleteReveal(main);
+                Check(store.Load().ThemeMode=="light"&&picker.Value=="light","the sun leaves follow-system mode directly");
+                Click(titleDark);
                 main.Width-=8;main.UpdateLayout();Pump();
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark","resizing settles the requested theme and clears the layer");
                 motion.SelectedValue=ThemeTransitionMotion.Off;
                 Check(store.Load().ThemeTransitionEffect=="off","changing the motion dropdown immediately persists Off");
                 Click(lightChoice);Pump();
-                Click(titleTheme);
+                Click(titleDark);
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&store.Load().ThemeTransitionEffect=="off",
                     "Off takes effect immediately and survives reload");
-                Click(titleTheme);
+                Click(titleSystem);
                 ThemeManager.SetSystemTheme(!ThemeManager.IsDark);
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="system","Off also suppresses automatic system animation");
                 foreach(string effect in new[]{ThemeTransitionMotion.Ripple,ThemeTransitionMotion.Refraction,ThemeTransitionMotion.Zipper})
                 {
                     motion.SelectedValue=effect;
                     pet.SetThemeMode("light");Pump();
-                    Click(titleTheme);
+                    Click(titleDark);
                     Check(HasOverlay(main)==SystemParameters.ClientAreaAnimation,effect+" uses the native reveal when motion is allowed");
                     CompleteReveal(main);
                     Check(!HasOverlay(main)&&store.Load().ThemeTransitionEffect==effect&&store.Load().ThemeMode=="dark",
                         effect+" selection and completed palette survive reload ("+store.Load().ThemeMode+", "+store.Load().ThemeTransitionEffect+")");
                 }
+                motion.SelectedValue=ThemeTransitionMotion.RandomSelection;
+                pet.SetThemeMode("light");
+                Click(titleDark);
+                Check(HasOverlay(main)==SystemParameters.ClientAreaAnimation,"Random selects a reveal for an actual palette change");
+                CompleteReveal(main);
+                Check(store.Load().ThemeMode=="dark"&&store.Load().ThemeTransitionEffect==ThemeTransitionMotion.RandomSelection,
+                    "Random remains selected after an animated switch");
                 var settingsPage=All<SettingsPage>(main).Single();settingsPage.SelectNavigation(4);Pump();var about=All<AboutPanel>(main).Single();
                 var updateCard=All<Border>(about).Single(b=>b.Background is LinearGradientBrush&&All<Button>(b).Any(c=>c.Name=="CheckUpdates"));
                 Check(Contrast(Painted(updateCard.Background),Painted(ThemeManager.Surface))>=1.18,"dark about update card visibly separates from its page");

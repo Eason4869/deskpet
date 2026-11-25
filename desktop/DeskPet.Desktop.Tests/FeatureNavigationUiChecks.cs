@@ -3,6 +3,7 @@ using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -89,6 +90,38 @@ internal static class FeatureNavigationUiChecks
             Check(chat.CurrentPage == "scheduledTasks" && scheduledNav.Classes.Contains("selected"),
                 "native forward restores the scheduled tasks route and selection");
             var scheduling = Named<ScheduledTasksPage>(chat, "ScheduledTasksPage");
+            var templates = Named<UniformGrid>(scheduling, "ScheduledTaskTemplates");
+            DesktopTheme.Apply("light");
+            foreach (var columns in new[] { 3, 2 })
+            {
+                chat.Width = columns == 3 ? 1100 : 520;
+                Dispatcher.UIThread.RunJobs();
+                chat.UpdateLayout();
+                Capture(chat, "scheduled-templates-" + columns);
+                Check(templates.Columns == columns && templates.Children.Count == 6,
+                    "native empty schedule lays out all six starters in " + columns + " columns");
+                Check(templates.Children.OfType<Button>().All(tile => tile.Focusable && tile.Bounds.Width > 80
+                    && Math.Abs(tile.Bounds.Height - tile.Bounds.Width) <= 1
+                    && tile.GetLogicalDescendants().OfType<Image>().Single().Source is Bitmap { PixelSize.Width: 160 }),
+                    "native scheduled starters are square, focusable, and render their embedded art");
+            }
+            foreach (var suffix in new[] { "Water", "Report", "Weekend", "Plan", "Stretch", "Reading" })
+            {
+                var button = Named<Button>(scheduling, (suffix == "Plan" ? "Planning" : suffix) + "TaskTemplate");
+                var title = TextResources.Get("scheduledTasks.template" + suffix);
+                var prompt = TextResources.Get("scheduledTasks.template" + suffix + "Prompt");
+                Check(Avalonia.Automation.AutomationProperties.GetName(button) == title
+                    && Avalonia.Automation.AutomationProperties.GetHelpText(button) == prompt
+                    && ToolTip.GetTip(button) as string == prompt,
+                    "native starter exposes its localized title and full prompt " + suffix);
+                Click(button);
+                var draftInput = Named<TextBox>(scheduling, "ScheduledTaskDraftInput");
+                Check(draftInput.Text == prompt && draftInput.IsFocused
+                    && !scheduling.GetLogicalDescendants().Contains(templates),
+                    "native starter opens the focused prefilled draft " + suffix);
+                scheduling.ShowTask(null!);
+                Dispatcher.UIThread.RunJobs();
+            }
             var createTask = Named<Button>(scheduling, "NewScheduledTask");
             DesktopTheme.Apply("dark");
             Check(createTask.Background is ISolidColorBrush { Color: { R: < 128, G: < 128, B: < 128 } }

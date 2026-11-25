@@ -102,7 +102,7 @@ internal static class SettingsLazyChecks
                 DesktopTheme.Apply(theme);window.Width=width;window.SelectSection(section);Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var frame=window.CaptureRenderedFrame();frame!.Save(Path.Combine(captures,section+"-"+theme+"-"+width+".png"),new PngBitmapEncoderOptions());
                 var body=window.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(view=>view.Name=="SettingsScrollBody");
-                Check(body?.Content is Border bodyContent&&bodyContent.Bounds.Width<=680&&bodyContent.Bounds.Width<=body.Bounds.Width,
+                Check(body?.Content is Border bodyContent&&bodyContent.Bounds.Width<=SettingsVisual.BodyWidth&&bodyContent.Bounds.Width<=body.Bounds.Width,
                     "settings page uses the shared responsive scroll body "+section+" "+theme+" "+width);
                 if(section=="behavior"){
                     double Right(Control control)=>control.TranslatePoint(new Point(control.Bounds.Width,0),window)!.Value.X;

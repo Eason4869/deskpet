@@ -6,7 +6,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 
 namespace Dafeiyu
@@ -16,7 +15,7 @@ namespace Dafeiyu
         readonly Window window;
         readonly Grid host;
         readonly FrameworkElement content;
-        readonly Button button;
+        readonly ThemeTitleSwitch themeSwitch;
         readonly Action<string> commit;
         readonly TimeSpan duration;
         readonly Func<string> motion;
@@ -33,22 +32,22 @@ namespace Dafeiyu
         bool saveOnFinish;
         TimeSpan? lastRenderingTime;
 
-        internal LiquidThemeReveal(Window window, Grid host, FrameworkElement content, Button button,
+        internal LiquidThemeReveal(Window window, Grid host, FrameworkElement content, ThemeTitleSwitch themeSwitch,
             Action<string> commit, TimeSpan duration, Func<string> motion, BeginLiquidThemeSound beginSound = null)
         {
             this.window = window;
             this.host = host;
             this.content = content;
-            this.button = button;
+            this.themeSwitch = themeSwitch;
             this.commit = commit;
             this.duration = duration;
             this.motion = motion;
             sound = new LiquidThemeSoundBinding(beginSound);
             scrollChanged = OnScrollChanged;
-            if (button != null)
+            if (themeSwitch != null)
             {
-                button.Click += Switch;
-                button.PreviewGotKeyboardFocus += PreservePointerFocus;
+                themeSwitch.Selected += ChangeTheme;
+                themeSwitch.PreviewGotKeyboardFocus += PreservePointerFocus;
             }
             host.SizeChanged += Interrupt;
             window.DpiChanged += Interrupt;
@@ -59,39 +58,28 @@ namespace Dafeiyu
             window.PreviewKeyDown += OnKeyDown;
             window.AddHandler(ScrollViewer.ScrollChangedEvent, scrollChanged, true);
             window.Closed += Closed;
-            ThemeManager.ModeChanged += RefreshIcon;
+            ThemeManager.ModeChanged += RefreshSwitch;
+            ThemeManager.Changed += RefreshSwitch;
             ThemeManager.SystemAppearanceChanging += PrepareSystemAppearance;
             ThemeManager.SystemAppearanceChanged += RevealSystemAppearance;
-            RefreshIcon();
+            if (themeSwitch != null) themeSwitch.Refresh(ThemeManager.Mode, ThemeManager.IsDark, false);
         }
 
-        string Caption()
+        void RefreshSwitch()
         {
-            return TextResources.Get("quietPanel.quietPanel.text") + " · " + ThemeSwitch.Label(ThemeManager.Mode);
-        }
-
-        void RefreshIcon()
-        {
-            if (button == null) return;
-            button.Content = ShellIcons.Image("theme-" + ThemeManager.Mode);
-            LocalizedUi.Set(button, "ToolTip", Caption);
-            LocalizedUi.Automation(button, Caption);
-        }
-
-        void Switch(object sender, RoutedEventArgs args)
-        {
-            ChangeTheme(ThemeSwitch.Next(ThemeManager.Mode), button);
+            if (themeSwitch != null) themeSwitch.Refresh(ThemeManager.Mode, ThemeManager.IsDark,
+                SystemParameters.ClientAreaAnimation);
         }
 
         internal void ChangeTheme(string next, FrameworkElement origin)
         {
-            if (targetMode != null) return;
             if (next == ThemeManager.Mode) return;
-            if (origin != button) settingsOrigin = origin;
+            if (targetMode != null) Finish();
+            if (themeSwitch == null) settingsOrigin = origin;
             sound.Cancel();
             bool wasDark = ThemeManager.IsDark;
             bool reduceMotion = !SystemParameters.ClientAreaAnimation;
-            string effect = motion();
+            string effect = ThemeTransitionMotion.Resolve(motion());
             bool couldChangePalette = next == "system" || (next == "dark") != wasDark;
             if (couldChangePalette && !reduceMotion) Prepare(effect, origin);
             ThemeManager.Apply(next);
@@ -100,13 +88,13 @@ namespace Dafeiyu
             ClearLayer();
             commit(next);
             if (wasDark != ThemeManager.IsDark) sound.Start(ThemeManager.IsDark, duration, true, effect);
-            if (origin == button && wasDark == ThemeManager.IsDark && !reduceMotion && effect != ThemeTransitionMotion.Off) AnimateIcon();
         }
 
         void PrepareSystemAppearance()
         {
             Finish();
-            if (SystemParameters.ClientAreaAnimation) Prepare(motion(), button ?? settingsOrigin);
+            if (SystemParameters.ClientAreaAnimation) Prepare(ThemeTransitionMotion.Resolve(motion()),
+                themeSwitch == null ? settingsOrigin : themeSwitch.SystemButton);
         }
 
         void RevealSystemAppearance()
@@ -128,6 +116,15 @@ namespace Dafeiyu
             if (before == null) return;
             paths = ThemeRevealPaths.Create(effect, content.ActualWidth, content.ActualHeight, origin.X, origin.Y);
             layer = new SnapshotLayer(before, content.RenderSize, paths);
+            var capsule = themeSwitch == null ? null : themeSwitch.Capsule;
+            if (capsule != null && capsule.IsVisible && capsule.ActualWidth > 0 && capsule.ActualHeight > 0)
+            {
+                var capsuleBounds = capsule.TransformToVisual(content).TransformBounds(new Rect(capsule.RenderSize));
+                double radius = capsule.CornerRadius.TopLeft;
+                layer.Clip = new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(content.RenderSize)),
+                    new RectangleGeometry(capsuleBounds, radius * capsuleBounds.Width / capsule.ActualWidth,
+                        radius * capsuleBounds.Height / capsule.ActualHeight));
+            }
             activeDuration = ThemeTransitionMotion.Duration(effect, duration);
             activeEffect = effect;
             host.Children.Add(layer);
@@ -147,22 +144,6 @@ namespace Dafeiyu
             if (persist) sound.Start(targetDark, activeDuration, false, activeEffect);
             CompositionTarget.Rendering += RenderFrame;
             return true;
-        }
-
-        void AnimateIcon()
-        {
-            var icon = button == null ? null : button.Content as FrameworkElement;
-            if (icon == null) return;
-            var scale = new ScaleTransform(1, 1);
-            icon.RenderTransformOrigin = new Point(.5, .5);
-            icon.RenderTransform = scale;
-            var pulse = new DoubleAnimation(.84, 1, TimeSpan.FromMilliseconds(160))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-                FillBehavior = FillBehavior.Stop
-            };
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty, pulse);
-            scale.BeginAnimation(ScaleTransform.ScaleYProperty, pulse);
         }
 
         BitmapSource Capture()
@@ -243,7 +224,7 @@ namespace Dafeiyu
         }
         void OnMouseDown(object sender, MouseButtonEventArgs args)
         {
-            if (button == null || !button.IsMouseOver) Finish();
+            if (themeSwitch == null || !themeSwitch.IsMouseOver) Finish();
         }
         void PreservePointerFocus(object sender, KeyboardFocusChangedEventArgs args)
         {
@@ -253,7 +234,7 @@ namespace Dafeiyu
         }
         void OnKeyDown(object sender, KeyEventArgs args)
         {
-            if (button == null || !button.IsKeyboardFocusWithin || (args.Key != Key.Space && args.Key != Key.Enter)) Finish();
+            if (themeSwitch == null || !themeSwitch.IsKeyboardFocusWithin || (args.Key != Key.Space && args.Key != Key.Enter)) Finish();
         }
         void Interrupt(object sender, EventArgs args) { Finish(); }
         void VisibilityChanged(object sender, DependencyPropertyChangedEventArgs args)
@@ -287,10 +268,10 @@ namespace Dafeiyu
         public void Dispose()
         {
             Finish();
-            if (button != null)
+            if (themeSwitch != null)
             {
-                button.Click -= Switch;
-                button.PreviewGotKeyboardFocus -= PreservePointerFocus;
+                themeSwitch.Selected -= ChangeTheme;
+                themeSwitch.PreviewGotKeyboardFocus -= PreservePointerFocus;
             }
             host.SizeChanged -= Interrupt;
             window.DpiChanged -= Interrupt;
@@ -301,7 +282,8 @@ namespace Dafeiyu
             window.PreviewKeyDown -= OnKeyDown;
             window.RemoveHandler(ScrollViewer.ScrollChangedEvent, scrollChanged);
             window.Closed -= Closed;
-            ThemeManager.ModeChanged -= RefreshIcon;
+            ThemeManager.ModeChanged -= RefreshSwitch;
+            ThemeManager.Changed -= RefreshSwitch;
             ThemeManager.SystemAppearanceChanging -= PrepareSystemAppearance;
             ThemeManager.SystemAppearanceChanged -= RevealSystemAppearance;
         }
@@ -345,10 +327,19 @@ namespace Dafeiyu
                 visuals.Add(after);
                 if (paths.Refraction != null)
                 {
-                    refraction = new DrawingVisual[ThemeRevealPaths.RefractionOpacities.Length];
+                    refraction = new DrawingVisual[RefractionThemeShape.Layers.Length];
                     for (int i = 0; i < refraction.Length; i++)
                     {
-                        refraction[i] = new DrawingVisual { Clip = Geometry.Empty, Opacity = ThemeRevealPaths.RefractionOpacities[i] };
+                        var optics = RefractionThemeShape.Layers[i];
+                        refraction[i] = new DrawingVisual { Clip = Geometry.Empty, Opacity = optics.Opacity };
+                        if (optics.IsTint)
+                        {
+                            var tint = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
+                            for (int stop = 0; stop < RefractionThemeShape.TintStops.Length; stop++)
+                                tint.GradientStops.Add(new GradientStop(ColorOf(optics.TintAt(stop)), RefractionThemeShape.TintStops[stop]));
+                            tint.Freeze();
+                            using (var drawing = refraction[i].RenderOpen()) drawing.DrawRectangle(tint, null, viewport);
+                        }
                         visuals.Add(refraction[i]);
                     }
                 }
@@ -365,9 +356,14 @@ namespace Dafeiyu
                 Draw(after, bitmap, viewport);
                 if (refraction != null)
                 {
-                    var shifted = viewport;
-                    shifted.Offset(ThemeRevealPaths.RefractionOffsetX, ThemeRevealPaths.RefractionOffsetY);
-                    foreach (var band in refraction) Draw(band, bitmap, shifted);
+                    for (int i = 0; i < refraction.Length; i++)
+                    {
+                        var optics = RefractionThemeShape.Layers[i];
+                        if (optics.IsTint) continue;
+                        var shifted = viewport;
+                        shifted.Offset(optics.OffsetX, optics.OffsetY);
+                        Draw(refraction[i], bitmap, shifted);
+                    }
                 }
                 return true;
             }

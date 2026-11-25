@@ -34,16 +34,23 @@ namespace Dafeiyu
             var minimize=ShellIcons.Button("minimize",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons")),()=>SystemCommands.MinimizeWindow(this));minimize.Name="AppMinimize";
             var maximize=ShellIcons.Button("maximize",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeA")),delegate{if(WindowState==WindowState.Maximized)SystemCommands.RestoreWindow(this);else SystemCommands.MaximizeWindow(this);});maximize.Name="AppMaximize";
             var close=ShellIcons.Button("close",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeB")),Close);close.Name="AppClose";
-            var themeButton=ShellIcons.Button("theme-"+ThemeManager.Mode,ThemeSwitch.Label(ThemeManager.Mode),null);
-            themeButton.Name="AppThemeMode";
-            themeButton.GotKeyboardFocus+=delegate{themeButton.BorderBrush=Ui.Blue;};
-            themeButton.LostKeyboardFocus+=delegate{themeButton.BorderBrush=Brushes.Transparent;};
-            foreach(var b in new[]{themeButton,minimize,maximize,close}){b.Width=42;b.Height=36;WindowChrome.SetIsHitTestVisibleInChrome(b,true);captionButtons.Children.Add(b);}DockPanel.SetDock(captionButtons,Dock.Right);top.Children.Add(captionButtons);
+            var themeSwitch=new ThemeTitleSwitch();
+            WindowChrome.SetIsHitTestVisibleInChrome(themeSwitch,true);captionButtons.Children.Add(themeSwitch);
+            foreach(var b in new[]{minimize,maximize,close}){b.Width=42;b.Height=36;WindowChrome.SetIsHitTestVisibleInChrome(b,true);captionButtons.Children.Add(b);}DockPanel.SetDock(captionButtons,Dock.Right);top.Children.Add(captionButtons);
             var navButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
             shellBack=ShellIcons.Button("back",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeC")),()=>TravelPage(-1));shellBack.Name="AppBack";shellForward=ShellIcons.Button("forward",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeD")),()=>TravelPage(1));shellForward.Name="AppForward";
             shellSidebar=ShellIcons.Button("sidebar",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeE")),ToggleAppSidebar);shellSidebar.Name="ToggleAppSidebar";
             foreach(var b in new[]{shellBack,shellForward,shellSidebar}){WindowChrome.SetIsHitTestVisibleInChrome(b,true);navButtons.Children.Add(b);}DockPanel.SetDock(navButtons,Dock.Left);top.Children.Add(navButtons);
-            var menuButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};BuildShellCommands();BuildTitleMenus(menuButtons);DockPanel.SetDock(menuButtons,Dock.Left);top.Children.Add(menuButtons);top.Children.Add(new Border{Background=Brushes.Transparent});frame.Children.Add(top);
+            var menuButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};BuildShellCommands();BuildTitleMenus(menuButtons);
+            var titleMenus=new Viewbox{Child=menuButtons,Stretch=Stretch.Uniform,StretchDirection=StretchDirection.DownOnly,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Center};
+            DockPanel.SetDock(titleMenus,Dock.Left);top.Children.Add(titleMenus);top.Children.Add(new Border{Background=Brushes.Transparent});frame.Children.Add(top);
+            top.SizeChanged+=delegate(object sender,SizeChangedEventArgs args)
+            {
+                double inset=args.NewSize.Width<570?5:11;
+                var padding=new Thickness(inset,0,inset,0);
+                foreach(var menu in menuButtons.Children.OfType<Button>())
+                    if(menu.Padding!=padding)menu.Padding=padding;
+            };
             var body=new Grid();body.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(60)});body.ColumnDefinitions.Add(new ColumnDefinition());
             var railBody=new Grid{Margin=new Thickness(6,8,6,10)};railBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});railBody.RowDefinitions.Add(new RowDefinition());railBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var railTop=new StackPanel();shellHome=ShellIcons.Button("home",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeF")),()=>ShowHomePage());shellHome.Name="ShellHome";shellUsage=ShellIcons.Button("usage",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeG")),ShowUsagePage);shellUsage.Name="ShellUsage";shellMcp=ShellIcons.Button("mcp",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeH")),ShowPluginsPage);shellMcp.Name="ShellMcp";shellSettings=ShellIcons.Button("settings",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeI")),()=>pet.ShowSettings());shellSettings.Name="ShellSettings";shellImages=ShellIcons.Button("image",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeJ")),()=>ShowImagesPage());shellImages.Name="ShellImages";
@@ -54,7 +61,7 @@ namespace Dafeiyu
             appPages=new Grid{Name="AppPageHost",Background=ThemeManager.Surface,ClipToBounds=true};homePage=new Grid{Name="AppHomePage"};homePage.Children.Add(workspaceShell);appPages.Children.Add(homePage);
             var pageFrame=new Border{Name="AppContentFrame",Background=ThemeManager.Surface,CornerRadius=new CornerRadius(16),BorderBrush=Ui.Brush("#E3E7EC"),BorderThickness=new Thickness(1),Child=appPages,ClipToBounds=true};pageFrame.SizeChanged+=delegate{pageFrame.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,pageFrame.ActualWidth),Math.Max(0,pageFrame.ActualHeight)),16,16);};Grid.SetColumn(pageFrame,1);body.Children.Add(pageFrame);Grid.SetRow(body,1);frame.Children.Add(body);
             var themeHost=new Grid{ClipToBounds=true};themeHost.Children.Add(frame);Content=themeHost;
-            ThemeReveal = new LiquidThemeReveal(this,themeHost,frame,themeButton,pet.SetThemeMode,LiquidThemeShape.DefaultDuration,
+            ThemeReveal = new LiquidThemeReveal(this,themeHost,frame,themeSwitch,pet.SetThemeMode,LiquidThemeShape.DefaultDuration,
                 ()=>pet.Settings.ThemeTransitionEffect,pet.PlayThemeSound);
             sidebarHidden=false;shellReady=true;RecordPage("home");RefreshShellAppearance();
             PreviewKeyDown+=ShellKeyDown;PreviewMouseDown+=delegate(object sender,MouseButtonEventArgs e){if(sidebarTemporary&&!navigation.IsMouseOver&&!shellSidebar.IsMouseOver){sidebarTemporary=false;RefreshWorkspaceLayout();}if(e.ChangedButton==MouseButton.XButton1){e.Handled=true;TravelPage(-1);}else if(e.ChangedButton==MouseButton.XButton2){e.Handled=true;TravelPage(1);}};

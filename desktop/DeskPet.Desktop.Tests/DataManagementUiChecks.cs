@@ -44,7 +44,7 @@ internal static class DataManagementUiChecks
             var pageHost=Named<ContentControl>(host,"SettingsPageHost");
             Control CurrentSettingsTab()
             {
-                var tabs=(TabControl)((Border)((ScrollViewer)pageHost.Content!).Content!).Child!;
+                var tabs=(TabControl)pageHost.Content!;
                 return (Control)((TabItem)tabs.SelectedItem!).Content!;
             }
             var retainedPages=new Dictionary<string,object>();
@@ -52,13 +52,13 @@ internal static class DataManagementUiChecks
                 host.SelectSection(route);Dispatcher.UIThread.RunJobs();retainedPages[route]=pageHost.Content!;
                 Check(navigation.SelectedItem!=null&&pageHost.Content is Control&&host.OwnedWindows.Count==0,"native sidebar route reaches retained page without maintenance "+route);
             }
-            host.SelectSection("partner");Dispatcher.UIThread.RunJobs();var persona=CurrentSettingsTab().GetLogicalDescendants().OfType<TextBox>().Single(x=>x.AcceptsReturn);persona.Text="unsaved persona F2";
+            host.SelectSection("partner");Dispatcher.UIThread.RunJobs();var persona=CurrentSettingsTab().GetLogicalDescendants().OfType<TextBox>().Distinct().Single(x=>x.AcceptsReturn);persona.Text="unsaved persona F2";
             host.SelectSection("image");Dispatcher.UIThread.RunJobs();var imageDraft=Named<TextBox>(host,"ImageProviderName");imageDraft.Text="unsaved image provider F2";
             host.SelectSection("storage");Dispatcher.UIThread.RunJobs();host.SelectSection("behavior");Dispatcher.UIThread.RunJobs();
             DesktopTheme.Apply("light");
-            var cachedCard=((Control)retainedPages["storage"]).GetLogicalDescendants().OfType<DataManagementView>().Single().Children.OfType<Border>().First();var lightCardColor=((SolidColorBrush)cachedCard.Background!).Color;
-            var themePicker=CurrentSettingsTab().GetLogicalDescendants().OfType<ThemeModePicker>().Single();
-            Click(themePicker.GetLogicalDescendants().OfType<Button>().Last());
+            var cachedCard=((Control)retainedPages["storage"]).GetLogicalDescendants().OfType<DataManagementView>().Distinct().Single().Children.OfType<Border>().First();var lightCardColor=((SolidColorBrush)cachedCard.Background!).Color;
+            var themePicker=Named<ThemeModePicker>(CurrentSettingsTab(),"ThemeModePicker");
+            Click(Named<Button>(themePicker,"ThemeChoicedark"));
             host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
             Check(ReferenceEquals(pageHost.Content,retainedPages["storage"])&&DesktopTheme.IsDark&&((SolidColorBrush)cachedCard.Background!).Color!=lightCardColor,"cached data page follows actual General theme change");
             host.SelectSection("text");Dispatcher.UIThread.RunJobs();var textPage=pageHost.Content!;var modelNavigationItem=navigation.SelectedItem;host.SelectSection("image");Dispatcher.UIThread.RunJobs();host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
@@ -128,7 +128,9 @@ internal static class DataManagementUiChecks
             Wait(owner.FlushDeferredSettingsAsync());Check(new SettingsStore(settingsPath).Load().X==555&&owner.Settings.Scale==1.7,"failed native reset retains latest position for retry");
             foreach(var theme in new[]{"light","dark"})foreach(int width in new[]{570,790}){DesktopTheme.Apply(theme);host.Width=width;host.Height=860;Dispatcher.UIThread.RunJobs();Capture(host,"data-"+theme+"-"+width);}
             foreach(var fold in host.GetLogicalDescendants().OfType<Expander>().Where(x=>x.Name is "LocalDataDirectory" or "ApplicationTools"))fold.IsExpanded=true;
-            Dispatcher.UIThread.RunJobs();var storageScroll=(ScrollViewer)pageHost.Content!;storageScroll.Offset=new Vector(0,storageScroll.Extent.Height);Dispatcher.UIThread.RunJobs();Capture(host,"data-expanded-bottom");
+            Dispatcher.UIThread.RunJobs();
+            var storageScroll=pageHost.GetVisualDescendants().OfType<ScrollViewer>().Single(view=>view.Name=="SettingsScrollBody"&&view.IsEffectivelyVisible);
+            storageScroll.Offset=new Vector(0,storageScroll.Extent.Height);Dispatcher.UIThread.RunJobs();Capture(host,"data-expanded-bottom");
             host.Width=570;host.Height=760;
             foreach(string route in new[]{"partner","behavior","text","image","asr","speech","live","work","voice","storage"}){
                 host.SelectSection(route);Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();

@@ -62,11 +62,12 @@ internal static class SettingsVisual
         var row=new WrapPanel{Orientation=Orientation.Horizontal};foreach(var control in controls){control.Margin=new Thickness(0,0,8,8);row.Children.Add(control);}return row;
     }
     internal static Border Card(Control child) => new(){Child=child,Padding=new Thickness(18),CornerRadius=new CornerRadius(14),Background=DesktopTheme.CardSurface,BorderBrush=DesktopTheme.CardBorder,BorderThickness=new Thickness(1)};
+    internal const double BodyWidth = 650;
     internal static ScrollViewer ScrollBody(Control content) => new()
     {
         Name = "SettingsScrollBody",
         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-        Content = new Border { MaxWidth = 680, Padding = new Thickness(20, 24), Child = content },
+        Content = new Border { MaxWidth = BodyWidth, Padding = new Thickness(20, 24), Child = content },
     };
     internal static Control SettingRow(Func<string> caption, Control input, double labelSize = 14, bool muted = false) =>
         SettingRow(Text(caption, labelSize, muted), input);

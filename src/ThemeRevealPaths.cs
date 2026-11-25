@@ -4,9 +4,6 @@ namespace Dafeiyu
 {
     internal sealed class ThemeRevealPaths
     {
-        internal const double RefractionOffsetX = 5.6;
-        internal const double RefractionOffsetY = -4.2;
-        internal static readonly double[] RefractionOpacities = { .11, .19, .26, .39, .52 };
         internal const uint ZipperLining = 0x99303948;
         internal const uint ZipperRim = 0xbae4eff6;
         internal const uint ZipperTeeth = 0xeaaab9c8;

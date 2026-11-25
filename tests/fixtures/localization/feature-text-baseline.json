@@ -2342,6 +2342,12 @@
       "argument_count": 0
     },
     {
+      "key": "themeTransition.motion.random",
+      "expected": "随机",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "themeTransition.motion.refraction",
       "expected": "折光",
       "format": false,
@@ -4100,6 +4106,30 @@
       "argument_count": 0
     },
     {
+      "key": "scheduledTasks.templatePlan",
+      "expected": "每日计划",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templatePlanPrompt",
+      "expected": "每天上午 9 点提醒我列出今天最重要的三件事。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateReading",
+      "expected": "睡前阅读",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateReadingPrompt",
+      "expected": "每天晚上 9 点提醒我读 15 分钟书。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "scheduledTasks.templateReport",
       "expected": "周报草稿",
       "format": false,
@@ -4108,6 +4138,18 @@
     {
       "key": "scheduledTasks.templateReportPrompt",
       "expected": "每周五下午 4 点帮我起草一份周报。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateStretch",
+      "expected": "伸展提醒",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateStretchPrompt",
+      "expected": "每个工作日下午 3 点提醒我起身伸展。",
       "format": false,
       "argument_count": 0
     },

@@ -4,8 +4,10 @@
 
 ## 1.0.6-dev.6 · Development preview
 
-- The main chat window on Windows and macOS adds a button for light, dark, and system themes. Appearance settings offer Off, Flow, Ripple, Refraction, and Zipper. Each animation keeps DeskPet's original colors.
-- Appearance settings add optional theme sounds with their own volume. The theme button plays synchronized, locally synthesized water sounds for Flow and Ripple, and a short cue for Refraction and Zipper.
+- On Windows and macOS, select the sun or moon in the main chat window to switch directly between light and dark with a sliding thumb. Select the adjacent monitor to follow the system theme. Appearance settings keep all three theme previews. Window transitions default to Random, with Off, Flow, Ripple, Refraction, and Zipper also available.
+- Each theme animation has its own synchronized, locally synthesized sound. Sounds are off by default and have a separate volume control.
+- Settings pages use narrower, responsive content beneath the existing headings and tabs. Switches align to the right. The animation and volume controls line up with the language selector.
+- The scheduled tasks page shows six colorful template tiles when no tasks exist. Selecting a tile opens an editable draft.
 
 ## 1.0.6-dev.5 · Development preview
 

@@ -6,12 +6,47 @@ namespace Dafeiyu
     {
         const double SweepX = -.8;
         const double SweepY = .6;
-        const double BandWidth = 16;
+        const double BandWidth = 18;
+        const double CentralWidening = .18;
         const double Overscan = 3;
         const double StartFront = 12;
         const double StartBack = -9;
         const double StartSide = 10;
         readonly double originX, originY, near, far, minSide, maxSide;
+
+        internal static readonly OpticalLayer[] Layers =
+        {
+            new OpticalLayer(0, 1, .6, .13),
+            new OpticalLayer(.08, .92, 2, .20),
+            new OpticalLayer(.18, .83, 4.1, .29),
+            new OpticalLayer(.28, .74, 6.3, .39),
+            new OpticalLayer(.38, .64, 8.2, .50),
+            new OpticalLayer(.72, .96, 0, .22, 0x00111b2c),
+            new OpticalLayer(.13, .22, 0, .37, 0x00e8f6fc)
+        };
+        internal static readonly double[] TintStops = { 0, .24, .46, .58, .77, 1 };
+        static readonly byte[] TintAlpha = { 18, 85, 221, 255, 112, 22 };
+
+        internal struct OpticalLayer
+        {
+            internal readonly double LeadingDepth, TrailingDepth, Opacity;
+            readonly double shift;
+            readonly uint tint;
+
+            internal OpticalLayer(double leadingDepth, double trailingDepth, double shift, double opacity, uint tint = 0)
+            {
+                LeadingDepth = leadingDepth;
+                TrailingDepth = trailingDepth;
+                this.shift = shift;
+                Opacity = opacity;
+                this.tint = tint;
+            }
+
+            internal double OffsetX { get { return -SweepX * shift; } }
+            internal double OffsetY { get { return -SweepY * shift; } }
+            internal bool IsTint { get { return tint != 0; } }
+            internal uint TintAt(int stop) { return tint | ((uint)TintAlpha[stop] << 24); }
+        }
 
         internal RefractionThemeShape(double width, double height, double originX, double originY)
         {
@@ -49,20 +84,23 @@ namespace Dafeiyu
             double start = -StartSide * open + (minSide + StartSide) * spread;
             double end = StartSide * open + (maxSide - StartSide) * spread;
             double front = StartFront * open + (far - StartFront) * Smooth((progress - .04) / .96);
-            double bow = 13 * Smooth(progress / .24);
-            double inset = band ? 1.45 * bandIndex * open : 0;
-            double leading = front - inset;
+            double bow = 27 * Smooth(progress / .24);
+            double width = BandWidth * open;
+            double leadingDepth = band ? Layers[bandIndex].LeadingDepth : 0;
+            double leading = front - width * (1 - CentralWidening) * leadingDepth;
+            double leadingBow = bow - width * CentralWidening * leadingDepth;
 
-            double leadingStart = leading + Depth(start, bow);
+            double leadingStart = leading + Depth(start, leadingBow);
             outline.MoveTo(X(leadingStart, start), Y(leadingStart, start));
-            WriteEdge(outline, leading, start, end, bow);
+            WriteEdge(outline, leading, start, end, leadingBow);
             if (band)
             {
-                // The curved trailing edge has the same profile, offset into the revealed theme.
-                double trailing = front - BandWidth * open + inset;
-                double trailingEnd = trailing + Depth(end, bow);
+                double trailingDepth = Layers[bandIndex].TrailingDepth;
+                double trailing = front - width * (1 - CentralWidening) * trailingDepth;
+                double trailingBow = bow - width * CentralWidening * trailingDepth;
+                double trailingEnd = trailing + Depth(end, trailingBow);
                 outline.LineTo(X(trailingEnd, end), Y(trailingEnd, end));
-                WriteEdge(outline, trailing, end, start, bow);
+                WriteEdge(outline, trailing, end, start, trailingBow);
             }
             else
             {

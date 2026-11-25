@@ -98,6 +98,9 @@ if ($Target -eq 'App' -or ($Target -eq 'WpfOfficialCompanionTests' -and ($TestAr
 foreach ($sound in @('task-complete','review-needed','permission-needed','attention-failed','companion-appear','companion-switch','companion-hide')) {
     $assets += '/resource:' + (Join-Path $projectRoot ('assets/sounds/' + $sound + '.wav')) + ',Dafeiyu.Sounds.' + $sound + '.wav'
 }
+foreach ($art in Get-ChildItem -LiteralPath (Join-Path $projectRoot 'assets/scheduled-tasks') -Filter '*.png' -File -ErrorAction SilentlyContinue) {
+    $assets += '/resource:' + $art.FullName + ',Dafeiyu.ScheduledTasks.' + $art.Name
+}
 $localeAssets = @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES') | ForEach-Object { '/resource:' + (Join-Path $projectRoot ('assets/locales/' + $_ + '.json')) + ',Dafeiyu.Locales.' + $_ + '.json' }
 $assets += $localeAssets
 $assets += @('CHANGELOG.md','CHANGELOG.en.md') | ForEach-Object { '/resource:' + (Join-Path $projectRoot $_) + ',Dafeiyu.ReleaseNotes.' + $_ }

@@ -164,14 +164,16 @@ internal sealed partial class ChatWindow : Window
         chatNav = LocalizedUi.Button(() => TextResources.Get("chatWindow.chatWindow.text.alternativeH"), () => Navigate("chat"));
         imagesNav = LocalizedUi.Button(() => TextResources.Get("chatWindow.chatWindow.text.alternativeG"), () => Navigate("images"));
         imagesNav.Name = "ImagesNavigation";
-        var nav = Ui.Row(routeBack, routeForward, chatNav, imagesNav);
-        if (!quick && ProactiveBinding == null)
+        bool compactNavigation = quick || ProactiveBinding != null;
+        Panel nav = compactNavigation ? Ui.Row() : new WrapPanel { Orientation = Orientation.Horizontal, ItemSpacing = 8, LineSpacing = 4 };
+        foreach (var button in new[] { routeBack, routeForward, chatNav, imagesNav }) nav.Children.Add(button);
+        if (!compactNavigation)
         {
             scheduledTasksNav = LocalizedUi.Button(() => TextResources.Get("scheduledTasks.title"), () => Navigate(ScheduledTasksRoute));
             scheduledTasksNav.Name = "ScheduledTasksNavigation";
             nav.Children.Add(scheduledTasksNav);
         }
-        if (quick || ProactiveBinding != null)
+        if (compactNavigation)
         {
             nav.Margin = new Thickness(16, 8, 16, 0);
             DockPanel.SetDock(nav, Dock.Top);
@@ -181,16 +183,11 @@ internal sealed partial class ChatWindow : Window
         }
         else
         {
-            var themeButton = new Button
-            {
-                Name = "AppThemeMode", Width = 34, Height = 34, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0),
-                HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
-                Background = Brushes.Transparent, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(8)
-            };
+            var themeSwitch = new ThemeTitleSwitch();
             var top = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(16, 8, 16, 0) };
             top.Children.Add(nav);
-            Grid.SetColumn(themeButton, 1);
-            top.Children.Add(themeButton);
+            Grid.SetColumn(themeSwitch, 1);
+            top.Children.Add(themeSwitch);
             DockPanel.SetDock(top, Dock.Top);
             shell.Background = DesktopTheme.Surface;
             shell.Children.Add(top);
@@ -198,7 +195,7 @@ internal sealed partial class ChatWindow : Window
             var themeHost = new Grid { ClipToBounds = true };
             themeHost.Children.Add(shell);
             Content = themeHost;
-            _ = new LiquidThemeReveal(this, themeHost, shell, themeButton,
+            _ = new LiquidThemeReveal(this, themeHost, shell, themeSwitch,
                 mode => Try(() => owner.SetThemeMode(mode)), LiquidThemeShape.DefaultDuration,
                 () => owner.Settings.ThemeTransitionEffect, beginSound: owner.PlayThemeSound);
         }

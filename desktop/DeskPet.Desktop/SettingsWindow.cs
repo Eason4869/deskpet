@@ -327,10 +327,10 @@ internal sealed class SettingsWindow : Window
     {
         refreshingPreferences=true;
         try{
-            if(generalTabs.ItemsSource is TabItem[] general){if(general[0].Content!=null)general[0].Content=General();if(general[1].Content!=null)general[1].Content=Storage();}
+            if(generalTabs.ItemsSource is TabItem[] general){if(general[0].Content!=null)general[0].Content=WrapPage(General());if(general[1].Content!=null)general[1].Content=WrapPage(Storage());}
             if(partnerTabs.ItemsSource is TabItem[] partner){
-                if(partner[1].Content!=null)partner[1].Content=CompanionBehavior();
-                if(partner[2].Content!=null){observation?.Dispose();observation=null;partner[2].Content=Greetings();}
+                if(partner[1].Content!=null)partner[1].Content=WrapPage(CompanionBehavior());
+                if(partner[2].Content!=null){observation?.Dispose();observation=null;partner[2].Content=WrapPage(Greetings());}
             }
             refreshVolume?.Invoke();
         }finally{refreshingPreferences=false;}

@@ -9,7 +9,7 @@ namespace Dafeiyu
     internal static class SettingsSurface
     {
         internal const double GroupSpacing=36;
-        internal const double BodyWidth=720;
+        internal const double BodyWidth=684;
         static ControlTemplate expanderTemplate;
         internal static ScrollViewer Scroll(UIElement body,double horizontalInset=0)
         {

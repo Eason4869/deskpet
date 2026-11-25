@@ -28,8 +28,7 @@ namespace Dafeiyu
         internal ThemeModePicker(string initial)
         {
             Name="ThemeModePicker";
-            var layout=new Grid();layout.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});layout.ColumnDefinitions.Add(new ColumnDefinition());
-            var label=LocalizedUi.InlineText(()=>(TextResources.Get("themeModePicker.themeModePicker.inlineText")),13);label.FontWeight=FontWeights.SemiBold;label.Margin=new Thickness(0,0,8,0);layout.Children.Add(label);
+            LocalizedUi.Automation(this,()=>TextResources.Get("themeModePicker.themeModePicker.inlineText"));
             var row=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
             foreach(string mode in new[]{"system","light","dark"})
             {
@@ -43,8 +42,7 @@ namespace Dafeiyu
                 button.Click+=delegate{if(Changed!=null)Changed(selected);RefreshMode();};choices.Add(mode,button);row.Children.Add(button);
             }
             var previews=new Viewbox{Child=row,Stretch=Stretch.Uniform,StretchDirection=StretchDirection.DownOnly,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Center};
-            Grid.SetColumn(previews,1);layout.Children.Add(previews);
-            Content=new Border{CornerRadius=new CornerRadius(16),Background=ThemeManager.Brush("#FDFEFF","#2B3545"),BorderBrush=ThemeManager.CardBorder,BorderThickness=new Thickness(1),Padding=new Thickness(14,8,10,8),Child=layout};
+            Content=new Border{CornerRadius=new CornerRadius(16),Background=ThemeManager.Brush("#FDFEFF","#2B3545"),BorderBrush=ThemeManager.CardBorder,BorderThickness=new Thickness(1),Padding=new Thickness(10,8,10,8),Child=previews};
             Value=initial;
             Loaded+=delegate{RefreshMode();ThemeManager.ModeChanged+=RefreshMode;};
             Unloaded+=delegate{ThemeManager.ModeChanged-=RefreshMode;};

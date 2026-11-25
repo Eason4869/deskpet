@@ -9,16 +9,26 @@ namespace Dafeiyu
         internal const string Ripple = "ripple";
         internal const string Refraction = "refraction";
         internal const string Zipper = "zipper";
-        internal static readonly string[] Choices = { Off, Flow, Ripple, Refraction, Zipper };
+        internal const string RandomSelection = "random";
+        internal static readonly string[] Choices = { Off, Flow, Ripple, Refraction, Zipper, RandomSelection };
+        internal static readonly string[] AnimatedEffects = { Flow, Ripple, Refraction, Zipper };
+        static readonly Random random = new Random();
 
         internal static string Normalize(string motion)
         {
-            return Array.IndexOf(Choices, motion) >= 0 ? motion : Flow;
+            return Array.IndexOf(Choices, motion) >= 0 ? motion : RandomSelection;
+        }
+
+        internal static string Resolve(string motion)
+        {
+            motion = Normalize(motion);
+            if (motion != RandomSelection) return motion;
+            lock (random) return AnimatedEffects[random.Next(AnimatedEffects.Length)];
         }
 
         internal static TimeSpan Duration(string motion, TimeSpan liquidDuration)
         {
-            if (motion == Refraction) return TimeSpan.FromMilliseconds(1450);
+            if (motion == Refraction) return TimeSpan.FromMilliseconds(1900);
             if (motion == Zipper) return TimeSpan.FromMilliseconds(1850);
             return liquidDuration;
         }
@@ -47,6 +57,7 @@ namespace Dafeiyu
             if (motion == Ripple) return TextResources.Get("themeTransition.motion.ripple");
             if (motion == Refraction) return TextResources.Get("themeTransition.motion.refraction");
             if (motion == Zipper) return TextResources.Get("themeTransition.motion.zipper");
+            if (motion == RandomSelection) return TextResources.Get("themeTransition.motion.random");
             return TextResources.Get("themeTransition.motion.flow");
         }
     }

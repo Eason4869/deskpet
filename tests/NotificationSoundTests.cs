@@ -65,13 +65,13 @@ namespace Dafeiyu.Tests
         static void ThemePreferences()
         {
             var settings=new PetSettings();
-            Check(!settings.ThemeTransitionSoundEnabled&&settings.ThemeTransitionSoundVolume==30&&settings.ThemeTransitionEffect=="flow",
-                "new settings default to Flow and theme sounds off at 30 percent");
+            Check(!settings.ThemeTransitionSoundEnabled&&settings.ThemeTransitionSoundVolume==30&&settings.ThemeTransitionEffect==ThemeTransitionMotion.RandomSelection,
+                "new settings default to Random and theme sounds off at 30 percent");
             using(var stream=new MemoryStream(Encoding.UTF8.GetBytes("{}")))
             {
                 var previous=new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream) as PetSettings;
-                Check(previous!=null&&!previous.ThemeTransitionSoundEnabled&&previous.ThemeTransitionSoundVolume==30&&previous.ThemeTransitionEffect=="flow",
-                    "old settings preserve Flow and the opt-in audio defaults");
+                Check(previous!=null&&!previous.ThemeTransitionSoundEnabled&&previous.ThemeTransitionSoundVolume==30&&previous.ThemeTransitionEffect==ThemeTransitionMotion.RandomSelection,
+                    "older settings without a selection default to Random and opt-in audio");
             }
             settings.ThemeTransitionSoundEnabled=true;
             settings.ThemeTransitionSoundVolume=0;
@@ -90,7 +90,7 @@ namespace Dafeiyu.Tests
                 var copyPreferences=typeof(SettingsStore).GetMethod("CopyPreferences",BindingFlags.Static|BindingFlags.NonPublic);
                 if(copyPreferences==null)throw new Exception("Missing preference copy contract");
                 copyPreferences.Invoke(null,new object[]{new PetSettings(),settings});
-                Check(!settings.ThemeTransitionSoundEnabled&&settings.ThemeTransitionSoundVolume==30&&settings.ThemeTransitionEffect=="flow",
+                Check(!settings.ThemeTransitionSoundEnabled&&settings.ThemeTransitionSoundVolume==30&&settings.ThemeTransitionEffect==ThemeTransitionMotion.RandomSelection,
                     "reset restores the theme motion and sound defaults");
             }
             finally{Directory.Delete(root,true);}
@@ -131,7 +131,7 @@ namespace Dafeiyu.Tests
         static void ThemeMotionProfiles()
         {
             var profiles = new System.Collections.Generic.List<byte[]>();
-            foreach (string motion in ThemeTransitionMotion.Choices.Where(effect => effect != ThemeTransitionMotion.Off))
+            foreach (string motion in ThemeTransitionMotion.AnimatedEffects)
             {
                 double onset, travel, end;
                 ThemeTransitionMotion.SoundStages(motion, out onset, out travel, out end);
@@ -270,7 +270,7 @@ namespace Dafeiyu.Tests
         static void WriteThemeWavs(string output)
         {
             Directory.CreateDirectory(output);
-            foreach (string motion in ThemeTransitionMotion.Choices.Where(effect => effect != ThemeTransitionMotion.Off))
+            foreach (string motion in ThemeTransitionMotion.AnimatedEffects)
             foreach (bool dark in new[] { true, false })
             {
                 int rate=LiquidThemeAudio.SampleRate;

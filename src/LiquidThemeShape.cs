@@ -288,12 +288,6 @@ namespace Dafeiyu
 
     internal static class ThemeSwitch
     {
-        internal static string Next(string mode)
-        {
-            if (mode == "light") return "dark";
-            return mode == "dark" ? "system" : "light";
-        }
-
         internal static string Label(string mode)
         {
             if (mode == "light") return TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeA");
@@ -307,7 +301,7 @@ namespace Dafeiyu
                 return "M16.5 12A4.5 4.5 0 1 1 7.5 12A4.5 4.5 0 1 1 16.5 12 M12 2.5V5 M12 19v2.5 M2.5 12H5 M19 12h2.5 M5.3 5.3 7 7 M17 17l1.7 1.7 M5.3 18.7 7 17 M17 7l1.7-1.7";
             if (mode == "dark")
                 return "M20.7 14.2A8.9 8.9 0 0 1 9.8 3.3A9 9 0 1 0 20.7 14.2Z";
-            return "M12 2.5v19 M12 7a5 5 0 0 0 0 10 M3 12h2 M5.6 5.6 7 7 M5.6 18.4 7 17 M14.5 5.5A7 7 0 0 1 15.1 18.5Q18.6 16.1 18.6 12Q18.6 8.2 14.5 5.5Z";
+            return "M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z M12 17v3 M8 20h8";
         }
     }
 }
