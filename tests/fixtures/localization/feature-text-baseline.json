@@ -3648,6 +3648,474 @@
       "expected": "子智能体",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.advanced",
+      "expected": "高级设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.ai",
+      "expected": "AI 任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.content",
+      "expected": "任务内容",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.copyResult",
+      "expected": "复制结果",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.cost",
+      "expected": "AI 任务可能产生模型调用或搜索费用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.create",
+      "expected": "创建",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.daily",
+      "expected": "每天",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.date",
+      "expected": "日期",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.defaultModel",
+      "expected": "应用默认",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.deleteDescription",
+      "expected": "要删除「{0}」及其运行记录吗？",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.deleteTitle",
+      "expected": "删除定时任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.draft",
+      "expected": "在聊天中创建",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.draftError",
+      "expected": "无法生成草稿。请重试或填写表单。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.draftPrompt",
+      "expected": "描述要做什么、什么时候做",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.draftReady",
+      "expected": "查看任务设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.edit",
+      "expected": "编辑",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.editor",
+      "expected": "定时设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.empty",
+      "expected": "暂无定时任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.emptyHint",
+      "expected": "从模板开始，或新建任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.enable",
+      "expected": "启用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.failed",
+      "expected": "失败",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.frequency",
+      "expected": "重复",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.futureDate",
+      "expected": "请选择将来的运行时间。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.history",
+      "expected": "运行记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.interrupted",
+      "expected": "已中断",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.invalid",
+      "expected": "请填写任务名称、任务内容，并设置有效的运行时间。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.invalidDraft",
+      "expected": "我没能确认运行安排。你希望我在什么时候做什么？",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.localZone",
+      "expected": "本地时区 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.manual",
+      "expected": "填写表单",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.missedHint",
+      "expected": "请选择立即运行每项任务，或跳过本次运行。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.missedTask",
+      "expected": "{0} · 原定于 {1}",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "scheduledTasks.missedTitle",
+      "expected": "错过的定时任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.missedView",
+      "expected": "查看错过的任务（{0}）",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.missingModel",
+      "expected": "所选模型已不可用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.model",
+      "expected": "模型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.modelUnavailable",
+      "expected": "模型不可用 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.monthly",
+      "expected": "每月",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.name",
+      "expected": "任务名称",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.new",
+      "expected": "新建任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.next",
+      "expected": "下次运行 · {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.noHistory",
+      "expected": "暂无运行记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.noNext",
+      "expected": "暂无后续运行",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.noSelection",
+      "expected": "选择一项任务以查看详情",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notificationResult",
+      "expected": "{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "scheduledTasks.notify",
+      "expected": "通知",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notifyAll",
+      "expected": "所有结果",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notifyFailures",
+      "expected": "仅在失败时",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notifyNone",
+      "expected": "仅记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.notifyReminder",
+      "expected": "到期时",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.once",
+      "expected": "仅一次",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.openResult",
+      "expected": "查看任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.pause",
+      "expected": "暂停",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.pending",
+      "expected": "待处理",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.queued",
+      "expected": "排队中",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.reminder",
+      "expected": "提醒",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.runError",
+      "expected": "任务运行失败。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.runLocal",
+      "expected": "在此设备上运行",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.runNow",
+      "expected": "立即运行",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.running",
+      "expected": "运行中",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.runningDelete",
+      "expected": "请等当前运行结束后再删除此任务。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.search",
+      "expected": "搜索任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.send",
+      "expected": "发送",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.skip",
+      "expected": "跳过本次",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.skipped",
+      "expected": "已跳过",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.stop",
+      "expected": "停止",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.storageError",
+      "expected": "无法读取或保存定时任务数据。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.succeeded",
+      "expected": "已完成",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateReport",
+      "expected": "周报草稿",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateReportPrompt",
+      "expected": "每周五下午 4 点帮我起草一份周报。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateWater",
+      "expected": "喝水提醒",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateWaterPrompt",
+      "expected": "每天上午 10 点提醒我喝水。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateWeekend",
+      "expected": "周末活动建议",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.templateWeekendPrompt",
+      "expected": "每周四下午 6 点给我推荐一些周末活动。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.time",
+      "expected": "时间",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.title",
+      "expected": "定时任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.type",
+      "expected": "任务类型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.webSearch",
+      "expected": "使用联网搜索",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "scheduledTasks.weekly",
+      "expected": "每周",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }
