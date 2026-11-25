@@ -143,6 +143,14 @@ namespace Dafeiyu.Tests
                     motion + " generates bounded, audible direction-specific PCM");
                 Check(profiles.All(other => !light.SequenceEqual(other)), motion + " has its own travel sound");
                 profiles.Add(light);
+                foreach (LiquidThemeCue cue in Enum.GetValues(typeof(LiquidThemeCue)))
+                {
+                    light = LiquidThemeAudio.Render(cue, false, duration, motion);
+                    dark = LiquidThemeAudio.Render(cue, true, duration, motion);
+                    double lightSlope = PcmSlopeEnergy(light), darkSlope = PcmSlopeEnergy(dark);
+                    Check(lightSlope < .018 && darkSlope < lightSlope,
+                        motion + " " + cue + " stays mellow and shifts lower for the dark direction");
+                }
                 if (motion == ThemeTransitionMotion.Flow) continue;
 
                 var settings = new PetSettings { ThemeTransitionSoundEnabled = true };
@@ -161,6 +169,21 @@ namespace Dafeiyu.Tests
                     Until(() => output.Disposals == 1 && output.Plays == 3, motion + " cancellation suppresses its finish cue");
                 }
             }
+        }
+
+        static double PcmSlopeEnergy(byte[] pcm)
+        {
+            double energy = 0, slope = 0;
+            int previous = 0;
+            for (int i = 0; i < pcm.Length; i += 2)
+            {
+                int sample = (short)(pcm[i] | pcm[i + 1] << 8);
+                double delta = sample - previous;
+                energy += (double)sample * sample;
+                slope += delta * delta;
+                previous = sample;
+            }
+            return slope / energy;
         }
 
         static void ThemeInterruption()
