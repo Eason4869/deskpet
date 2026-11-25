@@ -59,6 +59,7 @@
     <Compile Include="../../src/CompanionPackStorage.cs" Link="Shared/CompanionPackStorage.cs" />
     <Compile Include="../../src/UsageRecord.cs;../../src/UsageStore.cs;../../src/UsageTracking.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/WebSearch.cs;../../src/WebSearchProviders.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ScheduledTaskRule.cs;../../src/ScheduledTaskStore.cs;../../src/ScheduledTaskService.cs;../../src/ScheduledTaskAi.cs;../../src/ScheduledTaskRuntime.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ChatAttachment.cs" Link="Shared/ChatAttachment.cs" />
     <Compile Include="../../src/Files/**/*.cs" Link="Shared/Files/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../../src/MarkdownContent.cs" Link="Shared/MarkdownContent.cs" />

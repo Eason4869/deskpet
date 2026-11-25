@@ -22,11 +22,27 @@ internal abstract class DesktopRuntime
     public virtual Task<bool> RequestScreenCaptureAccessAsync()=>MacServices.RequestScreenCaptureAccessAsync();
     public virtual TimeSpan ObservationIdleTime=>MacServices.IsSupported?MacServices.GetIdleTime():TimeSpan.MaxValue;
     public virtual bool ObservationFullscreen=>MacServices.IsSupported&&MacServices.IsFrontApplicationFullscreen();
+    public virtual ulong? SystemPowerGeneration => null;
 }
 
 internal sealed class MacRuntime : DesktopRuntime
 {
+    private bool systemPowerUnavailable;
     public override string DataDirectory => MacServices.DataDirectory;
+    public override ulong? SystemPowerGeneration
+    {
+        get
+        {
+            if (systemPowerUnavailable || !MacServices.IsSupported) return null;
+            try { return MacServices.SystemPowerGeneration; }
+            catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException)
+            {
+                systemPowerUnavailable = true;
+                System.Diagnostics.Trace.TraceWarning(error.GetType().Name);
+                return null;
+            }
+        }
+    }
     public override void InitializeProtection()
     {
         MacServices.InstallSecretProtection();

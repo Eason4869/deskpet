@@ -24,6 +24,7 @@ void dp_wave_stop(void *handle);
 double dp_idle_seconds(void);
 int dp_session_interactive(void);
 uint64_t dp_session_lifecycle_revision(void);
+uint64_t dp_system_power_generation(void);
 void dp_pointer(double *x, double *y);
 int dp_pointer_relative(void *handle, double *x, double *y);
 int dp_display_count(void);

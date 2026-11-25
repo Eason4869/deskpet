@@ -31,6 +31,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
+    <Compile Include="../../src/ScheduledTasksPage.cs;../../src/ScheduledTasksEditor.cs" Link="Shared/%(Filename)%(Extension)" />
     <ProjectReference Include="../DeskPet.Core/DeskPet.Core.csproj" GlobalPropertiesToRemove="DeskPetFullResourceFixtures" />
     <ProjectReference Include="../DeskPet.Platform.Mac/DeskPet.Platform.Mac.csproj" GlobalPropertiesToRemove="DeskPetFullResourceFixtures" />
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/*.png" Link="Assets/%(Filename)%(Extension)" />

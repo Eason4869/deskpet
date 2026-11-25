@@ -48,6 +48,8 @@ internal sealed partial class ChatWindow : Window
     private int routeIndex;
     private Control chatPage = null!;
     private readonly Button routeBack, routeForward;
+    private readonly Button chatNav, imagesNav;
+    private readonly Button? scheduledTasksNav;
     private readonly TextBlock partnerName = Ui.Text("", 14);
     private bool nativePaste, closed;
     private Button? resumeQueue,holdQueue;
@@ -143,8 +145,17 @@ internal sealed partial class ChatWindow : Window
         var shell = new DockPanel();
         routeBack = Ui.Button("‹", () => NavigateHistory(-1)); routeBack.Name = "PageBack"; LocalizedUi.Tooltip(routeBack,()=>(TextResources.Get("common.back")));
         routeForward = Ui.Button("›", () => NavigateHistory(1)); routeForward.Name = "PageForward"; LocalizedUi.Tooltip(routeForward,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeC")));
-        var imagesNav = LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeG")), () => Navigate("images")); imagesNav.Name = "ImagesNavigation";
-        var nav = Ui.Row(routeBack, routeForward, LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeH")), () => Navigate("chat")), imagesNav); nav.Margin = new Thickness(16, 8, 16, 0); DockPanel.SetDock(nav, Dock.Top); shell.Children.Add(nav); shell.Children.Add(pageHost); Content = shell; ApplyRoute();
+        chatNav = LocalizedUi.Button(() => TextResources.Get("chatWindow.chatWindow.text.alternativeH"), () => Navigate("chat"));
+        imagesNav = LocalizedUi.Button(() => TextResources.Get("chatWindow.chatWindow.text.alternativeG"), () => Navigate("images"));
+        imagesNav.Name = "ImagesNavigation";
+        var nav = Ui.Row(routeBack, routeForward, chatNav, imagesNav);
+        if (!quick && ProactiveBinding == null)
+        {
+            scheduledTasksNav = LocalizedUi.Button(() => TextResources.Get("scheduledTasks.title"), () => Navigate(ScheduledTasksRoute));
+            scheduledTasksNav.Name = "ScheduledTasksNavigation";
+            nav.Children.Add(scheduledTasksNav);
+        }
+        nav.Margin = new Thickness(16, 8, 16, 0); DockPanel.SetDock(nav, Dock.Top); shell.Children.Add(nav); shell.Children.Add(pageHost); Content = shell; ApplyRoute();
         models.SelectionChanged += (_, _) =>
         {
             if (models.SelectedItem is not ModelChoice item || EffectiveSettings().ActiveTextProviderId == item.Provider && EffectiveSettings().Text.Model == item.Model) return;
@@ -164,7 +175,32 @@ internal sealed partial class ChatWindow : Window
     internal void ShowImages(GeneratedImage? image = null) { Navigate("images"); if (image != null) imageWorkspace.Prepare(image); }
     private void Navigate(string route) { if (CurrentPage == route) return; routes.RemoveRange(routeIndex + 1, routes.Count - routeIndex - 1); routes.Add(route); routeIndex++; ApplyRoute(); }
     internal void NavigateHistory(int delta) { var next = routeIndex + delta; if (next < 0 || next >= routes.Count) return; routeIndex = next; ApplyRoute(); }
-    private void ApplyRoute() { pageHost.Content = null; pageHost.Content = CompanionRouteContent(); routeBack.IsEnabled = routeIndex > 0; routeForward.IsEnabled = routeIndex < routes.Count - 1; }
+    private void ApplyRoute()
+    {
+        pageHost.Content = null;
+        pageHost.Content = CompanionRouteContent();
+        routeBack.IsEnabled = routeIndex > 0;
+        routeForward.IsEnabled = routeIndex < routes.Count - 1;
+        if (scheduledTasksNav == null) return;
+        SelectRouteButton(chatNav, CurrentPage == "chat");
+        SelectRouteButton(imagesNav, CurrentPage == "images");
+        SelectRouteButton(scheduledTasksNav, CurrentPage == ScheduledTasksRoute);
+    }
+
+    private static void SelectRouteButton(Button button, bool selected)
+    {
+        button.Classes.Set("selected", selected);
+        if (selected)
+        {
+            button.Background = DesktopTheme.Brush("#EDF4FF");
+            button.FontWeight = FontWeight.SemiBold;
+        }
+        else
+        {
+            button.ClearValue(Button.BackgroundProperty);
+            button.ClearValue(Button.FontWeightProperty);
+        }
+    }
     private void Try(Action action) { try { action(); } catch (Exception e) { owner.Error(e); } }
     private ContextMenu CreateProfileMenu()
     {

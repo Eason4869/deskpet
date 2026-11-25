@@ -14,6 +14,8 @@ namespace Dafeiyu
     {
         Grid appPages,homePage;Border appRail;Image shellAvatarImage;Button shellBack,shellForward,shellHome,shellUsage,shellMcp,shellSettings,shellSidebar;
         SettingsPage settingsPage;UsageStatisticsPage usagePage;PluginsPage mcpPage;ImageWorkspacePage imagePage;Button shellImages;string shellPage="home";bool shellReady,restoringRoute,sidebarHidden,sidebarTemporary;
+        ScheduledTasksPage scheduledTasksPage;
+        Button shellScheduledTasks;
         readonly List<AppRoute> appHistory=new List<AppRoute>();int historyIndex=-1;
         readonly List<ShellCommand> shellCommands=new List<ShellCommand>();IInputElement lastEditingTarget;
         string liveReturnPage;int liveReturnSection,liveReturnHistory;
@@ -39,7 +41,10 @@ namespace Dafeiyu
             var menuButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};BuildShellCommands();BuildTitleMenus(menuButtons);DockPanel.SetDock(menuButtons,Dock.Left);top.Children.Add(menuButtons);top.Children.Add(new Border{Background=Brushes.Transparent});frame.Children.Add(top);
             var body=new Grid();body.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(60)});body.ColumnDefinitions.Add(new ColumnDefinition());
             var railBody=new Grid{Margin=new Thickness(6,8,6,10)};railBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});railBody.RowDefinitions.Add(new RowDefinition());railBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var railTop=new StackPanel();shellHome=ShellIcons.Button("home",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeF")),()=>ShowHomePage());shellHome.Name="ShellHome";shellUsage=ShellIcons.Button("usage",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeG")),ShowUsagePage);shellUsage.Name="ShellUsage";shellMcp=ShellIcons.Button("mcp",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeH")),ShowPluginsPage);shellMcp.Name="ShellMcp";shellSettings=ShellIcons.Button("settings",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeI")),()=>pet.ShowSettings());shellSettings.Name="ShellSettings";shellImages=ShellIcons.Button("image",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeJ")),()=>ShowImagesPage());shellImages.Name="ShellImages";foreach(var b in new[]{shellHome,shellImages,shellUsage,shellMcp,shellSettings}){b.Width=b.Height=40;b.Margin=new Thickness(0,3,0,3);railTop.Children.Add(b);}railBody.Children.Add(railTop);
+            var railTop=new StackPanel();shellHome=ShellIcons.Button("home",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeF")),()=>ShowHomePage());shellHome.Name="ShellHome";shellUsage=ShellIcons.Button("usage",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeG")),ShowUsagePage);shellUsage.Name="ShellUsage";shellMcp=ShellIcons.Button("mcp",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeH")),ShowPluginsPage);shellMcp.Name="ShellMcp";shellSettings=ShellIcons.Button("settings",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeI")),()=>pet.ShowSettings());shellSettings.Name="ShellSettings";shellImages=ShellIcons.Button("image",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeJ")),()=>ShowImagesPage());shellImages.Name="ShellImages";
+            shellScheduledTasks=ShellIcons.Button("calendar",()=>TextResources.Get("scheduledTasks.title"),()=>ShowScheduledTasksPage());
+            shellScheduledTasks.Name="ShellScheduledTasks";
+            foreach(var b in new[]{shellHome,shellImages,shellScheduledTasks,shellUsage,shellMcp,shellSettings}){b.Width=b.Height=40;b.Margin=new Thickness(0,3,0,3);railTop.Children.Add(b);}railBody.Children.Add(railTop);
             shellAvatarImage=new Image{Width=30,Height=30,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,30,30),10,10)};RenderOptions.SetBitmapScalingMode(shellAvatarImage,BitmapScalingMode.HighQuality);var profile=ShellIcons.Button("pet",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeK")),OpenProfileMenu);profile.Name="ShellAvatar";profile.Width=profile.Height=40;profile.Content=shellAvatarImage;Grid.SetRow(profile,2);railBody.Children.Add(profile);appRail=new Border{Name="AppIconRail",Background=ThemeManager.Brush("#EDF3F8","#202733"),Child=railBody};body.Children.Add(appRail);
             appPages=new Grid{Name="AppPageHost",Background=ThemeManager.Surface,ClipToBounds=true};homePage=new Grid{Name="AppHomePage"};homePage.Children.Add(workspaceShell);appPages.Children.Add(homePage);
             var pageFrame=new Border{Name="AppContentFrame",Background=ThemeManager.Surface,CornerRadius=new CornerRadius(16),BorderBrush=Ui.Brush("#E3E7EC"),BorderThickness=new Thickness(1),Child=appPages,ClipToBounds=true};pageFrame.SizeChanged+=delegate{pageFrame.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,pageFrame.ActualWidth),Math.Max(0,pageFrame.ActualHeight)),16,16);};Grid.SetColumn(pageFrame,1);body.Children.Add(pageFrame);Grid.SetRow(body,1);frame.Children.Add(body);Content=frame;
@@ -50,7 +55,7 @@ namespace Dafeiyu
             StateChanged+=delegate{maximize.Content=ShellIcons.Image(WindowState==WindowState.Maximized?"restore":"maximize");};
             SourceInitialized+=delegate{HwndSource.FromHwnd(new WindowInteropHelper(this).Handle).AddHook(ShellWindowMessage);};
             var compose=ShellIcons.Button("new-chat",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeL")),pet.NewShellConversation);compose.Name="ShellNewChat";compose.Margin=new Thickness(0,0,10,0);DockPanel.SetDock(compose,Dock.Left);conversationHeader.Children.Insert(0,compose);
-            Closed+=delegate{if(companionPage!=null)companionPage.Dispose();if(settingsPage!=null)settingsPage.Dispose();if(usagePage!=null)usagePage.Dispose();if(mcpPage!=null)mcpPage.Dispose();if(imagePage!=null)imagePage.Dispose();pet.ReleaseSettingsPage(settingsPage);};
+            Closed+=delegate{if(companionPage!=null)companionPage.Dispose();if(settingsPage!=null)settingsPage.Dispose();if(usagePage!=null)usagePage.Dispose();if(mcpPage!=null)mcpPage.Dispose();if(imagePage!=null)imagePage.Dispose();if(scheduledTasksPage!=null)scheduledTasksPage.Dispose();pet.ReleaseSettingsPage(settingsPage);};
         }
         internal void ShowHomePage(bool record=true)
         {
@@ -77,9 +82,22 @@ namespace Dafeiyu
         {
             if(!shellReady||closed)return;if(imagePage==null){imagePage=new ImageWorkspacePage(pet){Visibility=Visibility.Collapsed};appPages.Children.Add(imagePage);}imagePage.RefreshProviders();SetShellPage("images");RecordPage("images");if(previous!=null)imagePage.Prepare(previous);
         }
+        internal void ShowScheduledTasksPage(string taskId=null,string runId=null)
+        {
+            if(!shellReady||closed)return;
+            if(scheduledTasksPage==null)
+            {
+                scheduledTasksPage=new ScheduledTasksPage(pet.ScheduledTasks){Visibility=Visibility.Collapsed};
+                scheduledTasksPage.ShowMissedRequested+=()=>pet.ShowScheduledMissed(this);
+                appPages.Children.Add(scheduledTasksPage);
+            }
+            SetShellPage("scheduledTasks");
+            RecordPage("scheduledTasks");
+            if(!String.IsNullOrEmpty(taskId))scheduledTasksPage.ShowTask(taskId,runId);
+        }
         void SetShellPage(string page)
         {
-            CloseTransientSummary();CloseProfileMenu();shellPage=page;if(companionPage!=null)companionPage.Visibility=page=="companion"?Visibility.Visible:Visibility.Collapsed;if(imagePage!=null)imagePage.Visibility=page=="images"?Visibility.Visible:Visibility.Collapsed;homePage.Visibility=page=="home"?Visibility.Visible:Visibility.Collapsed;if(settingsPage!=null)settingsPage.Visibility=page=="settings"?Visibility.Visible:Visibility.Collapsed;if(usagePage!=null)usagePage.Visibility=page=="usage"?Visibility.Visible:Visibility.Collapsed;if(mcpPage!=null)mcpPage.Visibility=page=="mcp"?Visibility.Visible:Visibility.Collapsed;RefreshShellAppearance();if(page=="home")Dispatcher.BeginInvoke(new Action(RefreshWorkspaceLayout));
+            CloseTransientSummary();CloseProfileMenu();shellPage=page;if(companionPage!=null)companionPage.Visibility=page=="companion"?Visibility.Visible:Visibility.Collapsed;if(imagePage!=null)imagePage.Visibility=page=="images"?Visibility.Visible:Visibility.Collapsed;if(scheduledTasksPage!=null)scheduledTasksPage.Visibility=page=="scheduledTasks"?Visibility.Visible:Visibility.Collapsed;homePage.Visibility=page=="home"?Visibility.Visible:Visibility.Collapsed;if(settingsPage!=null)settingsPage.Visibility=page=="settings"?Visibility.Visible:Visibility.Collapsed;if(usagePage!=null)usagePage.Visibility=page=="usage"?Visibility.Visible:Visibility.Collapsed;if(mcpPage!=null)mcpPage.Visibility=page=="mcp"?Visibility.Visible:Visibility.Collapsed;RefreshShellAppearance();if(page=="home")Dispatcher.BeginInvoke(new Action(RefreshWorkspaceLayout));
         }
         void RecordPage(string page)
         {
@@ -90,12 +108,12 @@ namespace Dafeiyu
         void TravelPage(int direction)
         {
             int next=historyIndex+direction;if(next<0||next>=appHistory.Count)return;var route=appHistory[next];restoringRoute=true;
-            try{if(route.Page=="settings"){if(settingsPage==null)return;SetShellPage("settings");settingsPage.RestoreNavigation(route.Section,route.SecondarySection,route.FeatureAnchor,true);}else if(route.Page=="companion"){ShowCompanionPage(route.FeatureAnchor);}else if(route.Page=="images"){ShowImagesPage();}else if(route.Page=="usage"){ShowUsagePage();}else if(route.Page=="mcp"){ShowPluginsPage();}else{if(!ReferenceEquals(workspace,route.Workspace)&&(route.Workspace==null||pet.Workspaces.OpenWorkspaces.Contains(route.Workspace)))SwitchWorkspace(route.Workspace);SetShellPage("home");}historyIndex=next;}
+            try{if(route.Page=="settings"){if(settingsPage==null)return;SetShellPage("settings");settingsPage.RestoreNavigation(route.Section,route.SecondarySection,route.FeatureAnchor,true);}else if(route.Page=="companion"){ShowCompanionPage(route.FeatureAnchor);}else if(route.Page=="images"){ShowImagesPage();}else if(route.Page=="scheduledTasks"){ShowScheduledTasksPage();}else if(route.Page=="usage"){ShowUsagePage();}else if(route.Page=="mcp"){ShowPluginsPage();}else{if(!ReferenceEquals(workspace,route.Workspace)&&(route.Workspace==null||pet.Workspaces.OpenWorkspaces.Contains(route.Workspace)))SwitchWorkspace(route.Workspace);SetShellPage("home");}historyIndex=next;}
             finally{restoringRoute=false;RefreshShellAppearance();}
         }
         void RefreshShellAppearance()
         {
-            if(!shellReady)return;if(companionPage!=null)companionPage.RefreshIdentity();shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);LocalizedUi.Set(shellAvatarImage,"ToolTip",()=>(pet.Skin.DisplayName));
+            if(!shellReady)return;if(companionPage!=null)companionPage.RefreshIdentity();shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellScheduledTasks,"calendar",shellPage=="scheduledTasks");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);LocalizedUi.Set(shellAvatarImage,"ToolTip",()=>(pet.Skin.DisplayName));
         }
         void SelectRailIcon(Button button,string icon,bool selected)
         {button.Content=ShellIcons.Image(icon,selected?Ui.Brush("#1C2024"):AgentUi.Muted,18,selected);button.Background=selected?Ui.Brush("#E1E8EE"):Brushes.Transparent;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?TextResources.Get("chatAppShell.selectRailIcon.automationAutomationPropertiesSetItemStatus"):"");}

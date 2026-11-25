@@ -17,7 +17,7 @@ namespace Dafeiyu
         internal Task UninstallCompletion {get{return uninstallCompletion;}}
         void CheckUninstallBusy()
         {
-            if(closing||IsUpdating||HasActiveAgentJobs||DictationActive||LiveActive||(call!=null&&call.IsVisible)||HasQueuedMessages||
+            if(closing||IsUpdating||ScheduledTasks.HasUnsavedCompletions||HasActiveAgentJobs||DictationActive||LiveActive||(call!=null&&call.IsVisible)||HasQueuedMessages||
                 (conversation!=null&&conversation.IsBusy)||(workspaces!=null&&workspaces.Busy)||(inputQueue!=null&&inputQueue.IsRunning)||
                 (chat!=null&&(chat.HasDraft||chat.HasUnsavedMcpEdits))||(quick!=null&&quick.HasDraft)||(preferences!=null&&preferences.HasUnsavedEdits)||
                 (mcpConnections!=null&&mcpConnections.Status.Any(s=>s.State=="connecting")))throw new InvalidOperationException(TextResources.Get("dataMaintenance.busy"));
@@ -119,6 +119,7 @@ namespace Dafeiyu
         {
             try{
                 owner.Require(DataMaintenance,true);ApplicationRestart.Requested=false;
+                await StopScheduledTasksAsync();
                 timer.Stop();CompositionTarget.Rendering-=RenderFrame;DisposeRelationshipFeedback();await HolidayKeepsakes.ShutdownAsync();
                 if(agentJobServices!=null){var report=await agentJobServices.CloseForUninstallAsync(owner);if(!report.CleanupConfirmed)throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));}
                 await Relationships.CheckForUninstallAsync(owner);await Relationships.ShutdownAsync();

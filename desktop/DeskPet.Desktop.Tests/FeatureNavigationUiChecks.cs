@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -6,9 +7,11 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Dafeiyu;
+using Dafeiyu.Maintenance;
 using DeskPet.Desktop;
 
 internal static class FeatureNavigationUiChecks
@@ -21,8 +24,9 @@ internal static class FeatureNavigationUiChecks
         T Named<T>(Control root,string name)where T:Control=>root.GetLogicalDescendants().OfType<T>().Distinct().Single(c=>c.Name==name);
         void Click(Button button){button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();}
         string Hash(string path)=>Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
-        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());var settingsPath=Path.Combine(directory,"settings.json");new SettingsStore(settingsPath).Save(new PetSettings{UiLanguage=language,AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,AgentWorkspace=Path.Combine(directory,"workspace")});
-        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new FixtureRuntime(directory));owner.Pet.Show();var settings=new SettingsWindow(owner);settings.Show();var chat=new ChatWindow(owner,false);chat.Show();var about=new AboutWindow(owner);
+        var protector = new TestProtector();
+        Directory.CreateDirectory(directory);SecretProtection.Configure(protector);var settingsPath=Path.Combine(directory,"settings.json");new SettingsStore(settingsPath).Save(new PetSettings{UiLanguage=language,AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,AgentWorkspace=Path.Combine(directory,"workspace")});
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new FixtureRuntime(directory,protector));owner.Pet.Show();var settings=new SettingsWindow(owner);settings.Show();var chat=new ChatWindow(owner,false);chat.Show();var about=new AboutWindow(owner);
         var captures=Path.GetFullPath(Path.Combine("work","feature-navigation","native-"+language+"-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(captures);
         void Capture(Window window,string name){Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();using var frame=window.CaptureRenderedFrame();frame!.Save(Path.Combine(captures,name+".png"),new PngBitmapEncoderOptions());}
         try{
@@ -70,14 +74,134 @@ internal static class FeatureNavigationUiChecks
             var relationship=Named<Expander>(home,"CompanionRelationshipSettings");relationship.IsExpanded=true;Check(Named<ToggleSwitch>(home,"RelationshipGrowthEnabled").IsVisible&&home.PendingSettings.IsCompleted,"native settings group reveals real controls without saving");
             foreach(string theme in new[]{"light","dark"}){DesktopTheme.Apply(theme);settings.Width=570;settings.Height=760;Capture(settings,"storage-narrow-"+theme);chat.Width=570;chat.Height=800;Capture(chat,"home-narrow-"+theme);Check(Named<Button>(settings,"ClearAllHistory").IsVisible&&Named<Button>(settings,"OpenPreservedAttachments").IsVisible,"native narrow data and attachment entries remain reachable "+theme);}
             chat.NavigateHistory(-1);Dispatcher.UIThread.RunJobs();Check(chat.CurrentPage=="chat"&&ReferenceEquals(session,chat.BoundSession)&&ReferenceEquals(draft,Named<TextBox>(chat,"ChatDraft"))&&draft.Text=="S3 preserved native composer","native history returns to same session and composer draft");
+            var imagesNav = Named<Button>(chat, "ImagesNavigation");
+            var scheduledNav = Named<Button>(chat, "ScheduledTasksNavigation");
+            Check(imagesNav.Parent is Panel topNav && topNav.Children.IndexOf(scheduledNav) == topNav.Children.IndexOf(imagesNav) + 1,
+                "native scheduled tasks follow images in the main navigation");
+            Click(imagesNav);
+            Click(scheduledNav);
+            Check(chat.CurrentPage == "scheduledTasks" && scheduledNav.Classes.Contains("selected"),
+                "native scheduled tasks route shows the page and selects its navigation button");
+            Click(Named<Button>(chat, "PageBack"));
+            Check(chat.CurrentPage == "images" && imagesNav.Classes.Contains("selected") && !scheduledNav.Classes.Contains("selected"),
+                "native back restores the images route and selection");
+            Click(Named<Button>(chat, "PageForward"));
+            Check(chat.CurrentPage == "scheduledTasks" && scheduledNav.Classes.Contains("selected"),
+                "native forward restores the scheduled tasks route and selection");
+            var scheduling = Named<ScheduledTasksPage>(chat, "ScheduledTasksPage");
+            var createTask = Named<Button>(scheduling, "NewScheduledTask");
+            DesktopTheme.Apply("dark");
+            Check(createTask.Background is ISolidColorBrush { Color: { R: < 128, G: < 128, B: < 128 } }
+                && createTask.Content is TextBlock { Foreground: ISolidColorBrush { Color: { R: > 200, G: > 200, B: > 200 } } },
+                "native dark mode uses a dark create-task fill and light caption ink");
+            DesktopTheme.Apply("light");
+            Click(createTask);
+            var editor = chat.OwnedWindows.Single(window => window.Name == "ScheduledTaskEditor");
+            Check(editor.Owner == chat && editor.WindowStartupLocation == WindowStartupLocation.CenterOwner
+                && !editor.ShowInTaskbar && editor.Content is Border { Name: "ApplicationDialogFrame" },
+                "native scheduled task editor uses the centered application dialog frame");
+            Check(!Named<Expander>(editor, "ScheduledTaskAdvanced").IsExpanded,
+                "native scheduled task editor opens with Advanced collapsed");
+            editor.UpdateLayout();
+            var taskName = Named<TextBox>(editor, "ScheduledTaskName");
+            var taskType = Named<ComboBox>(editor, "ScheduledTaskKind");
+            Check(taskName.Bounds.Height > 0 && Math.Abs(taskName.Bounds.Height - taskType.Bounds.Height) <= 1,
+                "native task name and type fields have equal rendered heights");
+            Click(Named<Button>(editor, "CancelScheduledTask"));
+            Check(!editor.IsVisible && chat.IsVisible && owner.ScheduledTasks.List().Count == 0,
+                "native task editor cancel returns to the schedule page without saving");
+            var quick = new ChatWindow(owner, true);
+            quick.Show();
+            try { Check(!quick.GetLogicalDescendants().OfType<Button>().Any(button => button.Name == "ScheduledTasksNavigation"), "native quick chat omits scheduled tasks navigation"); }
+            finally { quick.Close(); }
             Check(Hash(sentinel)==historyHash&&Hash(settingsPath)==settingsHash,"native navigation and cancelled dialogs preserve settings/history bytes");
+            if (language == "zh_CN") CheckRecoveredReminders();
             Console.WriteLine("Feature navigation native: "+language+" "+checks+" passed; captures="+captures);return checks;
         }finally{about.Close();settings.Close();chat.Close();owner.Pet.Close();owner.Dispose();Wait(owner.ImageServicesShutdown);}
+
+        void CheckRecoveredReminders()
+        {
+            var isolated = Path.Combine(directory, "scheduled-reminders");
+            Directory.CreateDirectory(isolated);
+            new SettingsStore(Path.Combine(isolated, "settings.json")).Save(new PetSettings
+            {
+                UiLanguage = language, AutoUpdate = false, OnboardingState = "completed", GreetingEnabled = false
+            });
+            var due = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow.AddDays(-1), TimeZoneInfo.Local);
+            using (var schedules = new ScheduledTaskService(isolated, new DataMaintenanceGate()))
+            {
+                foreach (string name in new[] { "Morning reminder", "Afternoon reminder" })
+                {
+                    schedules.Save(new ScheduledTaskDefinition
+                    {
+                        Title = name, Content = name + " body",
+                        Rule = new ScheduledTaskRule
+                        {
+                            Frequency = ScheduledFrequency.Once, OnceDateTicks = due.Date.Ticks,
+                            MinuteOfDay = due.Hour * 60 + due.Minute
+                        }
+                    }, due.AddDays(-1).ToUniversalTime(), TimeZoneInfo.Local);
+                }
+            }
+            var desktop = new ClassicDesktopStyleApplicationLifetime { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            typeof(ClassicDesktopStyleApplicationLifetime).GetMethod("SubscribeGlobalEvents", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(desktop, null);
+            var fixture = new FixtureRuntime(isolated, protector) { PowerGeneration = 1 };
+            using var schedulerHost = new DesktopController(desktop, fixture);
+            Window? Popup() => desktop.Windows.SingleOrDefault(window => window.Name == "MissedScheduledTasksDialog");
+            Window Notice() => desktop.Windows.Single(window => window.Name == "ScheduledTaskNotification");
+            ChatWindow Main() => desktop.Windows.OfType<ChatWindow>().Single();
+            try
+            {
+                Check(schedulerHost.ScheduledTasks.List().Count == 2, "native scheduler restores the two saved reminders");
+                schedulerHost.Start();
+                schedulerHost.ShowChat(false);
+                Main().Close();
+                Check(schedulerHost.ScheduledTasks.Pending().Count == 0 && Popup() == null,
+                    "native system sleep holds the scheduled runtime while closing the main window");
+                fixture.PowerGeneration = 2;
+                var deadline = DateTime.UtcNow.AddSeconds(6);
+                var frame = new DispatcherFrame();
+                // This pumps the OS timer as well as the dispatcher jobs.
+                using (var pulse = new System.Threading.Timer(_ => Dispatcher.UIThread.Post(() =>
+                {
+                    if (Popup() != null || DateTime.UtcNow >= deadline) frame.Continue = false;
+                }), null, 0, 20)) Dispatcher.UIThread.PushFrame(frame);
+                var popup = Popup() ?? throw new TimeoutException("Scheduled reminders were not recovered after native wake");
+                schedulerHost.ShowScheduledMissed();
+                var pending = schedulerHost.ScheduledTasks.Pending();
+                Check(ReferenceEquals(popup, Popup()) && popup.Owner == null && pending.Count == 2,
+                    "native wake groups both reminders in one popup with the main window closed");
+
+                Click(popup.GetLogicalDescendants().OfType<Button>().First(button => button.Name == "RunMissedTask"));
+                var firstNotice = Notice();
+                Click(Named<Button>(popup, "RunMissedTask"));
+                Check(ReferenceEquals(firstNotice, Notice()) && !popup.IsVisible,
+                    "native simultaneous reminders queue behind the visible notification");
+                Click(Named<Button>(firstNotice, "OpenTrayNotification"));
+                var destination = Main();
+                var list = Named<ListBox>(destination, "ScheduledTaskList");
+                Check(destination.CurrentPage == "scheduledTasks" && (list.SelectedItem as ListBoxItem)?.Tag as string == pending[0].TaskId,
+                    "native first reminder notification opens its task in the reopened main window");
+                var secondNotice = Notice();
+                Click(Named<Button>(secondNotice, "OpenTrayNotification"));
+                Check(!ReferenceEquals(firstNotice, secondNotice) && (list.SelectedItem as ListBoxItem)?.Tag as string == pending[1].TaskId,
+                    "native second reminder notification opens its own task");
+            }
+            finally
+            {
+                foreach (var window in desktop.Windows.ToArray()) window.Close();
+                schedulerHost.Pet.Close();
+                schedulerHost.Dispose();
+                Wait(schedulerHost.ImageServicesShutdown);
+            }
+        }
     }
-    private sealed class FixtureRuntime(string directory):DesktopRuntime
+    private sealed class FixtureRuntime(string directory, ISecretProtector protector):DesktopRuntime
     {
         public override string DataDirectory=>directory;public override bool ShowTray=>false;
-        public override void InitializeProtection()=>SecretProtection.Configure(new TestProtector());
+        internal ulong? PowerGeneration { get; set; }
+        public override ulong? SystemPowerGeneration => PowerGeneration;
+        public override void InitializeProtection()=>SecretProtection.Configure(protector);
         public override IReplySpeech CreateSpeech(ApiClient api)=>new TestSpeech();public override IAudioRecorder CreateRecorder()=>new TestRecorder();
         public override Task<bool> RequestMicrophoneAccessAsync()=>Task.FromResult(false);public override IPcmMicrophone CreateMicrophone()=>throw new InvalidOperationException("Fixture has no audio");public override ILiveAudioOutput CreateLiveOutput()=>throw new InvalidOperationException("Fixture has no audio");
     }

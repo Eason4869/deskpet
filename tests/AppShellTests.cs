@@ -65,11 +65,114 @@ namespace Dafeiyu.Tests
             }
             Console.WriteLine("WPF language UI: "+code+" "+checks+" passed");
         }
+        static void SeedMissedTasks(string dataDirectory)
+        {
+            var now=DateTimeOffset.UtcNow;
+            var zone=TimeZoneInfo.Local;
+            var due=TimeZoneInfo.ConvertTime(now.AddMinutes(-2),zone);
+            using(var service=new ScheduledTaskService(dataDirectory,new Maintenance.DataMaintenanceGate()))
+                foreach(var title in new[]{"Scheduled reminder one","Scheduled reminder two","Scheduled reminder three","Scheduled reminder four"})
+                    service.Save(new ScheduledTaskDefinition
+                    {
+                        Title=title,Content="Reminder content for "+title,Kind=ScheduledTaskKind.Reminder,Notification=ScheduledNotification.All,
+                        Rule=new ScheduledTaskRule{Frequency=ScheduledFrequency.Once,OnceDateTicks=due.Date.Ticks,MinuteOfDay=due.Hour*60+due.Minute}
+                    },now.AddHours(-4),zone);
+        }
+        static void SendPowerMode(Microsoft.Win32.PowerModes mode)
+        {
+            typeof(PetWindow).GetMethod("PowerChanged",BindingFlags.Instance|BindingFlags.NonPublic)
+                .Invoke(pet,new object[]{null,new Microsoft.Win32.PowerModeChangedEventArgs(mode)});
+        }
+        static void CreateScheduledReminder(ChatWindow chat)
+        {
+            Exception failure=null;
+            var time=DateTime.Now.AddHours(2);
+            var timer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(20)};
+            timer.Tick+=delegate
+            {
+                var dialog=app.Windows.OfType<Window>().FirstOrDefault(window=>window.Name=="ScheduledTaskEditor"&&window.IsVisible);
+                if(dialog==null)return;
+                timer.Stop();
+                try
+                {
+                    var frame=(Border)dialog.Content;
+                    Check(ReferenceEquals(dialog.Owner,chat)&&dialog.WindowStyle==WindowStyle.None&&frame.CornerRadius.TopLeft==20
+                        &&ReferenceEquals(frame.Background,Ui.Brush("#FAFAFB")),"manual task editor opens in the owned themed app dialog");
+                    Check(!All<Expander>(dialog).Single(expander=>expander.Name=="ScheduledTaskAdvanced").IsExpanded,"advanced task settings start collapsed");
+                    var save=Button(dialog,"SaveScheduledTask");
+                    Check(!save.IsEnabled,"empty task cannot be saved");
+                    dialog.UpdateLayout();
+                    var taskName=All<TextBox>(dialog).Single(box=>box.Name=="ScheduledTaskName");
+                    var taskType=All<ComboBox>(dialog).Single(box=>box.Name=="ScheduledTaskKind");
+                    Check(taskName.ActualHeight>0&&Math.Abs(taskName.ActualHeight-taskType.ActualHeight)<=1,
+                        "task name and type fields have equal rendered heights");
+                    taskName.Text="Daily reminder";
+                    All<TextBox>(dialog).Single(box=>box.Name=="ScheduledTaskContent").Text="Take a break";
+                    All<ComboBox>(dialog).Single(box=>box.Name=="ScheduledTaskHour").SelectedIndex=time.Hour;
+                    All<ComboBox>(dialog).Single(box=>box.Name=="ScheduledTaskMinute").SelectedIndex=time.Minute;
+                    Check(save.IsEnabled,"ordinary reminder does not require advanced settings");
+                    Save(dialog,"app-shell-scheduled-task-editor.png");
+                    Click(save);
+                }
+                catch(Exception error){failure=error;}
+                finally{if(dialog.IsVisible)dialog.Close();}
+            };
+            timer.Start();try{Click(Button(chat,"NewScheduledTask"));}finally{timer.Stop();}
+            if(failure!=null)throw failure;
+            Check(pet.ScheduledTasks.List().Any(item=>item.Definition.Title=="Daily reminder"&&item.Definition.Content=="Take a break"
+                &&item.Definition.Kind==ScheduledTaskKind.Reminder&&item.Definition.Rule.Frequency==ScheduledFrequency.Daily
+                &&item.Definition.Rule.MinuteOfDay==time.Hour*60+time.Minute),"manual form saves the daily reminder and its chosen time");
+        }
+        static async Task CheckScheduledTasksWithoutShell(ChatWindow chat)
+        {
+            chat.Close();
+            Check(!app.Windows.OfType<ChatWindow>().Any(window=>window.IsVisible)&&pet.ScheduledTasks.Pending().Count==0,"suspended scheduler defers recovery while the main window is closed");
+            SendPowerMode(Microsoft.Win32.PowerModes.Resume);
+            await app.Dispatcher.InvokeAsync(()=>{},System.Windows.Threading.DispatcherPriority.Background);
+            var popup=app.Windows.OfType<Window>().Single(window=>window.Name=="MissedScheduledTasksDialog");
+            popup.UpdateLayout();
+            var runButtons=All<Button>(popup).Where(button=>button.Name=="RunMissedTask").ToArray();
+            Check(runButtons.Length==4&&pet.ScheduledTasks.Pending().Count==4,"resume groups all missed tasks with the main window closed");
+            Click(runButtons[0]);
+            var notification=app.Windows.OfType<TrayNotificationWindow>().Single();
+            var completed=pet.ScheduledTasks.List().SelectMany(item=>item.Runs).Single(run=>run.State==ScheduledRunState.Succeeded);
+            Check(All<TextBlock>(notification).Single(block=>block.Name=="TrayNotificationMessage").Text==completed.Result,"completed reminder uses the regular tray notification");
+            popup.UpdateLayout();
+            Click(All<Button>(popup).First(button=>button.Name=="RunMissedTask"));
+            Check(ReferenceEquals(notification,app.Windows.OfType<TrayNotificationWindow>().Single()),"a second completion waits while the first scheduled toast remains visible");
+            Click(Button(notification,"OpenTrayNotification"));
+            await app.Dispatcher.InvokeAsync(()=>{},System.Windows.Threading.DispatcherPriority.Background);
+            var nextNotification=app.Windows.OfType<TrayNotificationWindow>().Single();
+            Check(!ReferenceEquals(notification,nextNotification)&&All<TextBlock>(nextNotification).Single(block=>block.Name=="TrayNotificationMessage").Text!=completed.Result,"closing the first toast displays the next scheduled reminder");
+            nextNotification.Close();
+            pet.SetQuietMode(true);
+            popup.UpdateLayout();
+            Click(All<Button>(popup).First(button=>button.Name=="RunMissedTask"));
+            Check(!app.Windows.OfType<TrayNotificationWindow>().Any()&&pet.ScheduledTasks.List().SelectMany(item=>item.Runs)
+                .Count(run=>run.State==ScheduledRunState.Succeeded)==3,"quiet mode still completes a reminder and suppresses its toast");
+            pet.SetQuietMode(false);
+            var reopened=app.Windows.OfType<ChatWindow>().Single(window=>window.IsVisible);
+            reopened.UpdateLayout();
+            var tasks=All<ListBox>(reopened).Single(list=>list.Name=="ScheduledTaskList");
+            Check(reopened.CurrentPage=="scheduledTasks"&&((ListBoxItem)tasks.SelectedItem).Tag as string==completed.TaskId,"notification opens the completed task in the reopened shell");
+            Click(Button(reopened,"ReviewMissedTasks"));
+            Check(ReferenceEquals(popup,app.Windows.OfType<Window>().Single(window=>window.Name=="MissedScheduledTasksDialog")),"manual review reuses the existing missed tasks popup");
+            var dataDirectory=pet.Store.DirectoryPath;
+            var closed=new TaskCompletionSource<bool>();pet.Closed+=delegate{closed.TrySetResult(true);};
+            pet.Close();
+            Check(await Task.WhenAny(closed.Task,Task.Delay(15000))==closed.Task,"application closes while its app-owned scheduler is running");
+            pet=null;
+            Check(!app.Windows.OfType<Window>().Any(window=>window.Name=="MissedScheduledTasksDialog"),"application exit closes the missed tasks popup");
+            using(var service=new ScheduledTaskService(dataDirectory,new Maintenance.DataMaintenanceGate()))
+                Check(service.Pending().Count==1&&service.List().SelectMany(item=>item.Runs).Any(run=>run.Id==completed.Id&&run.State==ScheduledRunState.Succeeded),"exit releases scheduled task storage and preserves completed and pending runs");
+        }
         static async Task Run()
         {
             string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","shell-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
             var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,AgentWorkspace=root,OnboardingState="completed",ShowPredictedMessages=false,ShowProjectSidebar=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
-            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"data","settings.json")),null);pet.ShowChat();await Task.Delay(120);var chat=app.Windows.OfType<ChatWindow>().Single(w=>w.IsVisible);Check(chat.Width>=Math.Min(1200,SystemParameters.WorkArea.Width-36),"default unified window uses a wide layout scaled to the screen");chat.Width=1320;chat.Height=880;await Task.Delay(100);
+            var store=new SettingsStore(Path.Combine(root,"data","settings.json"));
+            SeedMissedTasks(store.DirectoryPath);
+            pet=new PetWindow(null,cfg,store,null);SendPowerMode(Microsoft.Win32.PowerModes.Suspend);pet.ShowChat();await Task.Delay(120);var chat=app.Windows.OfType<ChatWindow>().Single(w=>w.IsVisible);Check(chat.Width>=Math.Min(1200,SystemParameters.WorkArea.Width-36),"default unified window uses a wide layout scaled to the screen");chat.Width=1320;chat.Height=880;await Task.Delay(100);
             Check(All<AgentWorkspaceNavigation>(chat).Single().IsVisible,"opening a full conversation defaults to an expanded sidebar even after the previous window hid it");
             Check(chat.WindowStyle==WindowStyle.None,"main window uses client-drawn chrome without a system title bar");
             var rail=All<Border>(chat).Single(b=>b.Name=="AppIconRail");Check(rail.IsVisible&&Button(chat,"ShellHome").IsVisible&&Button(chat,"ShellSettings").IsVisible&&Button(chat,"ShellAvatar").IsVisible,"home settings and avatar share the persistent left icon rail");
@@ -87,6 +190,17 @@ namespace Dafeiyu.Tests
             var text=All<MarkdownEditor>(chat).Single(e=>e.Name=="MessageInput");text.Text="保留主聊天草稿";var sameInput=text;
             Check(!All<Button>(chat).Any(b=>b.Name=="ChatSettings")&&!All<Button>(chat).Any(b=>b.Name=="ExportChat"&&b.IsVisible)&&!All<Button>(chat).Any(b=>b.Name=="HistoryEarlier"&&b.IsVisible),"empty conversation omits the redundant header settings and history buttons");
             var back=Button(chat,"AppBack");var forward=Button(chat,"AppForward");Check(!back.IsEnabled&&!forward.IsEnabled,"page navigation starts with no backward or forward history");
+            var scheduled=All<Button>(chat).SingleOrDefault(button=>button.Name=="ShellScheduledTasks");
+            Check(scheduled!=null&&scheduled.IsVisible,"scheduled tasks is visible in the icon rail");
+            var railButtons=((StackPanel)scheduled.Parent).Children;
+            int scheduledIndex=railButtons.IndexOf(scheduled);
+            Check(railButtons[scheduledIndex-1]==Button(chat,"ShellImages")&&railButtons[scheduledIndex+1]==Button(chat,"ShellUsage"),"scheduled tasks sits between images and usage");
+            Click(scheduled);
+            Check(chat.CurrentPage=="scheduledTasks"&&All<FrameworkElement>(chat).Any(element=>element.Name=="ScheduledTasksPage"&&element.IsVisible),"calendar opens the scheduled tasks page in the shell");
+            Check(!String.IsNullOrEmpty(System.Windows.Automation.AutomationProperties.GetItemStatus(scheduled)),"calendar has a selected state on the scheduled tasks page");
+            chat.UpdateLayout();CreateScheduledReminder(chat);
+            Click(back);Check(chat.CurrentPage=="home"&&String.IsNullOrEmpty(System.Windows.Automation.AutomationProperties.GetItemStatus(scheduled)),"back clears the calendar selection");
+            Click(forward);Check(chat.CurrentPage=="scheduledTasks","forward returns to scheduled tasks");Click(back);
             Click(Button(chat,"ShellSettings"));await Task.Delay(100);Check(app.Windows.OfType<Window>().Count(w=>w.IsVisible&&!(w is PetWindow))==1&&!app.Windows.OfType<SettingsWindow>().Any(w=>w.IsVisible),"settings opens inside the existing main window");Check(All<FrameworkElement>(chat).Any(e=>e.Name=="SettingsPage"&&e.IsVisible),"settings is its own full page");
             var settingsNav=All<ListBox>(chat).Single(l=>l.Name=="SettingsNavigation");Check(settingsNav.Items.OfType<ListBoxItem>().Any(i=>i.Content as string=="通用")&&!settingsNav.Items.OfType<ListBoxItem>().Any(i=>(i.Content as string??"").Contains("MCP")),"settings uses General and no longer embeds MCP navigation");
             var settingsInput=All<TextBox>(chat).FirstOrDefault(e=>e.Name=="PersonaPrompt");if(settingsInput!=null)settingsInput.Text="暂存未保存的设置文字";
@@ -109,6 +223,7 @@ namespace Dafeiyu.Tests
             chat.Width=520;await Task.Delay(80);var speechToggle=All<CheckBox>(chat).Single(c=>c.Name=="TtsOutput");var topAvatar=All<Image>(chat).Single(i=>i.Name=="ChatAvatar");var topTitle=All<TextBlock>(chat).Single(t=>t.Name=="ConversationTitle");Check(speechToggle.TranslatePoint(new Point(0,0),chat).X>=topAvatar.TranslatePoint(new Point(topAvatar.ActualWidth,0),chat).X&&speechToggle.TranslatePoint(new Point(speechToggle.ActualWidth,0),chat).X<=topTitle.TranslatePoint(new Point(0,0),chat).X,"auto-read control sits between the avatar and conversation title at minimum width");bool wasReading=cfg.ReadReplies;speechToggle.IsChecked=!wasReading;Check(cfg.ReadReplies!=wasReading,"relocated auto-read toggle still updates the real reply-reading preference");speechToggle.IsChecked=wasReading;var titleMenu=Button(chat,"AppMenuHelp");var caption=Button(chat,"AppMinimize");Check(titleMenu.TranslatePoint(new Point(titleMenu.ActualWidth,0),chat).X<=caption.TranslatePoint(new Point(0,0),chat).X,"minimum-width title menus remain separate from native window controls");foreach(string id in new[]{"AppBack","AppForward","ToggleAppSidebar","AppMenuFile","AppMenuEdit","AppMenuView","AppMenuHelp","AppMinimize","AppMaximize","AppClose","ShellHome","ShellSettings","ShellAvatar"}){var control=Button(chat,id);var bounds=new Rect(control.TranslatePoint(new Point(0,0),chat),new Size(control.ActualWidth,control.ActualHeight));Check(control.IsVisible&&bounds.Left>=0&&bounds.Right<=chat.ActualWidth&&bounds.Bottom<=chat.ActualHeight,"minimum-width button remains within the window: "+id);}Save(chat,"app-shell-minimum.png");
             chat.Width=700;await Task.Delay(70);Save(chat,"app-shell-narrow.png");
             chat.Width=1320;Click(Button(chat,"AppMaximize"));await Task.Delay(180);Check(chat.WindowState==WindowState.Maximized&&rail.IsVisible,"custom maximize keeps the icon rail and page frame visible");var maximizedClip=frame.Clip as RectangleGeometry;Check(maximizedClip!=null&&Math.Abs(maximizedClip.Rect.Width-frame.ActualWidth)<1&&maximizedClip.RadiusX==16,"maximized content uses the resized rounded clip");Click(Button(chat,"AppMaximize"));await Task.Delay(100);Check(chat.WindowState==WindowState.Normal,"custom restore returns to normal window state");Click(Button(chat,"AppMinimize"));await Task.Delay(70);Check(chat.WindowState==WindowState.Minimized,"custom minimize action changes the native window state");pet.ShowChat();await Task.Delay(100);Check(chat.WindowState==WindowState.Normal&&rail.IsVisible,"existing full-chat entry restores the same minimized window");
+            await CheckScheduledTasksWithoutShell(chat);
             Console.WriteLine("App shell tests: "+checks+" passed");
         }
         [STAThread]public static int Main(string[] args){if(args.Length!=0&&(args.Length!=2||args[0]!="--language-ui"||!UiLanguages.Choices.Any(choice=>choice.Code==args[1])))return 2;app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Length==2)await RunLanguageFixture(args[1]);else await Run();code=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();if(pet!=null)pet.Close();app.Shutdown();}}));app.Run();return code;}
