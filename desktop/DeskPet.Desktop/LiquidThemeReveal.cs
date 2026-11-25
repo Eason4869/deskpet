@@ -8,6 +8,8 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Styling;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Dafeiyu;
 using DeskPet.Platform.Mac;
@@ -28,6 +30,8 @@ internal sealed class LiquidThemeReveal : IDisposable
     private LiquidThemeShape? shape;
     private string? targetMode;
     private bool targetDark;
+    private bool saveOnFinish;
+    private bool systemAppearancePrepared;
     private int generation;
 
     internal LiquidThemeReveal(Window window, Grid host, Control content, Button button,
@@ -41,6 +45,7 @@ internal sealed class LiquidThemeReveal : IDisposable
         this.duration = duration;
         this.reducedMotion = reducedMotion ?? (() => MacServices.PrefersReducedMotion);
         button.Click += Switch;
+        button.GettingFocus += PreservePointerFocus;
         host.SizeChanged += Interrupt;
         window.ScalingChanged += Interrupt;
         window.Deactivated += Interrupt;
@@ -50,6 +55,9 @@ internal sealed class LiquidThemeReveal : IDisposable
         window.AddHandler(ScrollViewer.ScrollChangedEvent, OnScrollChanged, handledEventsToo: true);
         window.Closed += Closed;
         DesktopTheme.ModeChanged += RefreshIcon;
+        DesktopTheme.SystemAppearanceChanging += PrepareSystemAppearance;
+        DesktopTheme.AppearanceChanged += OnAppearanceChanged;
+        ApplyWindowAppearance();
         RefreshIcon();
     }
 
@@ -86,49 +94,80 @@ internal sealed class LiquidThemeReveal : IDisposable
         bool wasDark = DesktopTheme.IsDark;
         bool reduceMotion = reducedMotion();
         bool couldChangePalette = next == "system" || (next == "dark") != wasDark;
-        Point? origin = null;
-        RenderTargetBitmap? before = null;
-        if (couldChangePalette && !reduceMotion && duration > TimeSpan.Zero &&
-            content.IsEffectivelyVisible && content.Bounds.Width >= 1 && content.Bounds.Height >= 1 &&
-            !content.GetVisualDescendants().Any(v => v.IsEffectivelyVisible &&
-                (v is NativeControlHost || v is Popup { IsOpen: true })))
-        {
-            origin = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height - 2), content);
-            if (origin.HasValue) before = Capture();
-            if (before != null)
-            {
-                layer = new SnapshotLayer(before, content.Bounds.Size);
-                host.Children.Add(layer);
-            }
-        }
-
+        if (systemAppearancePrepared) Finish();
+        if (couldChangePalette && !reduceMotion) Prepare();
         DesktopTheme.Apply(next);
-        if (layer != null && before != null && origin.HasValue && DesktopTheme.IsDark != wasDark)
-        {
-            content.UpdateLayout();
-            var after = Capture();
-            if (after != null && after.PixelSize == before.PixelSize)
-            {
-                layer.After = after;
-                shape = new LiquidThemeShape(content.Bounds.Width, content.Bounds.Height, origin.Value.X, origin.Value.Y);
-                targetMode = next;
-                targetDark = DesktopTheme.IsDark;
-                clock.Restart();
-                int current = ++generation;
-                Action<TimeSpan>? frame = null;
-                frame = _ =>
-                {
-                    if (current == generation && RenderFrame()) window.RequestAnimationFrame(frame!);
-                };
-                window.RequestAnimationFrame(frame);
-                return;
-            }
-            after?.Dispose();
-        }
+        if (DesktopTheme.IsDark != wasDark && StartPrepared(next, true)) return;
 
         ClearLayer();
         commit(next);
         if (wasDark == DesktopTheme.IsDark && !reduceMotion) AnimateIcon();
+    }
+
+    // Keep this window's theme resources on the old variant until the old snapshot has been taken.
+    private void ApplyWindowAppearance() =>
+        window.RequestedThemeVariant = DesktopTheme.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
+
+    private void OnAppearanceChanged()
+    {
+        ApplyWindowAppearance();
+        if (systemAppearancePrepared)
+            Dispatcher.UIThread.Post(RevealSystemAppearance, DispatcherPriority.Render);
+    }
+
+    private void PrepareSystemAppearance()
+    {
+        Finish();
+        if (reducedMotion()) return;
+        Prepare();
+        systemAppearancePrepared = layer != null;
+    }
+
+    private void RevealSystemAppearance()
+    {
+        if (!systemAppearancePrepared) return;
+        systemAppearancePrepared = false;
+        if (DesktopTheme.Mode != "system" || !StartPrepared("system", false)) ClearLayer();
+    }
+
+    private void Prepare()
+    {
+        if (duration <= TimeSpan.Zero || !content.IsEffectivelyVisible || window.WindowState == WindowState.Minimized ||
+            content.Bounds.Width < 1 || content.Bounds.Height < 1 ||
+            content.GetVisualDescendants().Any(v => v.IsEffectivelyVisible &&
+                (v is NativeControlHost || v is Popup { IsOpen: true }))) return;
+        var origin = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height - 2), content);
+        if (!origin.HasValue) return;
+        var before = Capture();
+        if (before == null) return;
+        layer = new SnapshotLayer(before, content.Bounds.Size);
+        shape = new LiquidThemeShape(content.Bounds.Width, content.Bounds.Height, origin.Value.X, origin.Value.Y);
+        host.Children.Add(layer);
+    }
+
+    private bool StartPrepared(string next, bool persist)
+    {
+        if (layer == null) return false;
+        content.UpdateLayout();
+        var after = Capture();
+        if (after == null) return false;
+        if (!layer.SetAfter(after))
+        {
+            after.Dispose();
+            return false;
+        }
+        targetMode = next;
+        targetDark = DesktopTheme.IsDark;
+        saveOnFinish = persist;
+        clock.Restart();
+        int current = ++generation;
+        Action<TimeSpan>? frame = null;
+        frame = _ =>
+        {
+            if (current == generation && RenderFrame()) window.RequestAnimationFrame(frame!);
+        };
+        window.RequestAnimationFrame(frame);
+        return true;
     }
 
     private void AnimateIcon()
@@ -196,6 +235,11 @@ internal sealed class LiquidThemeReveal : IDisposable
     {
         if (!button.IsPointerOver) Finish();
     }
+    private void PreservePointerFocus(object? sender, FocusChangingEventArgs args)
+    {
+        if (args.NavigationMethod == NavigationMethod.Pointer && args.OldFocusedElement is TextBox input &&
+            TopLevel.GetTopLevel(input) == window) args.TryCancel();
+    }
     private void OnKeyDown(object? sender, KeyEventArgs args)
     {
         if (!button.IsKeyboardFocusWithin || args.Key is not (Key.Space or Key.Enter)) Finish();
@@ -209,6 +253,11 @@ internal sealed class LiquidThemeReveal : IDisposable
 
     private void Finish()
     {
+        if (systemAppearancePrepared)
+        {
+            systemAppearancePrepared = false;
+            ClearLayer();
+        }
         if (targetMode == null) return;
         string completed = targetMode;
         targetMode = null;
@@ -216,7 +265,7 @@ internal sealed class LiquidThemeReveal : IDisposable
         generation++;
         clock.Stop();
         ClearLayer();
-        if (DesktopTheme.Mode == completed) commit(completed);
+        if (saveOnFinish && DesktopTheme.Mode == completed) commit(completed);
     }
 
     private void ClearLayer()
@@ -225,6 +274,7 @@ internal sealed class LiquidThemeReveal : IDisposable
         host.Children.Remove(layer);
         layer.Dispose();
         layer = null;
+        shape = null;
     }
 
     private void Closed(object? sender, EventArgs args) => Dispose();
@@ -233,6 +283,7 @@ internal sealed class LiquidThemeReveal : IDisposable
     {
         Finish();
         button.Click -= Switch;
+        button.GettingFocus -= PreservePointerFocus;
         host.SizeChanged -= Interrupt;
         window.ScalingChanged -= Interrupt;
         window.Deactivated -= Interrupt;
@@ -242,6 +293,8 @@ internal sealed class LiquidThemeReveal : IDisposable
         window.RemoveHandler(ScrollViewer.ScrollChangedEvent, OnScrollChanged);
         window.Closed -= Closed;
         DesktopTheme.ModeChanged -= RefreshIcon;
+        DesktopTheme.SystemAppearanceChanging -= PrepareSystemAppearance;
+        DesktopTheme.AppearanceChanged -= OnAppearanceChanged;
     }
 
     private sealed class SnapshotLayer : Control, IDisposable
@@ -249,7 +302,7 @@ internal sealed class LiquidThemeReveal : IDisposable
         private readonly RenderTargetBitmap before;
         private readonly Rect viewport;
         private Geometry? reveal;
-        internal RenderTargetBitmap? After { get; set; }
+        private RenderTargetBitmap? after;
 
         internal SnapshotLayer(RenderTargetBitmap before, Size size)
         {
@@ -267,18 +320,25 @@ internal sealed class LiquidThemeReveal : IDisposable
             InvalidateVisual();
         }
 
+        internal bool SetAfter(RenderTargetBitmap bitmap)
+        {
+            if (bitmap.PixelSize != before.PixelSize) return false;
+            after = bitmap;
+            return true;
+        }
+
         public override void Render(DrawingContext context)
         {
             context.DrawImage(before, viewport);
-            if (After == null || reveal == null) return;
-            using (context.PushGeometryClip(reveal)) context.DrawImage(After, viewport);
+            if (after == null || reveal == null) return;
+            using (context.PushGeometryClip(reveal)) context.DrawImage(after, viewport);
         }
 
         public void Dispose()
         {
             before.Dispose();
-            After?.Dispose();
-            After = null;
+            after?.Dispose();
+            after = null;
         }
     }
 }

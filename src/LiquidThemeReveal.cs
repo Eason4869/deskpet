@@ -25,6 +25,7 @@ namespace Dafeiyu
         LiquidThemeShape shape;
         string targetMode;
         bool targetDark;
+        bool saveOnFinish;
 
         internal LiquidThemeReveal(Window window, Grid host, FrameworkElement content, Button button,
             Action<string> commit, TimeSpan duration)
@@ -37,6 +38,7 @@ namespace Dafeiyu
             this.duration = duration;
             scrollChanged = OnScrollChanged;
             button.Click += Switch;
+            button.PreviewGotKeyboardFocus += PreservePointerFocus;
             host.SizeChanged += Interrupt;
             window.DpiChanged += Interrupt;
             window.Deactivated += Interrupt;
@@ -47,6 +49,8 @@ namespace Dafeiyu
             window.AddHandler(ScrollViewer.ScrollChangedEvent, scrollChanged, true);
             window.Closed += Closed;
             ThemeManager.ModeChanged += RefreshIcon;
+            ThemeManager.SystemAppearanceChanging += PrepareSystemAppearance;
+            ThemeManager.SystemAppearanceChanged += RevealSystemAppearance;
             RefreshIcon();
         }
 
@@ -69,41 +73,50 @@ namespace Dafeiyu
             bool wasDark = ThemeManager.IsDark;
             bool reduceMotion = !SystemParameters.ClientAreaAnimation;
             bool couldChangePalette = next == "system" || (next == "dark") != wasDark;
-            BitmapSource before = null;
-            Point origin = default(Point);
-            if (couldChangePalette && !reduceMotion && duration > TimeSpan.Zero &&
-                content.IsVisible && content.ActualWidth >= 1 && content.ActualHeight >= 1 &&
-                !HasUncapturableSurface(content))
-            {
-                origin = button.TranslatePoint(new Point(button.ActualWidth / 2, button.ActualHeight - 2), content);
-                before = Capture();
-                if (before != null)
-                {
-                    layer = new SnapshotLayer(before, content.RenderSize);
-                    host.Children.Add(layer);
-                }
-            }
-
+            if (couldChangePalette && !reduceMotion) Prepare();
             ThemeManager.Apply(next);
-            if (layer != null && ThemeManager.IsDark != wasDark)
-            {
-                content.UpdateLayout();
-                var after = Capture();
-                if (after != null && after.PixelWidth == before.PixelWidth && after.PixelHeight == before.PixelHeight)
-                {
-                    layer.SetAfter(after);
-                    shape = new LiquidThemeShape(content.ActualWidth, content.ActualHeight, origin.X, origin.Y);
-                    targetMode = next;
-                    targetDark = ThemeManager.IsDark;
-                    clock.Restart();
-                    CompositionTarget.Rendering += RenderFrame;
-                    return;
-                }
-            }
+            if (ThemeManager.IsDark != wasDark && StartPrepared(next, true)) return;
 
             ClearLayer();
             commit(next);
             if (wasDark == ThemeManager.IsDark && !reduceMotion) AnimateIcon();
+        }
+
+        void PrepareSystemAppearance()
+        {
+            Finish();
+            if (SystemParameters.ClientAreaAnimation) Prepare();
+        }
+
+        void RevealSystemAppearance()
+        {
+            if (!StartPrepared("system", false)) ClearLayer();
+        }
+
+        void Prepare()
+        {
+            if (duration <= TimeSpan.Zero || !content.IsVisible || window.WindowState == WindowState.Minimized ||
+                content.ActualWidth < 1 || content.ActualHeight < 1 || HasUncapturableSurface(content)) return;
+            var origin = button.TranslatePoint(new Point(button.ActualWidth / 2, button.ActualHeight - 2), content);
+            var before = Capture();
+            if (before == null) return;
+            layer = new SnapshotLayer(before, content.RenderSize);
+            shape = new LiquidThemeShape(content.ActualWidth, content.ActualHeight, origin.X, origin.Y);
+            host.Children.Add(layer);
+        }
+
+        bool StartPrepared(string next, bool persist)
+        {
+            if (layer == null) return false;
+            content.UpdateLayout();
+            var after = Capture();
+            if (after == null || !layer.SetAfter(after)) return false;
+            targetMode = next;
+            targetDark = ThemeManager.IsDark;
+            saveOnFinish = persist;
+            clock.Restart();
+            CompositionTarget.Rendering += RenderFrame;
+            return true;
         }
 
         void AnimateIcon()
@@ -184,6 +197,12 @@ namespace Dafeiyu
         {
             if (!button.IsMouseOver) Finish();
         }
+        void PreservePointerFocus(object sender, KeyboardFocusChangedEventArgs args)
+        {
+            var oldFocus = args.OldFocus as TextBoxBase;
+            if (Mouse.LeftButton == MouseButtonState.Pressed && oldFocus != null &&
+                Window.GetWindow(oldFocus) == window) args.Handled = true;
+        }
         void OnKeyDown(object sender, KeyEventArgs args)
         {
             if (!button.IsKeyboardFocusWithin || (args.Key != Key.Space && args.Key != Key.Enter)) Finish();
@@ -203,7 +222,7 @@ namespace Dafeiyu
             clock.Stop();
             CompositionTarget.Rendering -= RenderFrame;
             ClearLayer();
-            if (ThemeManager.Mode == completed) commit(completed);
+            if (saveOnFinish && ThemeManager.Mode == completed) commit(completed);
         }
 
         void ClearLayer()
@@ -211,6 +230,7 @@ namespace Dafeiyu
             if (layer == null) return;
             host.Children.Remove(layer);
             layer = null;
+            shape = null;
         }
 
         void Closed(object sender, EventArgs args) { Dispose(); }
@@ -219,6 +239,7 @@ namespace Dafeiyu
         {
             Finish();
             button.Click -= Switch;
+            button.PreviewGotKeyboardFocus -= PreservePointerFocus;
             host.SizeChanged -= Interrupt;
             window.DpiChanged -= Interrupt;
             window.Deactivated -= Interrupt;
@@ -229,6 +250,8 @@ namespace Dafeiyu
             window.RemoveHandler(ScrollViewer.ScrollChangedEvent, scrollChanged);
             window.Closed -= Closed;
             ThemeManager.ModeChanged -= RefreshIcon;
+            ThemeManager.SystemAppearanceChanging -= PrepareSystemAppearance;
+            ThemeManager.SystemAppearanceChanged -= RevealSystemAppearance;
         }
 
         sealed class SnapshotLayer : FrameworkElement
@@ -236,11 +259,14 @@ namespace Dafeiyu
             readonly VisualCollection visuals;
             readonly DrawingVisual after = new DrawingVisual();
             readonly Rect viewport;
+            readonly int pixelWidth, pixelHeight;
 
             internal SnapshotLayer(BitmapSource before, Size size)
             {
                 visuals = new VisualCollection(this);
                 viewport = new Rect(size);
+                pixelWidth = before.PixelWidth;
+                pixelHeight = before.PixelHeight;
                 Name = "LiquidThemeOverlay";
                 IsHitTestVisible = false;
                 ClipToBounds = true;
@@ -251,7 +277,12 @@ namespace Dafeiyu
                 visuals.Add(after);
             }
 
-            internal void SetAfter(BitmapSource bitmap) { Draw(after, bitmap); }
+            internal bool SetAfter(BitmapSource bitmap)
+            {
+                if (bitmap.PixelWidth != pixelWidth || bitmap.PixelHeight != pixelHeight) return false;
+                Draw(after, bitmap);
+                return true;
+            }
 
             internal void SetClip(Geometry clip)
             {

@@ -75,6 +75,12 @@ try
             foreach (var progress in Enumerable.Range(0, 101)) Geometry.Parse(shape.PathAt(progress / 100.0));
             var draft = window.GetLogicalDescendants().OfType<TextBox>().Single(b => b.Name == "ChatDraft");
             draft.Text = "Preserve draft";
+            draft.Focus();
+            button.Focus(NavigationMethod.Pointer);
+            Check(draft.IsFocused, "Pointer activation keeps focus in the existing draft editor");
+            button.Focus(NavigationMethod.Tab);
+            Check(button.IsFocused, "Tab navigation can focus the theme button");
+            draft.Focus();
             bool Overlay() => window.GetVisualDescendants().OfType<Control>().Any(c => c.Name == "LiquidThemeOverlay");
             void Switch() => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var store = new SettingsStore(Path.Combine(owner.DataDirectory, "settings.json"));
@@ -92,6 +98,16 @@ try
             Switch();
             Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
             Check(store.Load().ThemeMode == "system", "Desktop follows the system after dark");
+            bool previousDark = DesktopTheme.IsDark;
+            foreach (bool isDark in new[] { !previousDark, previousDark })
+            {
+                Application.Current!.SetValue(Application.ActualThemeVariantProperty,
+                    isDark ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light);
+                Check(DesktopTheme.IsDark == isDark && Overlay() == !reducedMotion,
+                    $"Desktop follows system appearance with a reveal when motion is allowed (expected dark {isDark}, effective {Application.Current.ActualThemeVariant}, mode {DesktopTheme.Mode}, cached dark {DesktopTheme.IsDark}, overlay {Overlay()}, reduced motion {reducedMotion})");
+                Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
+                Check(store.Load().ThemeMode == "system", "System appearance retains the system preference");
+            }
             Switch();
             window.Width += 30;
             window.UpdateLayout();

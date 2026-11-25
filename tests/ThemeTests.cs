@@ -57,16 +57,16 @@ namespace Dafeiyu.Tests
             chat.Activate();
             chat.UpdateLayout();
             Console.WriteLine("PREVIEW_WINDOW="+new System.Windows.Interop.WindowInteropHelper(chat).Handle.ToInt64());
-            Pump(2000);
+            Pump(1450);
             var button=All<Button>(chat).Single(b=>b.Name=="AppThemeMode");
             Click(button);
-            Pump(1700);
+            Pump(1450);
             Click(button);
-            if(ThemeManager.IsDark)
-            {
-                Pump(280);
-                Click(button);
-            }
+            Pump(1500);
+            bool systemDark=ThemeManager.IsDark;
+            ThemeManager.SetSystemTheme(!systemDark);
+            Pump(1450);
+            ThemeManager.SetSystemTheme(systemDark);
             Pump(1800);
         }
         [STAThread]public static int Main(string[] args)
@@ -126,6 +126,14 @@ namespace Dafeiyu.Tests
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark"&&picker.Value=="dark","title switch saves the mode, updates settings and removes the layer");
                 Click(titleTheme);Pump(1250);
                 Check(store.Load().ThemeMode=="system"&&picker.Value=="system","title button reaches follow-system mode");
+                foreach(bool systemDark in new[]{!ThemeManager.IsDark,ThemeManager.IsDark})
+                {
+                    ThemeManager.SetSystemTheme(systemDark);
+                    Check(ThemeManager.IsDark==systemDark&&HasOverlay(main)==SystemParameters.ClientAreaAnimation,
+                        "changing system appearance plays the same reveal when motion is allowed");
+                    Pump(1150);
+                    Check(!HasOverlay(main)&&store.Load().ThemeMode=="system","system reveal clears without changing the saved preference");
+                }
                 Click(titleTheme);Pump(1250);
                 Check(store.Load().ThemeMode=="light"&&picker.Value=="light","title button cycles back to light");
                 Click(titleTheme);

@@ -171,7 +171,7 @@ internal sealed partial class ChatWindow : Window
             scheduledTasksNav.Name = "ScheduledTasksNavigation";
             nav.Children.Add(scheduledTasksNav);
         }
-        if (quick)
+        if (quick || ProactiveBinding != null)
         {
             nav.Margin = new Thickness(16, 8, 16, 0);
             DockPanel.SetDock(nav, Dock.Top);
@@ -198,7 +198,8 @@ internal sealed partial class ChatWindow : Window
             var themeHost = new Grid { ClipToBounds = true };
             themeHost.Children.Add(shell);
             Content = themeHost;
-            _ = new LiquidThemeReveal(this, themeHost, shell, themeButton, owner.SetThemeMode, LiquidThemeShape.DefaultDuration);
+            _ = new LiquidThemeReveal(this, themeHost, shell, themeButton,
+                mode => Try(() => owner.SetThemeMode(mode)), LiquidThemeShape.DefaultDuration);
         }
         ApplyRoute();
         models.SelectionChanged += (_, _) =>

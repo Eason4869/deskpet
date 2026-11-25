@@ -8,12 +8,15 @@ internal static class DesktopTheme
 {
     private static readonly Dictionary<string, SolidColorBrush> colors = new(StringComparer.OrdinalIgnoreCase);
     private static bool installed;
+    private static bool applyingPreference;
     private static readonly Dictionary<string,(string Light,string Dark,SolidColorBrush Brush)> pairedColors = new();
     private static readonly SolidColorBrush caret = new(Color.Parse("#203754"));
     internal static IBrush Caret => caret;
-    internal static bool IsDark => Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+    internal static bool IsDark { get; private set; }
     internal static string Mode { get; private set; } = "system";
     internal static event Action? ModeChanged;
+    internal static event Action? SystemAppearanceChanging;
+    internal static event Action? AppearanceChanged;
     internal static IBrush Surface => Brush("#FFFFFF");
     // Same explicit card layer as WPF, retained across live theme switches.
     internal static SolidColorBrush CardSurface => Brush("#FFFFFF", "#2B3545");
@@ -36,14 +39,24 @@ internal static class DesktopTheme
         string previous = Mode;
         Mode = ThemeColors.Normalize(mode);
         if (!installed) { app.ActualThemeVariantChanged += (_, _) => Refresh(); installed = true; }
-        app.RequestedThemeVariant = Mode switch { "light" => ThemeVariant.Light, "dark" => ThemeVariant.Dark, _ => ThemeVariant.Default };
-        Refresh();
+        applyingPreference = true;
+        try
+        {
+            app.RequestedThemeVariant = Mode switch { "light" => ThemeVariant.Light, "dark" => ThemeVariant.Dark, _ => ThemeVariant.Default };
+            Refresh();
+        }
+        finally { applyingPreference = false; }
         if (previous != Mode) ModeChanged?.Invoke();
     }
     private static void Refresh()
     {
+        bool nextDark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+        bool appearanceChanged = nextDark != IsDark;
+        if (appearanceChanged && Mode == "system" && !applyingPreference) SystemAppearanceChanging?.Invoke();
+        IsDark = nextDark;
         caret.Color = Color.Parse(IsDark ? "#FFFFFF" : "#203754");
         foreach (var pair in colors) pair.Value.Color = Color.Parse(ThemeColors.Resolve(pair.Key, IsDark));
         foreach (var pair in pairedColors.Values) pair.Brush.Color = Color.Parse(IsDark?pair.Dark:pair.Light);
+        if (appearanceChanged) AppearanceChanged?.Invoke();
     }
 }
