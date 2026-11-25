@@ -171,7 +171,12 @@ namespace Dafeiyu
         static byte[] ReadPcm(int cue,bool operation,out int rate)
         {
             string[] names=operation?new[]{"companion-appear","companion-switch","companion-hide"}:new[]{"task-complete","review-needed","permission-needed","attention-failed"};
-            using(var stream=typeof(NotificationSoundPlayer).Assembly.GetManifestResourceStream("Dafeiyu.Sounds."+names[(int)cue]+".wav"))
+            return ReadPcmResource(names[(int)cue],out rate);
+        }
+
+        internal static byte[] ReadPcmResource(string name,out int rate)
+        {
+            using(var stream=typeof(NotificationSoundPlayer).Assembly.GetManifestResourceStream("Dafeiyu.Sounds."+name+".wav"))
             {
                 if(stream==null)throw new InvalidDataException("Notification cue is unavailable.");
                 using(var reader=new BinaryReader(stream))

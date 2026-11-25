@@ -35,3 +35,12 @@ approved bytes and verifies their hashes (verified with Windows Python 3.12).
 Operations have a one-second cooldown, no queue, and yield to notifications;
 both yield to speech, recording and calls. Hidden selections and background
 updates do not replay a switch sound when the companion later becomes visible.
+
+## Theme zipper
+
+`theme-zipper-to-dark.wav` and `theme-zipper-to-light.wav` use part of
+bmacphail's [Zipper Zipping Slow](https://freesound.org/people/bmacphail/sounds/569540/),
+released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+The recorded teeth play at their original speed, with gentle EQ and fades.
+Each 48 kHz mono PCM16 file contains the five cue regions in playback order
+(174, 160, 1,221, 190, and 152 ms), including their quiet tails.

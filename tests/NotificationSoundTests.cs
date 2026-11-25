@@ -143,12 +143,14 @@ namespace Dafeiyu.Tests
                     motion + " generates bounded, audible direction-specific PCM");
                 Check(profiles.All(other => !light.SequenceEqual(other)), motion + " has its own travel sound");
                 profiles.Add(light);
+                // The recorded zipper retains more tooth transients than the tonal presets.
+                double highFrequencyLimit = motion == ThemeTransitionMotion.Zipper ? .125 : .018;
                 foreach (LiquidThemeCue cue in Enum.GetValues(typeof(LiquidThemeCue)))
                 {
                     light = LiquidThemeAudio.Render(cue, false, duration, motion);
                     dark = LiquidThemeAudio.Render(cue, true, duration, motion);
                     double lightSlope = PcmSlopeEnergy(light), darkSlope = PcmSlopeEnergy(dark);
-                    Check(lightSlope < .018 && darkSlope < lightSlope,
+                    Check(lightSlope < highFrequencyLimit && darkSlope < lightSlope,
                         motion + " " + cue + " stays mellow and shifts lower for the dark direction");
                 }
                 if (motion == ThemeTransitionMotion.Flow) continue;

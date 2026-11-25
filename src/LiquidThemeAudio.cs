@@ -8,35 +8,39 @@ namespace Dafeiyu
     {
         internal const int SampleRate = 48000;
         const int FramesPerMillisecond = SampleRate / 1000;
+        const int PullMilliseconds = 174, ContactMilliseconds = 160, FinishMilliseconds = 190, ShortMilliseconds = 152;
         const double Tau = 2 * Math.PI;
         const double G3 = 196.00, C4 = 261.63, D4 = 293.66, E4 = 329.63, G4 = 392.00, A4 = 440.00, C5 = 523.25;
         static readonly double[] WaterDrops = { D4, G4, E4, C4, E4, A4, G4, D4 };
         static readonly double[] RippleEchoes = { G4, E4, C4, G3 };
         static readonly double[] GlassNotes = { G4, C5, A4, E4 };
-        static readonly double[] ZipperTeeth = { E4, G4, E4, D4, E4, G4, C4 };
+        // Five consecutive recordings in LiquidThemeCue order, all at 48 kHz.
+        static readonly int[] ZipperMilliseconds = { PullMilliseconds, ContactMilliseconds, 1221, FinishMilliseconds, ShortMilliseconds };
+        static readonly Lazy<byte[]> ZipperDark = new Lazy<byte[]>(() => LoadZipper("theme-zipper-to-dark"));
+        static readonly Lazy<byte[]> ZipperLight = new Lazy<byte[]>(() => LoadZipper("theme-zipper-to-light"));
 
         internal static byte[] Render(LiquidThemeCue cue, bool dark, TimeSpan flowDuration, string motion = ThemeTransitionMotion.Flow)
         {
             int frames;
             switch (cue)
             {
-                case LiquidThemeCue.Drop: frames = 174 * FramesPerMillisecond; break;
-                case LiquidThemeCue.Splash: frames = 160 * FramesPerMillisecond; break;
+                case LiquidThemeCue.Drop: frames = PullMilliseconds * FramesPerMillisecond; break;
+                case LiquidThemeCue.Splash: frames = ContactMilliseconds * FramesPerMillisecond; break;
                 case LiquidThemeCue.Flow:
                     frames = (int)Math.Round(SampleRate * Math.Max(0, Math.Min(2, flowDuration.TotalSeconds)),
                         MidpointRounding.AwayFromZero);
                     break;
-                case LiquidThemeCue.Finish: frames = 190 * FramesPerMillisecond; break;
-                case LiquidThemeCue.Short: frames = 152 * FramesPerMillisecond; break;
+                case LiquidThemeCue.Finish: frames = FinishMilliseconds * FramesPerMillisecond; break;
+                case LiquidThemeCue.Short: frames = ShortMilliseconds * FramesPerMillisecond; break;
                 default: throw new ArgumentOutOfRangeException("cue");
             }
+            if (motion == ThemeTransitionMotion.Zipper) return RenderZipper(cue, dark, frames);
             var mix = new double[frames];
             double pitch = dark ? .75 : 1;
             switch (motion)
             {
                 case ThemeTransitionMotion.Ripple: Ripple(mix, cue, pitch, dark); break;
                 case ThemeTransitionMotion.Refraction: Refraction(mix, cue, pitch, dark); break;
-                case ThemeTransitionMotion.Zipper: Zipper(mix, cue, pitch, dark); break;
                 default: Water(mix, cue, pitch, dark); break;
             }
             var pcm = new byte[frames * 2];
@@ -132,30 +136,38 @@ namespace Dafeiyu
             }
         }
 
-        static void Zipper(double[] mix, LiquidThemeCue cue, double pitch, bool dark)
+        static byte[] LoadZipper(string name)
         {
-            switch (cue)
+            int rate;
+            byte[] pcm = NotificationSoundPlayer.ReadPcmResource(name, out rate);
+            int totalMilliseconds = 0;
+            foreach (int length in ZipperMilliseconds) totalMilliseconds += length;
+            if (rate != SampleRate || pcm.Length != totalMilliseconds * FramesPerMillisecond * 2)
+                throw new System.IO.InvalidDataException("Theme zipper audio does not match its cue boundaries.");
+            return pcm;
+        }
+
+        static byte[] RenderZipper(LiquidThemeCue cue, bool dark, int frames)
+        {
+            byte[] bank = dark ? ZipperDark.Value : ZipperLight.Value;
+            int index = (int)cue, offset = 0;
+            for (int i = 0; i < index; i++) offset += ZipperMilliseconds[i] * FramesPerMillisecond;
+            int available = ZipperMilliseconds[index] * FramesPerMillisecond;
+            int count = Math.Min(available, frames);
+            var pcm = new byte[frames * 2];
+            Buffer.BlockCopy(bank, offset * 2, pcm, 0, count * 2);
+            if (count < available)
             {
-                case LiquidThemeCue.Drop:
-                    Note(mix, pitch, 0, E4, 98, .083, 34, .15);
-                    Note(mix, pitch, 42, C4, 85, .043, 12);
-                    break;
-                case LiquidThemeCue.Splash:
-                    Note(mix, pitch, 0, D4, 112, .087, 28, .16);
-                    Note(mix, pitch, 47, A4, 92, .026);
-                    break;
-                case LiquidThemeCue.Flow:
-                    for (int note = 0; note < ZipperTeeth.Length; note++)
-                        Note(mix, pitch, TravelOffset(mix, .03 + note * .139), ZipperTeeth[note], 88, .064 - note * .005, 22, .15);
-                    break;
-                case LiquidThemeCue.Finish:
-                    Settle(mix, pitch, dark, E4, .076);
-                    break;
-                case LiquidThemeCue.Short:
-                    Note(mix, pitch, 0, C4, 110, .091, 18);
-                    Note(mix, pitch, 45, G4, 93, .028);
-                    break;
+                int fade = Math.Min(count, 20 * FramesPerMillisecond);
+                for (int i = count - fade; i < count; i++)
+                {
+                    int sample = (short)(pcm[i * 2] | pcm[i * 2 + 1] << 8);
+                    sample = (int)(sample * Smooth((count - 1 - i) / (double)fade));
+                    pcm[i * 2] = (byte)(sample & 0xff);
+                    pcm[i * 2 + 1] = (byte)((sample >> 8) & 0xff);
+                }
             }
+            return pcm;
         }
 
         static int TravelOffset(double[] mix, double fraction)

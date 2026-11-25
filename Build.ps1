@@ -95,7 +95,7 @@ if ($Target -eq 'App' -or ($Target -eq 'WpfOfficialCompanionTests' -and ($TestAr
     $assets += '/resource:'+(Join-Path $workRoot 'bundled-ebao/e-bao.inventory.json')+',Dafeiyu.BundledEbao.inventory.json'
 }
 
-foreach ($sound in @('task-complete','review-needed','permission-needed','attention-failed','companion-appear','companion-switch','companion-hide')) {
+foreach ($sound in @('task-complete','review-needed','permission-needed','attention-failed','companion-appear','companion-switch','companion-hide','theme-zipper-to-dark','theme-zipper-to-light')) {
     $assets += '/resource:' + (Join-Path $projectRoot ('assets/sounds/' + $sound + '.wav')) + ',Dafeiyu.Sounds.' + $sound + '.wav'
 }
 foreach ($art in Get-ChildItem -LiteralPath (Join-Path $projectRoot 'assets/scheduled-tasks') -Filter '*.png' -File -ErrorAction SilentlyContinue) {
