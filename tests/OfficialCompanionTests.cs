@@ -205,23 +205,28 @@ namespace Dafeiyu.Tests
         static async Task CorruptPointerRepair()
         {
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
-                var first=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
-                var second=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None,true,false);
-                string role=Path.GetDirectoryName(second.Installation.RootDirectory),pointer=Path.Combine(role,"current.txt");File.WriteAllText(pointer,"invalid-pointer");
-                var repaired=await service.UpdateInBackgroundAsync("dafeiyu",Direct);
-                Check(!repaired.UsedOfflineFallback&&service.Installed("dafeiyu")!=null,"verified publication repairs corrupt pointer from known managed lifecycle current");
-                Check(Directory.Exists(first.Installation.RootDirectory)&&Directory.Exists(second.Installation.RootDirectory),"pointer repair preserves current and previous resource directories");
-                foreach(var damagedPointer in new[]{new byte[]{0xff,0xfe,0xc0},new byte[0],System.Text.Encoding.UTF8.GetBytes("v2-")}){
-                    File.WriteAllBytes(pointer,damagedPointer);
-                    var binaryRepaired=await service.UpdateInBackgroundAsync("dafeiyu",Direct);
-                    Check(!binaryRepaired.UsedOfflineFallback&&service.Installed("dafeiyu")!=null,"verified publication repairs binary/empty/truncated pointer with managed lifecycle; bytes="+damagedPointer.Length);
+                try {
+                    var first=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
+                    var second=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None,true,false);
+                    string role=Path.GetDirectoryName(second.Installation.RootDirectory),pointer=Path.Combine(role,"current.txt");File.WriteAllText(pointer,"invalid-pointer");
+                    var repaired=await service.UpdateInBackgroundAsync("dafeiyu",Direct);
+                    Check(!repaired.UsedOfflineFallback&&service.Installed("dafeiyu")!=null,"verified publication repairs corrupt pointer from known managed lifecycle current");
+                    Check(Directory.Exists(first.Installation.RootDirectory)&&Directory.Exists(second.Installation.RootDirectory),"pointer repair preserves current and previous resource directories");
+                    foreach(var damagedPointer in new[]{new byte[]{0xff,0xfe,0xc0},new byte[0],System.Text.Encoding.UTF8.GetBytes("v2-")}){
+                        File.WriteAllBytes(pointer,damagedPointer);
+                        var binaryRepaired=await service.UpdateInBackgroundAsync("dafeiyu",Direct);
+                        Check(!binaryRepaired.UsedOfflineFallback&&service.Installed("dafeiyu")!=null,"verified publication repairs binary/empty/truncated pointer with managed lifecycle; bytes="+damagedPointer.Length);
+                    }
+                    File.WriteAllText(pointer,"invalid-pointer");string transaction=Path.Combine(role,"version-transaction.json");File.WriteAllText(transaction,"{}");
+                    bool rejected=false;try{await service.UpdateInBackgroundAsync("dafeiyu",Direct);}catch(ApiException){rejected=true;}
+                    Check(rejected&&File.ReadAllText(pointer)=="invalid-pointer"&&File.Exists(transaction),"corrupt pointer with unknown transaction fails closed without changing recovery evidence");File.Delete(transaction);
+                    string lifecycle=Path.Combine(role,"versions.json");var state=OfficialJson.File(lifecycle,1024*1024);state["current"]="../escape";File.WriteAllBytes(lifecycle,OfficialJson.Bytes(state));
+                    rejected=false;try{await service.UpdateInBackgroundAsync("dafeiyu",Direct);}catch(ApiException){rejected=true;}
+                    Check(rejected&&File.ReadAllText(pointer)=="invalid-pointer"&&Directory.Exists(second.Installation.RootDirectory),"malformed lifecycle paths cannot authorize pointer repair or remove old resources");
                 }
-                File.WriteAllText(pointer,"invalid-pointer");string transaction=Path.Combine(role,"version-transaction.json");File.WriteAllText(transaction,"{}");
-                bool rejected=false;try{await service.UpdateInBackgroundAsync("dafeiyu",Direct);}catch(ApiException){rejected=true;}
-                Check(rejected&&File.ReadAllText(pointer)=="invalid-pointer"&&File.Exists(transaction),"corrupt pointer with unknown transaction fails closed without changing recovery evidence");File.Delete(transaction);
-                string lifecycle=Path.Combine(role,"versions.json");var state=OfficialJson.File(lifecycle,1024*1024);state["current"]="../escape";File.WriteAllBytes(lifecycle,OfficialJson.Bytes(state));
-                rejected=false;try{await service.UpdateInBackgroundAsync("dafeiyu",Direct);}catch(ApiException){rejected=true;}
-                Check(rejected&&File.ReadAllText(pointer)=="invalid-pointer"&&Directory.Exists(second.Installation.RootDirectory),"malformed lifecycle paths cannot authorize pointer repair or remove old resources");
+                finally {
+                    service.ShutdownAsync().GetAwaiter().GetResult();
+                }
             }
         }
         static async Task ForcedRepair()

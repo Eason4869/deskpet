@@ -69,11 +69,18 @@ namespace Dafeiyu.Tests
                 if(args.Contains("--project")){
                     var project=ProjectCatalogStore.CreateProject(pet.Projects,"project-original",root);pet.ProjectStore.Save(pet.Projects);typeof(PetWindow).GetField("editingProject",Members).SetValue(pet,project);
                     var work=new WorkSettingsPanel(pet);var workHost=new Window{Content=work,Width=1000,Height=800};workHost.Show();Pump();
-                    var goal=(TextBox)Field(work,"goal");goal.Text="async-project-goal";pet.ProjectStore.BeforeConfigurationWrite=()=>{entered.Set();if(!release.Wait(10000))throw new IOException("fixture timeout");};var task=work.SaveAsync();Until(()=>entered.IsSet);
-                    bool projectResponsive=false;Dispatcher.CurrentDispatcher.BeginInvoke(new Action(()=>projectResponsive=true));Pump();Check(projectResponsive&&!work.IsEnabled&&project.Goal!="async-project-goal","project save button keeps UI responsive and delays publication");
-                    release.Set();Wait(task);pet.ProjectStore.BeforeConfigurationWrite=null;Check(task.Result&&project.Goal=="async-project-goal"&&pet.ProjectStore.Load().Projects.Single(p=>p.Id==project.Id).Goal=="async-project-goal","project save persists and publishes through the binding guard");entered.Reset();release.Reset();goal.Text="failed-project-goal";pet.ProjectStore.BeforeConfigurationWrite=()=>{entered.Set();if(!release.Wait(10000))throw new IOException("fixture timeout");};pet.ProjectStore.BeforeConfigurationCommit=()=>{throw new IOException("fixture project write failure");};var failedProject=work.SaveAsync();Until(()=>entered.IsSet);
+                    const string savedInstructions="async project instructions";
+                    var instructions=(TextBox)Field(work,"globalInstructions");instructions.Text=savedInstructions;
+                    pet.ProjectStore.BeforeConfigurationWrite=()=>{entered.Set();if(!release.Wait(10000))throw new IOException("fixture timeout");};var task=work.SaveAsync();Until(()=>entered.IsSet);
+                    bool projectResponsive=false;Dispatcher.CurrentDispatcher.BeginInvoke(new Action(()=>projectResponsive=true));Pump();Check(projectResponsive&&!work.IsEnabled&&project.GlobalInstructions!=savedInstructions,"project save button keeps UI responsive and delays publication");
+                    release.Set();Wait(task);pet.ProjectStore.BeforeConfigurationWrite=null;
+                    Check(task.Result&&project.GlobalInstructions==savedInstructions&&pet.ProjectStore.Load().Projects.Single(p=>p.Id==project.Id).GlobalInstructions==savedInstructions,"project save persists and publishes through the binding guard");
+                    entered.Reset();release.Reset();instructions.Text="failed project instructions";
+                    pet.ProjectStore.BeforeConfigurationWrite=()=>{entered.Set();if(!release.Wait(10000))throw new IOException("fixture timeout");};pet.ProjectStore.BeforeConfigurationCommit=()=>{throw new IOException("fixture project write failure");};var failedProject=work.SaveAsync();Until(()=>entered.IsSet);
                     project.Name="renamed-during-project-save";pet.ProjectStore.Save(pet.Projects);release.Set();Wait(failedProject);pet.ProjectStore.BeforeConfigurationWrite=null;pet.ProjectStore.BeforeConfigurationCommit=null;
-                    Check(!failedProject.Result&&project.Name=="renamed-during-project-save"&&pet.ProjectStore.Load().Projects.Single(p=>p.Id==project.Id).Name==project.Name,"failed project save preserves a concurrent successful rename in live and durable catalog");
+                    var savedProject=pet.ProjectStore.Load().Projects.Single(p=>p.Id==project.Id);
+                    Check(!failedProject.Result&&project.Name=="renamed-during-project-save"&&savedProject.Name==project.Name,"failed project save preserves a concurrent successful rename in live and durable catalog");
+                    Check(project.GlobalInstructions==savedInstructions&&savedProject.GlobalInstructions==savedInstructions,"failed project save keeps the last successful configuration");
                     workHost.Close();Console.WriteLine("Project UI saves: "+checks+" passed");return 0;
                 }
                 if(args.Length>0&&args[0].StartsWith("--review-")){ReviewRegression(args[0],pet,window,cfg,store,root,entered,release);Console.WriteLine("Review regression: "+checks+" passed");return 0;}
