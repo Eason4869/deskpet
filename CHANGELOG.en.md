@@ -2,7 +2,29 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [1.0.7](https://github.com/Eason4869/deskpet/releases/tag/v1.0.7) · Production release
+
+### Appearance and settings
+
+- Switch directly between light and dark in the main chat window on Windows and macOS. The slider moves with your selection. Use the separate monitor button to follow the system, including animated transitions when the system appearance changes.
+- Choose Flow, Ripple, Refraction, or Zipper in Appearance settings. Random is the default, and you can turn transitions off. Each animation has a synchronized sound, with a real recording for Zipper. Sounds are off by default and have a separate volume control.
+- Settings content adapts to the window width, with switches, the animation picker, and volume aligned on the right. Added missing translations in settings, web search, and the setup guide.
+
+### Scheduled tasks
+
+- Create local scheduled tasks from chat or a form on Windows and macOS. The task page opens to six illustrated templates. Return to them from a draft or the details of a saved task.
+
+### Work and connections
+
+- The Windows work summary groups Git changes, plans, goals, and subagents. Completed subagents stay available, with details in the right pane. Approval prompts and questions appear above the composer.
+- In Windows Work conversations, use `+` or `@` to set a goal or start a plan. Confirm to leave plan mode and execute the selected plan.
+- The Windows Plugins page adds GitHub and Gmail. Connect GitHub to commit, push, and open pull requests from the workspace. Gmail access is read-only, and one-click authorization depends on DeskPet's Google OAuth configuration and approval.
+
+Upgrading from 1.0.5 also brings the post-update release notes, work task recovery, and uninstall wizard improvements listed under the 1.0.6 source tag below.
+
 ## 1.0.6-dev.6 · Development preview
+
+**Source tag [v1.0.6-dev.6](https://github.com/Eason4869/deskpet/tree/v1.0.6-dev.6).**
 
 - On Windows and macOS, select the sun or moon in the main chat window to switch directly between light and dark with a sliding thumb. Select the adjacent monitor to follow the system theme. Appearance settings keep all three theme previews. Window transitions default to Random, with Off, Flow, Ripple, Refraction, and Zipper also available.
 - Each theme animation has its own synchronized sound. Zipper uses a recording of a real zipper. Sounds are off by default and have a separate volume control.
@@ -18,6 +40,8 @@
 - The Windows Plugins page adds GitHub and Gmail integrations with app icons. The workspace supports Git commits, pushes, and pull requests. Gmail uses read-only access. One-click authorization requires the official DeskPet Google OAuth configuration and Google verification.
 
 ## 1.0.6 · Production release
+
+**Available as the [v1.0.6 source tag](https://github.com/Eason4869/deskpet/tree/v1.0.6). The next packaged stable release is 1.0.7.**
 
 - A scrollable release notes dialog opens the first time DeskPet starts after an upgrade. Stable and development preview builds show their own release notes. When the previous version is known, the dialog includes the relevant versions skipped during the upgrade. Chinese and English notes are bundled for offline reading.
 - The Windows work summary shows net file changes, side chats for the current conversation, subagent status and sources. Open a diff, switch or create a side chat, browse sent attachments and reply links, or add an attachment from the summary.
