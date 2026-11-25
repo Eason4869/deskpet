@@ -2324,6 +2324,18 @@
       "argument_count": 0
     },
     {
+      "key": "themeTransition.sound.enabled",
+      "expected": "主题切换音效",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "themeTransition.sound.volume",
+      "expected": "主题切换音量",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "usageStatistics.conversationModelsHelp",
       "expected": "本机对话模型用量，包含个人聊天、工作及辅助请求；不含 ASR 语音识别、TTS 朗读及 Live 实时语音。",
       "format": false,
