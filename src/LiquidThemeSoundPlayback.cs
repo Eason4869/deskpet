@@ -60,8 +60,8 @@ namespace Dafeiyu
         readonly bool dark;
         readonly double duration;
         readonly string motion;
-        readonly double onset, travel, travelEnd;
-        LiquidThemeCue next;
+        readonly double start, onset, travel, travelEnd;
+        LiquidThemeCue? next;
         long requestedAt;
         double progress;
         int lastVolume;
@@ -75,19 +75,20 @@ namespace Dafeiyu
             this.dark = dark;
             this.duration = duration.TotalSeconds;
             this.motion = ThemeTransitionMotion.Normalize(motion);
-            ThemeTransitionMotion.SoundStages(this.motion, out onset, out travel, out travelEnd);
+            ThemeTransitionMotion.SoundStages(this.motion, out start, out onset, out travel, out travelEnd);
             lastVolume = volume;
             terminal = shortFeedback;
-            SetCue(shortFeedback ? LiquidThemeCue.Short : LiquidThemeCue.Drop, 0);
+            if (shortFeedback || start == 0) SetCue(shortFeedback ? LiquidThemeCue.Short : LiquidThemeCue.Drop, 0);
         }
 
         public void Advance(double visualProgress)
         {
-            if (visualProgress < onset) return;
-            var cue = visualProgress < travel ? LiquidThemeCue.Splash : LiquidThemeCue.Flow;
+            if (visualProgress < start) return;
+            var cue = visualProgress < onset ? LiquidThemeCue.Drop :
+                visualProgress < travel ? LiquidThemeCue.Splash : LiquidThemeCue.Flow;
             lock (gate)
             {
-                if (terminal || cancelled || ended || (int)cue <= (int)next) return;
+                if (terminal || cancelled || ended || (next.HasValue && (int)cue <= (int)next.Value)) return;
                 SetCue(cue, visualProgress);
                 Wake();
             }
@@ -158,7 +159,8 @@ namespace Dafeiyu
                     lock (gate)
                     {
                         if (cancelled) break;
-                        cue = next;
+                        if (!next.HasValue) continue;
+                        cue = next.Value;
                         started = requestedAt;
                         visualProgress = progress;
                     }

@@ -33,8 +33,9 @@ namespace Dafeiyu
             return liquidDuration;
         }
 
-        internal static void SoundStages(string motion, out double onset, out double travel, out double end)
+        internal static void SoundStages(string motion, out double start, out double onset, out double travel, out double end)
         {
+            start = 0;
             onset = LiquidThemeShape.ImpactProgress;
             travel = LiquidThemeShape.FlowProgress;
             end = 1;
@@ -42,7 +43,12 @@ namespace Dafeiyu
             {
                 case Ripple: onset = .18; travel = .34; break;
                 case Refraction: onset = .12; travel = .28; break;
-                case Zipper: onset = .10; travel = .19; end = .85; break;
+                case Zipper:
+                    start = .04;
+                    onset = ZipperThemeShape.OpeningProgress + start;
+                    travel = .19 + start;
+                    end = .85;
+                    break;
             }
         }
 

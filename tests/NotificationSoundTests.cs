@@ -133,9 +133,9 @@ namespace Dafeiyu.Tests
             var profiles = new System.Collections.Generic.List<byte[]>();
             foreach (string motion in ThemeTransitionMotion.AnimatedEffects)
             {
-                double onset, travel, end;
-                ThemeTransitionMotion.SoundStages(motion, out onset, out travel, out end);
-                Check(0 < onset && onset < travel && travel < end && end <= 1, motion + " has ordered visual sound stages");
+                double start, onset, travel, end;
+                ThemeTransitionMotion.SoundStages(motion, out start, out onset, out travel, out end);
+                Check(0 <= start && start < onset && onset < travel && travel < end && end <= 1, motion + " has ordered visual sound stages");
                 var duration = TimeSpan.FromMilliseconds(800);
                 var light = LiquidThemeAudio.Render(LiquidThemeCue.Flow, false, duration, motion);
                 var dark = LiquidThemeAudio.Render(LiquidThemeCue.Flow, true, duration, motion);
@@ -161,6 +161,13 @@ namespace Dafeiyu.Tests
                 {
                     var sound = player.TryPlayTheme(false, TimeSpan.FromSeconds(4), false, motion);
                     if (sound == null) throw new Exception(motion + " transition sound was not admitted");
+                    if (motion == ThemeTransitionMotion.Zipper)
+                    {
+                        Check(start > 0, "zipper is delayed by an increasing visual threshold");
+                        sound.Advance(start - .01);
+                        Check(!SpinWait.SpinUntil(() => output.Plays != 0, 120), "zipper is quiet while the pull first moves");
+                        sound.Advance(start);
+                    }
                     Until(() => output.Plays == 1, motion + " plays one opening cue");
                     sound.Advance(onset);
                     Until(() => output.Plays == 2, motion + " starts its contact cue at its own visual phase");
@@ -300,12 +307,13 @@ namespace Dafeiyu.Tests
             {
                 int rate=LiquidThemeAudio.SampleRate;
                 var duration=ThemeTransitionMotion.Duration(motion, LiquidThemeShape.DefaultDuration);
-                double onset, travel, end;
-                ThemeTransitionMotion.SoundStages(motion, out onset, out travel, out end);
+                double start, onset, travel, end;
+                ThemeTransitionMotion.SoundStages(motion, out start, out onset, out travel, out end);
                 int frames=(int)(rate*duration.TotalSeconds);
                 var outro=LiquidThemeAudio.Render(LiquidThemeCue.Finish,dark,TimeSpan.Zero,motion);
                 var samples=new short[frames+outro.Length/2];
-                Mix(samples,0,LiquidThemeAudio.Render(LiquidThemeCue.Drop,dark,TimeSpan.Zero,motion),(int)(frames*onset));
+                int opening=(int)(frames*start);
+                Mix(samples,opening,LiquidThemeAudio.Render(LiquidThemeCue.Drop,dark,TimeSpan.Zero,motion),(int)(frames*onset)-opening);
                 Mix(samples,(int)(frames*onset),LiquidThemeAudio.Render(LiquidThemeCue.Splash,dark,TimeSpan.Zero,motion),(int)(frames*(travel-onset)));
                 Mix(samples,(int)(frames*travel),LiquidThemeAudio.Render(LiquidThemeCue.Flow,dark,
                     TimeSpan.FromSeconds(duration.TotalSeconds*(end-travel)),motion));
