@@ -83,7 +83,7 @@ internal sealed partial class DesktopController : IDisposable
         bool firstLaunch = !File.Exists(settingsPath);
         store = new SettingsStore(settingsPath); Settings = store.Load();
         TextResources.ConfigureStartupLanguage(Settings.UiLanguage);
-        try { startupReleaseNotes = ReleaseNotes.ForStartup(DataDirectory, ReleaseInfo.DisplayVersion, !firstLaunch, Settings.LastCompanionUpgradeVersion); }
+        try { startupReleaseNotes = ReleaseNotes.ForStartup(DataDirectory, ReleaseInfo.DisplayVersion, !firstLaunch); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.TraceWarning(error.GetType().Name); }
         DesktopTheme.Apply(Settings.ThemeMode);
         // The Avalonia client starts in chat; Mac has no local file Agent.

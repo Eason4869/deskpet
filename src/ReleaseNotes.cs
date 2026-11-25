@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Dafeiyu
 {
@@ -33,7 +35,7 @@ namespace Dafeiyu
             Previous = previous;
         }
 
-        internal static ReleaseNotes ForStartup(string dataDirectory, string version, bool hasPreviousInstall, string legacyVersion)
+        internal static ReleaseNotes ForStartup(string dataDirectory, string version, bool hasPreviousInstall)
         {
             var current = ReleaseVersion.Parse(version);
             var path = Path.Combine(dataDirectory, "release-notes-version.txt");
@@ -41,16 +43,10 @@ namespace Dafeiyu
             if (recorded != null)
                 return current.CompareTo(recorded) > 0 ? new ReleaseNotes(path, current, recorded) : null;
 
-            ReleaseVersion legacy;
-            ReleaseVersion.TryParse(legacyVersion, out legacy);
-            if (legacy != null && current.CompareTo(legacy) > 0)
-                return new ReleaseNotes(path, current, legacy);
-            if (legacy == null && hasPreviousInstall)
-                return new ReleaseNotes(path, current, null);
+            if (hasPreviousInstall) return new ReleaseNotes(path, current, null);
 
-            // A fresh installation establishes a baseline. Keep the legacy high-water
-            // mark if an earlier build was opened before this feature could record it.
-            new ReleaseNotes(path, legacy ?? current, null).MarkSeen();
+            // A fresh installation establishes the baseline for future upgrades.
+            new ReleaseNotes(path, current, null).MarkSeen();
             return null;
         }
 
@@ -77,7 +73,13 @@ namespace Dafeiyu
 
         static string LogFile(string language) { return language.StartsWith("zh_", StringComparison.Ordinal) ? "CHANGELOG.md" : "CHANGELOG.en.md"; }
 
-        internal Uri FullLog(string language) { return new Uri(ReleaseInfo.RepositoryUrl + "/blob/v" + Current.Canonical + "/" + LogFile(language)); }
+        internal Uri FullLog(string language)
+        {
+            var identity = (AssemblyInformationalVersionAttribute)Attribute.GetCustomAttribute(typeof(ReleaseNotes).Assembly, typeof(AssemblyInformationalVersionAttribute));
+            var commit = Regex.Match(identity == null ? "" : identity.InformationalVersion, @"\+([a-f0-9]{40})\z");
+            string source = commit.Success ? commit.Groups[1].Value : Current.IsPreview ? "dev" : "main";
+            return new Uri(ReleaseInfo.RepositoryUrl + "/blob/" + source + "/" + LogFile(language));
+        }
 
         internal List<Entry> Entries(string language)
         {
@@ -102,7 +104,7 @@ namespace Dafeiyu
                             {
                                 string releaseUrl = ReleaseInfo.RepositoryUrl + "/releases/tag/v" + version.Canonical;
                                 bool published = block.Children.Any(child => child.Kind == "link" && child.Url == releaseUrl);
-                                section = new Entry(version, published || version.CompareTo(Current) == 0 ? new Uri(releaseUrl) : null);
+                                section = new Entry(version, published ? new Uri(releaseUrl) : null);
                                 entries.Add(section);
                             }
                         }

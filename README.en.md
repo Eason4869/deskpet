@@ -23,7 +23,7 @@ The release also provides source, companion packs, an authoring template and SHA
 
 The Windows installer installs for the current user, normally without administrator privileges, under `%LOCALAPPDATA%\Programs\EbaoDeskPet`. For a portable installation, fully extract the ZIP to a writable folder and launch **桌面伙伴.exe**. Do not run it inside the archive.
 
-Starting with 1.0.6, DeskPet shows release notes on the first launch after an upgrade. Stable builds show stable release changes. Development previews with a `-dev.N` suffix show preview changes. The dialog works offline, and **Details** opens the corresponding release page.
+Starting with 1.0.6, DeskPet shows release notes on the first launch after an upgrade. Stable builds show stable release changes. Development previews with a `-dev.N` suffix show preview changes. Read the notes offline or open the full changelog and release pages linked from the dialog.
 
 ## Quick start
 

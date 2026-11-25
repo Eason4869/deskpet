@@ -31,23 +31,25 @@ namespace Dafeiyu.Tests
         {
             string directory=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"release-notes-"+Guid.NewGuid().ToString("N"));
             try {
-                if(ReleaseNotes.ForStartup(directory,"1.0.5",false,null)!=null)throw new Exception("fresh install opened release notes");
-                var preview=ReleaseNotes.ForStartup(directory,"1.0.6-dev.3",true,null);
+                if(ReleaseNotes.ForStartup(directory,"1.0.5",false)!=null)throw new Exception("fresh install opened release notes");
+                var preview=ReleaseNotes.ForStartup(directory,"1.0.6-dev.3",true);
                 if(preview==null || preview.Previous.Canonical!="1.0.5")throw new Exception("skipped preview upgrade was not recognized");
                 var notes=preview.Entries("zh_CN");
                 if(!notes.Select(n=>n.Version.Canonical).SequenceEqual(new[]{"1.0.6-dev.3","1.0.6-dev.2","1.0.6-dev.1"}) || !notes[0].Items[0].Contains("卸载向导"))throw new Exception("preview notes are missing or mixed with stable releases");
                 if(notes[0].Details==null || notes[1].Details!=null)throw new Exception("preview details should link to published releases");
                 if(!preview.Entries("en_US")[0].Items[0].Contains("uninstall wizard"))throw new Exception("English changelog was not embedded");
                 preview.MarkSeen();
-                if(ReleaseNotes.ForStartup(directory,"1.0.6-dev.3",true,null)!=null || ReleaseNotes.ForStartup(directory,"1.0.5",true,null)!=null)throw new Exception("same version or downgrade reopened release notes");
-                var promoted=ReleaseNotes.ForStartup(directory,"1.0.6",true,null);
+                if(ReleaseNotes.ForStartup(directory,"1.0.6-dev.3",true)!=null || ReleaseNotes.ForStartup(directory,"1.0.5",true)!=null)throw new Exception("same version or downgrade reopened release notes");
+                var promoted=ReleaseNotes.ForStartup(directory,"1.0.6",true);
                 if(promoted==null || !promoted.Entries("zh_CN").Select(n=>n.Version.Canonical).SequenceEqual(new[]{"1.0.6"}))throw new Exception("preview to stable promotion did not show the stable notes");
+                if(promoted.Entries("zh_CN")[0].Details!=null || promoted.FullLog("en_US").AbsolutePath.Contains("/blob/v1.0.6/"))throw new Exception("untagged source must not create dead release links");
 
-                var stable=ReleaseNotes.ForStartup(Path.Combine(directory,"legacy"),"1.0.5",true,"1.0.1");
+                string stableDirectory=Path.Combine(directory,"stable");
+                ReleaseNotes.ForStartup(stableDirectory,"1.0.1",false);
+                var stable=ReleaseNotes.ForStartup(stableDirectory,"1.0.5",true);
                 if(stable==null || !stable.Entries("zh_CN").Select(n=>n.Version.Canonical).SequenceEqual(new[]{"1.0.5","1.0.3","1.0.2"}))throw new Exception("stable notes included preview releases or missed intermediate versions");
-                var unknown=ReleaseNotes.ForStartup(Path.Combine(directory,"unknown"),"1.0.5",true,null);
+                var unknown=ReleaseNotes.ForStartup(Path.Combine(directory,"unknown"),"1.0.5",true);
                 if(unknown==null || unknown.Previous!=null || unknown.Entries("zh_CN").Count!=1)throw new Exception("migration without a prior version must only show the installed release");
-                if(ReleaseNotes.ForStartup(Path.Combine(directory,"same"),"1.0.6-dev.3",true,"v1.0.6-dev.3")!=null)throw new Exception("known unchanged legacy version displayed a notice");
                 Console.WriteLine("Post-update notes: channel, range, promotion, migration and deduplication passed");
             } finally {if(Directory.Exists(directory))Directory.Delete(directory,true);}
         }

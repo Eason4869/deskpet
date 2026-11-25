@@ -47,17 +47,18 @@ namespace Dafeiyu
                         bool hasPreviousInstall=File.Exists(Path.Combine(store.DirectoryPath,"settings.json"));
                         var settings = store.Load();
                         TextResources.ConfigureStartupLanguage(settings.UiLanguage);
-                        var releaseNotes=PrepareReleaseNotes(store.DirectoryPath,hasPreviousInstall,settings.LastCompanionUpgradeVersion);
+                        var releaseNotes=PrepareReleaseNotes(store.DirectoryPath,hasPreviousInstall);
                         var onboarding = OnboardingUpgrade.Prepare(settings, ReleaseInfo.DisplayVersion);
                         if(onboarding.Changed)store.Save(settings);
                         var pet = new PetWindow(null, settings, store, wake);pet.EnableNotificationAudio();
                         bool resume=Array.IndexOf(startupArgs,ApplicationRestart.ResumeArgument)>=0;
                         pet.Loaded+=delegate {
-                            pet.Updates.StartAutomaticChecks();
-                            if(releaseNotes!=null||onboarding.ShowGuide||resume)pet.Dispatcher.BeginInvoke(new Action(delegate {
-                                if(releaseNotes!=null)ShowReleaseNotes(releaseNotes);
-                                if(onboarding.ShowGuide||resume)pet.ShowOnboarding();
-                            }));
+                            if(releaseNotes==null)pet.Updates.StartAutomaticChecks();
+                            if(releaseNotes!=null||onboarding.ShowGuide||resume)
+                                pet.Dispatcher.BeginInvoke(new Action(delegate {
+                                    if(releaseNotes!=null){ShowReleaseNotes(releaseNotes);pet.Updates.StartAutomaticChecks();}
+                                    if(onboarding.ShowGuide||resume)pet.ShowOnboarding();
+                                }));
                         };
                         pet.Closed += async delegate {await ShutdownAfterCloseAsync(app,pet);}; normalExit=app.Run(pet)==0;
                     }
@@ -72,7 +73,7 @@ namespace Dafeiyu
             if(normalExit&&ApplicationRestart.Requested)ApplicationRestart.Launch();
         }
 
-        static ReleaseNotes PrepareReleaseNotes(string dataDirectory,bool hasPreviousInstall,string legacyVersion)
+        static ReleaseNotes PrepareReleaseNotes(string dataDirectory,bool hasPreviousInstall)
         {
             if(!hasPreviousInstall)
             {
@@ -90,7 +91,7 @@ namespace Dafeiyu
                     RuntimeDiagnostics.Record(error);
                 }
             }
-            try { return ReleaseNotes.ForStartup(dataDirectory,ReleaseInfo.DisplayVersion,hasPreviousInstall,legacyVersion); }
+            try { return ReleaseNotes.ForStartup(dataDirectory,ReleaseInfo.DisplayVersion,hasPreviousInstall); }
             catch(Exception error) {if(!IsReleaseNotesStorageError(error))throw;RuntimeDiagnostics.Record(error);return null;}
         }
 
