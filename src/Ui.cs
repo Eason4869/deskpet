@@ -105,16 +105,17 @@ namespace Dafeiyu
             <ControlTemplate TargetType='ComboBox'>
                 <Grid>
                     <Border x:Name='surface' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}'
-                            BorderThickness='1' CornerRadius='9'/>
+                            BorderThickness='1' CornerRadius='9'>
+                        <Path x:Name='chevron' Data='M0,0 L4,4 L8,0' Stroke='#72839B' StrokeThickness='1.3'
+                              IsHitTestVisible='False' HorizontalAlignment='Right' VerticalAlignment='Center'
+                              Margin='0,0,14,0' RenderTransformOrigin='0.5,0.5'/>
+                    </Border>
                     <ToggleButton Focusable='False' ClickMode='Press'
                                   IsChecked='{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}'>
                         <ToggleButton.Template>
                             <ControlTemplate TargetType='ToggleButton'><Border Background='Transparent'/></ControlTemplate>
                         </ToggleButton.Template>
                     </ToggleButton>
-                    <Path x:Name='chevron' Data='M0,0 L4,4 L8,0' Stroke='#72839B' StrokeThickness='1.4'
-                          StrokeStartLineCap='Round' StrokeEndLineCap='Round' StrokeLineJoin='Round' IsHitTestVisible='False'
-                          HorizontalAlignment='Right' VerticalAlignment='Center' Margin='0,0,13,0' RenderTransformOrigin='0.5,0.5'/>
                     <ContentPresenter x:Name='selection' Content='{TemplateBinding SelectionBoxItem}'
                                       ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}' ContentStringFormat='{TemplateBinding SelectionBoxItemStringFormat}'
                                       Margin='12,7,32,7' VerticalAlignment='Center' IsHitTestVisible='False'/>
