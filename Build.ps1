@@ -23,7 +23,12 @@ if ($Target -eq 'App') {
     $sources = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' -Recurse | Select-Object -ExpandProperty FullName)
     $options = @('/target:winexe','/main:Dafeiyu.Program',('/win32manifest:' + (Join-Path $projectRoot 'app.manifest')),('/win32icon:' + (Join-Path $projectRoot 'assets\pet.ico')))
 } else {
-    $destination = Join-Path $workRoot ($Target + '.exe')
+    $testOutputRoot = $workRoot
+    if ($OutputDirectory) {
+        $testOutputRoot = [IO.Path]::GetFullPath($OutputDirectory)
+        New-Item -ItemType Directory -Path $testOutputRoot -Force | Out-Null
+    }
+    $destination = Join-Path $testOutputRoot ($Target + '.exe')
     $sourceNames = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' -Recurse | ForEach-Object { $_.FullName.Substring((Join-Path $projectRoot 'src').Length + 1) })
     $sources = @($sourceNames | ForEach-Object { Join-Path $projectRoot ('src\' + $_) } | Where-Object { Test-Path -LiteralPath $_ }) + @((Join-Path $projectRoot ('tests\' + $Target + '.cs')))
     if ($Target -eq 'FileCompatibilityTests') {
