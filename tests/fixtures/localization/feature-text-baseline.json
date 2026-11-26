@@ -2,6 +2,12 @@
   "schemaVersion": 1,
   "resources": [
     {
+      "key": "chatAtmosphere.opacity",
+      "expected": "立绘不透明度",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "sidebar.deleteSection.title",
       "expected": "删除分区",
       "format": false,
