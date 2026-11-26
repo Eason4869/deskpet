@@ -153,6 +153,10 @@ namespace Dafeiyu.Tests
                 themeSound.IsChecked=true;themeVolume.Value=41;
                 Check(store.Load().ThemeTransitionSoundEnabled&&store.Load().ThemeTransitionSoundVolume==41,"appearance controls persist both theme audio preferences");
                 var artworkOpacity=All<Slider>(main).Single(s=>s.Name=="ChatArtworkOpacity");
+                var operationVolume=All<Slider>(main).Single(s=>s.Name=="CompanionOperationSoundVolume");
+                Check(operationVolume.Template==themeVolume.Template&&operationVolume.ActualWidth==themeVolume.ActualWidth&&
+                    Math.Abs(operationVolume.TranslatePoint(new Point(),main).X-themeVolume.TranslatePoint(new Point(),main).X)<.5,
+                    "operation sound slider is the same width and right alignment as theme volume");
                 Check(artworkOpacity.Template==themeVolume.Template&&artworkOpacity.Width==themeVolume.Width&&artworkOpacity.Value==30,
                     "artwork opacity uses the volume slider style and defaults to 30 percent");
                 artworkOpacity.Value=48;

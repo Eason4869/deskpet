@@ -123,7 +123,7 @@ namespace Dafeiyu
             var style=(Style)ThemeManager.Parse(@"<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='CheckBox'>
   <Setter Property='FocusVisualStyle' Value='{x:Null}'/>
   <Setter Property='Template'><Setter.Value><ControlTemplate TargetType='CheckBox'>
-    <Border x:Name='highlight' CornerRadius='7' Background='Transparent' Padding='3'>"+body+@"</Border>
+    <Border x:Name='highlight' CornerRadius='7' Background='Transparent' Padding='"+(trailing?"0,3,0,3":"3")+@"'>"+body+@"</Border>
     <ControlTemplate.Triggers>
       <Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='highlight' Property='Background' Value='#EFEFEF'/></Trigger>
       <Trigger Property='IsMouseOver' Value='True'><Setter TargetName='highlight' Property='Background' Value='#EFEFEF'/></Trigger>
