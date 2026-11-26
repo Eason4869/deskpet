@@ -28,6 +28,7 @@ namespace Dafeiyu
         [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr handle);
         [DllImport("user32.dll",CharSet=CharSet.Unicode)] private static extern int GetClassName(IntPtr handle,System.Text.StringBuilder name,int count);
         [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr handle, IntPtr after, int x, int y, int width, int height, uint flags);
+        [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr handle,int attribute,ref int value,int size);
         [DllImport("user32.dll",EntryPoint="GetWindowLong")] private static extern int GetWindowLong32(IntPtr handle,int index);
         [DllImport("user32.dll",EntryPoint="SetWindowLong")] private static extern int SetWindowLong32(IntPtr handle,int index,int value);
         [DllImport("user32.dll",EntryPoint="GetWindowLongPtr")] private static extern IntPtr GetWindowLong64(IntPtr handle,int index);
@@ -80,6 +81,18 @@ namespace Dafeiyu
         }
         public static void Move(IntPtr handle, Point point)
         { SetWindowPos(handle, IntPtr.Zero, (int)Math.Round(point.X), (int)Math.Round(point.Y), 0, 0, 0x0001 | 0x0004 | 0x0010); }
+        internal static void MoveAndResize(IntPtr handle,Rect bounds)
+        {
+            SetWindowPos(handle,IntPtr.Zero,(int)Math.Round(bounds.X),(int)Math.Round(bounds.Y),
+                (int)Math.Round(bounds.Width),(int)Math.Round(bounds.Height),0x0004|0x0010);
+        }
+        internal static bool SetWindowCloaked(IntPtr handle,bool cloaked)
+        {
+            if(handle==IntPtr.Zero)return false;
+            int value=cloaked?1:0;
+            const int cloak=13;
+            return DwmSetWindowAttribute(handle,cloak,ref value,sizeof(int))==0;
+        }
         public static void ClampWindow(IntPtr handle)
         {
             Rect bounds = Bounds(handle); Rect area = WorkArea(handle);

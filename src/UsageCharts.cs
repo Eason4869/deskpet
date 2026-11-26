@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace Dafeiyu {
  internal sealed class UsageSummary {
@@ -58,6 +59,8 @@ namespace Dafeiyu {
 internal static TextBlock Text(System.Func<string> text,double size,Brush color){return LocalizedUi.With(Text(text(),size,color),"Text",text);}
         internal static Button Button(System.Func<string> text,string name,Action action){return LocalizedUi.With(Button(text(),name,action),"Content",text);} }
  internal sealed class UsageBarChart:FrameworkElement {
+  static readonly DependencyProperty GrowthProperty=DependencyProperty.Register("Growth",typeof(double),
+   typeof(UsageBarChart),new FrameworkPropertyMetadata(1d,FrameworkPropertyMetadataOptions.AffectsRender));
   readonly DateTime start,end;
   readonly string group;
   readonly IList<string> keys;
@@ -65,6 +68,12 @@ internal static TextBlock Text(System.Func<string> text,double size,Brush color)
   readonly Dictionary<string,Brush> colors;
   readonly List<UsageSummary> days;
   internal UsageBarChart(IList<UsageRecord> rows,DateTime first,DateTime last,string grouping,IList<string> legend){start=first;end=last;group=grouping;keys=legend;buckets=rows.GroupBy(UsageStatisticsModel.LocalDay).ToDictionary(g=>g.Key,g=>g.GroupBy(r=>Key(r,group)).ToDictionary(p=>p.Key,p=>UsageStatisticsModel.Summarize(p)));colors=keys.ToDictionary(k=>k,k=>UsageVisuals.GroupColor(k));days=UsageStatisticsModel.Calendar(rows,start,end,0);MinHeight=215;Height=215;ClipToBounds=true;MouseMove+=Move;MouseLeave+=delegate{ToolTip=null;};}
+  internal void Grow()
+  {
+   if(!SystemParameters.ClientAreaAnimation||!days.Any(day=>day.KnownTokens>0))return;
+   BeginAnimation(GrowthProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(410))
+    {FillBehavior=FillBehavior.Stop,EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});
+  }
   internal static string Key(UsageRecord row,string group){string key=group=="model"?row.Model:group=="provider"?row.Provider:row.Feature;return string.IsNullOrEmpty(key)?TextResources.Get("usageCharts.key.text"):key;}
   internal static IList<int> TickIndices(int count,double width){int capacity=Math.Max(2,(int)(width/65));int stride=Math.Max(1,(int)Math.Ceiling((count-1)/(double)(capacity-1)));var result=new List<int>();for(int i=0;i<count-1;i+=stride)if(count-1-i>=Math.Max(1,stride/2))result.Add(i);result.Add(count-1);return result;}
   UsageSummary Bucket(DateTime date,string key){Dictionary<string,UsageSummary> daily;UsageSummary result;return buckets.TryGetValue(date,out daily)&&daily.TryGetValue(key,out result)?result:null;}
@@ -72,7 +81,8 @@ internal static TextBlock Text(System.Func<string> text,double size,Brush color)
   void Label(DrawingContext drawing,string text,double x,double y,Brush color,double size){var formatted=new FormattedText(text,CultureInfo.CurrentCulture,FlowDirection.LeftToRight,new Typeface("Microsoft YaHei UI"),size,color,VisualTreeHelper.GetDpi(this).PixelsPerDip);drawing.DrawText(formatted,new Point(x,y));}
   protected override void OnRender(DrawingContext drawing){base.OnRender(drawing);double width=Math.Max(1,ActualWidth-52),height=166;int count=(end-start).Days+1;long maximum=Math.Max(1,days.Max(d=>d.KnownTokens));var ticks=TickIndices(count,width);
    for(int i=0;i<=3;i++){double y=12+height*i/3;drawing.DrawLine(new Pen(UsageVisuals.Line,1),new Point(48,y),new Point(ActualWidth,y));Label(drawing,Compact(maximum*(3-i)/3),0,y-7,UsageVisuals.Muted,10);}
-   for(int i=0;i<count;i++){DateTime date=start.AddDays(i);double slot=width/count,x=48+i*slot+slot*.22,bottom=12+height;foreach(string key in keys){var part=Bucket(date,key);if(part==null)continue;double barHeight=height*part.KnownTokens/maximum;if(barHeight>0){drawing.DrawRoundedRectangle(colors[key],null,new Rect(x,bottom-barHeight,Math.Max(1,slot*.56),barHeight),1.5,1.5);bottom-=barHeight;}}
+   double growth=(double)GetValue(GrowthProperty);
+   for(int i=0;i<count;i++){DateTime date=start.AddDays(i);double slot=width/count,x=48+i*slot+slot*.22,bottom=12+height;foreach(string key in keys){var part=Bucket(date,key);if(part==null)continue;double barHeight=height*part.KnownTokens/maximum*growth;if(barHeight>0){drawing.DrawRoundedRectangle(colors[key],null,new Rect(x,bottom-barHeight,Math.Max(1,slot*.56),barHeight),1.5,1.5);bottom-=barHeight;}}
     if(days[i].UnknownRequests>0)drawing.DrawEllipse(ThemeManager.Surface,new Pen(UsageVisuals.Muted,1),new Point(x+slot*.28,12+height-3),2.5,2.5);
     if(ticks.Contains(i))Label(drawing,date.ToString("M/d"),Math.Min(Math.Max(48,x-3),Math.Max(48,ActualWidth-32)),188,UsageVisuals.Muted,10);
    }

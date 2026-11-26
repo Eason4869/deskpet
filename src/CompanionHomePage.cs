@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace Dafeiyu
 {
@@ -18,6 +19,7 @@ namespace Dafeiyu
         readonly RelationshipHomeModel model;
         readonly HolidayKeepsakeAlbumView holidayAlbum;
         bool holidaySelected;
+        bool entrancePending=true;
         readonly System.Windows.Threading.DispatcherTimer holidayPulse=new System.Windows.Threading.DispatcherTimer();
         internal Task PendingHoliday {get{return holidayAlbum.Pending;}}
         async void ObserveShownHome(){if(disposed)return;var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome);}
@@ -44,6 +46,7 @@ namespace Dafeiyu
             holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,async delegate{var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.Store.DirectoryPath);
             holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
             Loaded+=delegate{holidayPulse.Start();ObserveShownHome();};Unloaded+=delegate{holidayPulse.Stop();};
+            IsVisibleChanged+=delegate{if(IsVisible)entrancePending=true;};
 
             PendingRetry=PendingSettings=Task.FromResult(true);Name = "CompanionHomePage"; VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled; Background = ThemeManager.Surface;
@@ -85,6 +88,8 @@ namespace Dafeiyu
         void Render()
         {
             if(View==null||View.CompanionId!=owner.RelationshipCompanionId){ObserveRefresh();return;}
+            bool animate=entrancePending&&IsVisible&&SystemParameters.ClientAreaAnimation;
+            if(IsVisible)entrancePending=false;
             displayedSkin=owner.Skin;displayedName=owner.Skin.DisplayName;
             int version=revision;double scroll=VerticalOffset;
             var focused=Keyboard.FocusedElement as FrameworkElement;
@@ -117,7 +122,7 @@ namespace Dafeiyu
             if(View.Snapshot!=null){
                 var p=View.Progress;var words=new StackPanel{Margin=new Thickness(18,0,0,0),VerticalAlignment=VerticalAlignment.Center};
                 var stage=Text(()=> (RelationshipContent.StageName(p.StageId)),26,"CompanionRelationshipStage");stage.FontWeight=FontWeights.SemiBold;words.Children.Add(stage);words.Children.Add(Text(()=> (p.ScoreText),28,"CompanionRelationshipScore"));var next=Text(()=> (p.NextText));next.Foreground=AgentUi.Muted;words.Children.Add(next);
-                progressRow=new Grid{Margin=new Thickness(0,14,0,16)};progressRow.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(112)});progressRow.ColumnDefinitions.Add(new ColumnDefinition());progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.Children.Add(HomeVisual.Ring(p.Fraction));Grid.SetColumn(words,1);progressRow.Children.Add(words);relation.Children.Add(progressRow);
+                progressRow=new Grid{Margin=new Thickness(0,14,0,16)};progressRow.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(112)});progressRow.ColumnDefinitions.Add(new ColumnDefinition());progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.Children.Add(HomeVisual.Ring(p.Fraction,animate));Grid.SetColumn(words,1);progressRow.Children.Add(words);relation.Children.Add(progressRow);
                 nodes=HomeVisual.Nodes(p);relation.Children.Add(nodes);var relationScope=Label(()=>(TextResources.Get("relationship.home.globalScope")),12);relationScope.Foreground=AgentUi.Muted;relation.Children.Add(relationScope);
                 int statusIndex=0;foreach(string explanation in View.StatusTexts){int statusPosition=statusIndex++;var state=Text(()=>View.StatusTexts.ElementAtOrDefault(statusPosition)??"",13,statusPosition==0?"RelationshipGrowthStatus":null);state.Margin=new Thickness(0,14,0,0);state.Foreground=AgentUi.Muted;relation.Children.Add(state);}
                 stats=new StackPanel{Margin=new Thickness(0,12,0,0)};stats.Children.Add(HomeVisual.Stat("heart",()=> (TextResources.Get("relationship.home.todayLabel")),()=> (View.TodayPoints+" / 20"),"CompanionTodayGrowth"));stats.Children.Add(HomeVisual.Stat("sun",()=> (TextResources.Get("relationship.home.activeDaysLabel")),()=> (TextResources.Format("relationship.home.daysValue",View.ActiveDays)),"CompanionActiveDays"));stats.Children.Add(HomeVisual.Stat("calendar",()=> (TextResources.Get("relationship.home.acquaintanceDaysLabel")),()=> (TextResources.Format("relationship.home.daysValue",View.AcquaintanceDays)),"CompanionAcquaintanceDays"));relation.Children.Add(stats);
@@ -156,7 +161,20 @@ namespace Dafeiyu
             var scope=Label(()=>(TextResources.Get("relationship.home.globalScope")),13);scope.Foreground=AgentUi.Muted;scope.Margin=new Thickness(0,8,0,12);settings.Children.Add(scope);
             AddSetting(settings,"RelationshipGrowthEnabled",()=> (TextResources.Get("relationship.home.growth")),current!=null&&current.GrowthEnabled,0);AddSetting(settings,"RelationshipFeedbackEnabled",()=> (TextResources.Get("relationship.home.feedback")),current!=null&&current.FeedbackEnabled,1);AddSetting(settings,"RelationshipAiContextEnabled",()=> (TextResources.Get("relationship.home.aiContext")),current!=null&&current.AiContextEnabled,2);settings.IsEnabled=current!=null&&!View.ReadFailed&&!saving;
             var settingsExp=new Expander{HorizontalContentAlignment=HorizontalAlignment.Stretch,Name="CompanionRelationshipSettings",Header=HomeVisual.Header("settings",()=> (TextResources.Get("relationship.home.settings"))),Foreground=AgentUi.Ink,IsExpanded=settingsOpen,Content=settings};settingsExp.Expanded+=delegate{settingsOpen=true;};settingsExp.Collapsed+=delegate{settingsOpen=false;};
-            var groups=new StackPanel();groups.Children.Add(rules);groups.Children.Add(new Border{Height=1,Background=AgentUi.Line,Margin=new Thickness(0,10,0,10)});groups.Children.Add(settingsExp);body.Children.Add(HomeVisual.Box(groups,false));
+            var groups=new StackPanel();groups.Children.Add(rules);groups.Children.Add(new Border{Height=1,Background=AgentUi.Line,Margin=new Thickness(0,10,0,10)});groups.Children.Add(settingsExp);
+            var settingsBox=HomeVisual.Box(groups,false);body.Children.Add(settingsBox);
+            if(animate)
+            {
+                FloatIn(profileBox,0);FloatIn(relationBox,45);
+                if(bottom!=null&&!holidaySelected)
+                {
+                    FloatIn((FrameworkElement)bottom.Children[0],115);
+                    int index=0;
+                    foreach(FrameworkElement card in cardsWrap.Children)FloatIn(card,95+Math.Min(index++,3)*25);
+                }
+                if(holidaySelected)FloatIn(holidayAlbum,95);
+                FloatIn(settingsBox,140);
+            }
             updateLayout=delegate{
                 double viewport=ViewportWidth>0?ViewportWidth:ActualWidth;double width=Math.Min(1080,Math.Max(0,viewport-(ActualWidth<600?32:56)));bool wide=width>=760;body.Margin=new Thickness(ActualWidth<600?16:28,24,ActualWidth<600?16:28,28);
                 Grid.SetColumn(relationBox,wide?1:0);Grid.SetRow(relationBox,wide?0:1);Grid.SetColumnSpan(profileBox,wide?1:2);Grid.SetColumnSpan(relationBox,wide?1:2);relationBox.Margin=new Thickness(wide?22:0,wide?0:16,0,0);
@@ -170,6 +188,18 @@ namespace Dafeiyu
                 navigateToSettings=false;settingsExp.IsExpanded=true;settingsExp.Focusable=true;settingsExp.BringIntoView();
                 if(Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive)settingsExp.Focus();
             }
+        }
+        static void FloatIn(FrameworkElement card,int delay)
+        {
+            var offset=new TranslateTransform(0,12);
+            card.RenderTransform=offset;
+            var slide=new DoubleAnimation(12,0,TimeSpan.FromMilliseconds(260))
+            {
+                BeginTime=TimeSpan.FromMilliseconds(delay),FillBehavior=FillBehavior.HoldEnd,
+                EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}
+            };
+            slide.Completed+=delegate{offset.Y=0;offset.BeginAnimation(TranslateTransform.YProperty,null);};
+            offset.BeginAnimation(TranslateTransform.YProperty,slide);
         }
         void AddSetting(StackPanel parent,string name,System.Func<string> label,bool value,int kind)
         {

@@ -19,6 +19,7 @@ namespace Dafeiyu
         private readonly StackPanel messages;
         private readonly ScrollViewer scroll;
         private readonly ChatAtmosphere atmosphere;
+        internal ChatWindowMotion WindowMotion {get;private set;}
         private readonly MarkdownEditor input;
         public string ConversationId {get{return workspace==null?null:workspace.Id;}}
         internal bool IsPersonalConversation {get{return workspace!=null&&!workspace.EffectiveSettings().AgentEnabled;}}
@@ -42,6 +43,8 @@ namespace Dafeiyu
             pet=companion;workspace=workspaceOverride;session=workspaceOverride==null?pet.Conversation:workspaceOverride.Session;queue=workspaceOverride==null?pet.InputQueue:workspaceOverride.Queue;LocalizedUi.Window(this,()=>(TextResources.Get("chatWindow.chatWindow.window")),1280,860);MinWidth=520;MinHeight=560;Width=Math.Min(1280,Math.Max(MinWidth,SystemParameters.WorkArea.Width-36));
             Background=ThemeManager.Surface;
             normalMaxHeight=MaxHeight;
+            WindowMotion=new ChatWindowMotion(this);
+            if(!pet.IsProactiveWorkspace(workspaceOverride))RestoreWindowSize();
             var root=new Grid {Background=ThemeManager.Surface,Margin=new Thickness(22,18,22,6)};
             root.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
             var header=new DockPanel {Margin=new Thickness(0,0,78,16)};conversationHeader=header;entryHeader.Content=new ConversationEntryTabs(SwitchEntry,true);DockPanel.SetDock(entryHeader,Dock.Left);header.Children.Add(entryHeader);
@@ -55,7 +58,7 @@ namespace Dafeiyu
             earlier=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeI")));earlier.Name="HistoryEarlier";earlier.FontSize=11;earlier.Click+=delegate{double offset=scroll.VerticalOffset,extent=scroll.ExtentHeight;visibleTurns+=50;ReloadHistory(false);Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{scroll.UpdateLayout();scroll.ScrollToVerticalOffset(offset+Math.Max(0,scroll.ExtentHeight-extent));}));};historyTools.Children.Add(earlier);
             export=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeJ")));export.Name="ExportChat";export.FontSize=11;export.Click+=delegate{Export();};DockPanel.SetDock(export,Dock.Right);scroll.Content=null;var historyBody=new StackPanel();historyBody.Children.Add(historyTools);historyBody.Children.Add(messages);scroll.Content=historyBody;
             var contextIcon=UiIcons.Image("file",AgentUi.Muted);contextIcon.Width=contextIcon.Height=15;contextIcon.Margin=new Thickness(0,0,7,0);contextNotice.Children.Add(contextIcon);contextLabel.Name="ContextCompactionLabel";contextNotice.Children.Add(contextLabel);
-            Grid.SetRow(scroll,1);messageArea.Children.Add(scroll);scroll.Background=Brushes.Transparent;atmosphere=ChatAtmosphere.AttachSurface(root,1,1);atmosphere.Margin=new Thickness(0,0,0,8);atmosphere.ArtworkOpacity=.20;atmosphere.SetSkin(pet.Skin);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);InitializeHistoryNavigation();
+            Grid.SetRow(scroll,1);messageArea.Children.Add(scroll);scroll.Background=Brushes.Transparent;atmosphere=ChatAtmosphere.AttachSurface(root,1,1);atmosphere.Margin=new Thickness(0,0,0,8);atmosphere.ArtworkOpacity=.30;atmosphere.SetSkin(pet.Skin);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);InitializeHistoryNavigation();
             status=Ui.Text("",11,Ui.Muted);status.Name="ChatStatus";
             input=new MarkdownEditor();input.Name="MessageInput";input.MaxLength=8000;
             record=UiIcons.Button("mic",()=>(TextResources.Get("chatWindow.chatWindow.uiIcons.alternativeA")));record.Name="VoiceRecord";
@@ -71,6 +74,31 @@ namespace Dafeiyu
             pet.Workspaces.StateChanged+=PruneConversationPreviews;
             Closed+=delegate {closed=true;pet.Workspaces.StateChanged-=PruneConversationPreviews;CloseTransientSummary();CloseConversationPreviews();UnmountWorkspace(true);DetachEntryControls();};
             Loaded+=delegate {input.Focus();};
+        }
+        void RestoreWindowSize()
+        {
+            var settings=pet.Settings;
+            var area=SystemParameters.WorkArea;
+            if(settings.ChatWindowWidth>0&&!double.IsInfinity(settings.ChatWindowWidth))
+                Width=Math.Max(MinWidth,Math.Min(settings.ChatWindowWidth,area.Width));
+            if(settings.ChatWindowHeight>0&&!double.IsInfinity(settings.ChatWindowHeight))
+                Height=Math.Max(MinHeight,Math.Min(settings.ChatWindowHeight,area.Height));
+            bool maximized=settings.ChatWindowMaximized;
+            if(maximized)WindowState=WindowState.Maximized;
+            StateChanged+=delegate
+            {
+                if(WindowState!=WindowState.Minimized)maximized=WindowState==WindowState.Maximized;
+            };
+            Closing+=delegate
+            {
+                if(!IsLoaded)return;
+                var bounds=WindowState==WindowState.Normal?new Rect(0,0,ActualWidth,ActualHeight):RestoreBounds;
+                if(bounds.IsEmpty||bounds.Width<MinWidth||bounds.Height<MinHeight)return;
+                var current=pet.Settings;
+                if(current.ChatWindowWidth==bounds.Width&&current.ChatWindowHeight==bounds.Height&&current.ChatWindowMaximized==maximized)return;
+                current.ChatWindowWidth=bounds.Width;current.ChatWindowHeight=bounds.Height;current.ChatWindowMaximized=maximized;
+                pet.SaveSettings();
+            };
         }
         void RefreshWorkspaceLayout()
         {

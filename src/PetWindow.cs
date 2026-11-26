@@ -1023,7 +1023,9 @@ namespace Dafeiyu
             guide=new OnboardingWindow(this,preferences,window);guide.Closed+=delegate {DismissGreeting();guide=null;};guide.Show();
         }
         int conversationNavigationRevision;
-        public async void OpenProjectConversation(ProjectDefinition project,ConversationDefinition conversation)
+        public void OpenProjectConversation(ProjectDefinition project,ConversationDefinition conversation)
+        {OpenProjectConversationCore(project,conversation,null);}
+        async void OpenProjectConversationCore(ProjectDefinition project,ConversationDefinition conversation,QuickChatExpansion expansion)
         {
             if(closing || IsUpdating || ReturnToGuide())return;
             if(!ProjectCatalogStore.VisibleForPet(conversation,Skin.Id))return;if(project.Id==ProjectCatalogStore.UnassignedProjectId||project.Id==ProjectCatalogStore.QuickProjectId)project=ProjectCatalogStore.FindProject(Projects,project.Id,Settings);if(!String.IsNullOrEmpty(conversation.Mode)){Settings.AgentEnabled=conversation.Mode=="work";SaveSettings();}
@@ -1033,7 +1035,7 @@ namespace Dafeiyu
             if(navigation!=conversationNavigationRevision||closing)return;
             project=workspace.Project;conversation=workspace.Definition;
             if(!ProjectCatalogStore.VisibleForPet(conversation,Skin.Id))return;
-            WatchConversationTitle(project,conversation,workspace);if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();
+            WatchConversationTitle(project,conversation,workspace);if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);chat.WindowMotion.ShowExpanded(expansion);
         }
         async Task CloseConversationWorkspacesAsync()
         {
@@ -1109,7 +1111,28 @@ namespace Dafeiyu
         internal void OpenChatBrowserLink(Uri uri){ShowChat();if(chat!=null&&chat.IsVisible)chat.OpenBrowserLink(uri);}
         internal void OpenChatProjectFacts(AgentTaskState task){ShowChat();if(chat!=null&&chat.IsVisible)chat.OpenProjectFacts(task);}
         public void ShowChat()
-        {if(closing || IsUpdating || ReturnToGuide())return;conversationNavigationRevision++;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quickWorkspace!=null && quick!=null && quick.IsVisible){var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);var definition=project==null?null:quickWorkspace.Definition;quick.Hide();if(definition!=null){OpenProjectConversation(project,definition);return;}}if(quick!=null)quick.Hide();DismissGreeting();if(chat!=null){chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();return;}if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));chat.Closed+=delegate {chat=null;var ignored=CloseConversationWorkspacesAsync();};}chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
+        {
+            if(closing||IsUpdating||ReturnToGuide())return;
+            conversationNavigationRevision++;RecordPetInteraction();
+            if(call!=null){call.Activate();return;}
+            var expansion=QuickChatExpansion.Capture(quick);
+            if(quickWorkspace!=null&&quick!=null&&quick.IsVisible)
+            {
+                var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);
+                quick.Hide();
+                if(project!=null){OpenProjectConversationCore(project,quickWorkspace.Definition,expansion);return;}
+            }
+            if(quick!=null)quick.Hide();
+            DismissGreeting();
+            if(chat==null)
+            {
+                chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible&&!IsProactiveWindow(w)))??
+                    new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));
+                chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};
+            }
+            chat.ShowHomePage();
+            chat.WindowMotion.ShowExpanded(expansion);
+        }
         bool IsConversationVisible(string id){return (chat!=null&&chat.IsVisible&&chat.ConversationId==id)||(quick!=null&&quick.IsVisible&&quickWorkspace!=null&&quickWorkspace.Id==id);}
         void NotifyProjectsChanged(){var changed=ProjectsChanged;if(changed!=null)changed();}
         async Task ReleaseQuickWorkspaceAsync(ConversationWorkspace workspace)

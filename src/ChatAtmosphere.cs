@@ -45,7 +45,7 @@ namespace Dafeiyu
             SetRow(result,row);SetRowSpan(result,rowSpan);Panel.SetZIndex(result,-1);surface.Children.Insert(0,result);return result;
         }
 
-        // The reusable layer starts disabled; ChatWindow applies the chosen 20% level.
+        // The reusable layer starts disabled; ChatWindow chooses the surface opacity.
         public double ArtworkOpacity
         {
             get{return artworkOpacity;}

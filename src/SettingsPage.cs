@@ -54,7 +54,8 @@ namespace Dafeiyu
             header.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(74) }); header.ColumnDefinitions.Add(new ColumnDefinition());
             avatar=new Image { Source=SkinCatalog.GetAvatar(pet.Skin),Width=54,Height=54,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,54,54),10.8,10.8) };
             RenderOptions.SetBitmapScalingMode(avatar,BitmapScalingMode.HighQuality);
-            var avatarCard=new Border { Child=avatar,CornerRadius=new CornerRadius(24),Background=Ui.Pale,Padding=new Thickness(2),Margin=new Thickness(0,0,14,0) };
+            var avatarCard=new Border { Child=avatar,Width=60,Height=60,VerticalAlignment=VerticalAlignment.Center,
+                CornerRadius=new CornerRadius(18),Background=Ui.Pale,Padding=new Thickness(2),Margin=new Thickness(0,0,14,0) };
             header.Children.Add(avatarCard);
             var introduction=new StackPanel { VerticalAlignment=VerticalAlignment.Center };
             var eyebrow=LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text")),12,Ui.Muted); eyebrow.Margin=new Thickness(0,0,0,3); introduction.Children.Add(eyebrow);

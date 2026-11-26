@@ -191,6 +191,9 @@ namespace Dafeiyu
         [DataMember] public int OnboardingVersion { get; set; }
         [DataMember] public string LastOnboardingSeries { get; set; }
         [DataMember] public bool SaveChatHistory { get; set; }
+        [DataMember(EmitDefaultValue=false)] public double ChatWindowWidth {get;set;}
+        [DataMember(EmitDefaultValue=false)] public double ChatWindowHeight {get;set;}
+        [DataMember(EmitDefaultValue=false)] public bool ChatWindowMaximized {get;set;}
         [DataMember] public bool AgentEnabled { get; set; }
         [DataMember] public WebSearchSettings WebSearch=new WebSearchSettings();
         [DataMember] public bool AgentCommandsEnabled {get;set;}

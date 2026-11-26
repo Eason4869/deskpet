@@ -34,7 +34,7 @@ namespace Dafeiyu
             var captionButtons=new StackPanel{Orientation=Orientation.Horizontal};
             var minimize=ShellIcons.Button("minimize",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons")),()=>SystemCommands.MinimizeWindow(this));minimize.Name="AppMinimize";
             var maximize=ShellIcons.Button("maximize",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeA")),delegate{if(WindowState==WindowState.Maximized)SystemCommands.RestoreWindow(this);else SystemCommands.MaximizeWindow(this);});maximize.Name="AppMaximize";
-            var close=ShellIcons.Button("close",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeB")),Close);close.Name="AppClose";
+            var close=ShellIcons.Button("close",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeB")),WindowMotion.Close);close.Name="AppClose";
             var themeSwitch=new ThemeTitleSwitch();
             WindowChrome.SetIsHitTestVisibleInChrome(themeSwitch,true);captionButtons.Children.Add(themeSwitch);
             foreach(var b in new[]{minimize,maximize,close}){b.Width=42;b.Height=36;WindowChrome.SetIsHitTestVisibleInChrome(b,true);captionButtons.Children.Add(b);}DockPanel.SetDock(captionButtons,Dock.Right);top.Children.Add(captionButtons);
