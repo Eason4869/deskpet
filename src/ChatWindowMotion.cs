@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 
 namespace Dafeiyu
@@ -28,7 +29,7 @@ namespace Dafeiyu
 
         internal static Rect Interpolate(Rect from,Rect to,double progress)
         {
-            double t=1-Math.Pow(1-progress,3);
+            double t=progress*progress*(3-2*progress);
             return new Rect(from.X+(to.X-from.X)*t,from.Y+(to.Y-from.Y)*t,
                 from.Width+(to.Width-from.Width)*t,from.Height+(to.Height-from.Height)*t);
         }
@@ -85,20 +86,28 @@ namespace Dafeiyu
                 if(content.ActualWidth>0&&content.ActualHeight>0&&!LiquidThemeReveal.HasUncapturableSurface(content))
                 {
                     var snapshot=LiquidThemeReveal.Capture(content);
-                    if(snapshot!=null&&DesktopInterop.SetWindowCloaked(handle,true))
+                    if(snapshot!=null)
                     {
                         var overlay=ShowOverlay(snapshot,DesktopInterop.Bounds(handle),fadeOut?1:.12,"ChatWindowFadeOverlay");
                         if(overlay!=null)
                         {
-                            opacity=value=>overlay.Opacity=value;
-                            restore=()=>{DesktopInterop.SetWindowCloaked(handle,false);overlay.Close();};
+                            bool cloaked=!fadeOut&&DesktopInterop.SetWindowCloaked(handle,true);
+                            bool primed=!fadeOut;
+                            opacity=value=>
+                            {
+                                // Let WPF submit the opaque snapshot before hiding the
+                                // real window. Switching the order can expose one blank frame.
+                                if(!primed){primed=true;return;}
+                                if(fadeOut&&!cloaked)cloaked=DesktopInterop.SetWindowCloaked(handle,true);
+                                overlay.Opacity=value;
+                            };
+                            restore=()=>{if(cloaked&&(!fadeOut||window.IsVisible))DesktopInterop.SetWindowCloaked(handle,false);overlay.Close();};
                         }
-                        else DesktopInterop.SetWindowCloaked(handle,false);
                     }
                 }
             }
-            opacity(fadeOut?1:.12);
-            Start(fadeOut?95:115,t=>opacity(fadeOut?1-t:.12+.88*(1-(1-t)*(1-t))),restore);
+            if(!fadeOut)opacity(.12);
+            Start(fadeOut?135:115,t=>opacity(fadeOut?1-t:.12+.88*(1-(1-t)*(1-t))),restore);
         }
 
         internal void ShowExpanded(QuickChatExpansion source)
@@ -113,14 +122,25 @@ namespace Dafeiyu
             {
                 Show();
                 Rect target=DesktopInterop.Bounds(handle);
-                var overlay=ShowOverlay(source.Image,source.Bounds,1,"QuickChatExpansionOverlay");
+                var destination=window.Content as FrameworkElement;
+                BitmapSource final=null;
+                if(destination!=null)
+                {
+                    destination.UpdateLayout();
+                    if(!LiquidThemeReveal.HasUncapturableSurface(destination))final=LiquidThemeReveal.Capture(destination);
+                }
+                Rect cover=Rect.Union(source.Bounds,target);
+                var zoom=new ExpansionVisual(source.Image,final);
+                var overlay=ShowOverlay(zoom,cover,1,"QuickChatExpansionOverlay");
                 if(overlay==null)return;
-                var overlayHandle=new WindowInteropHelper(overlay).Handle;
-                Start(235,t=>{
-                    DesktopInterop.MoveAndResize(overlayHandle,QuickChatExpansion.Interpolate(source.Bounds,target,t));
-                    if(t<.68)return;
+                var dpi=VisualTreeHelper.GetDpi(overlay);
+                Rect first=RelativeBounds(source.Bounds,cover,dpi),last=RelativeBounds(target,cover,dpi);
+                zoom.Draw(first,0);
+                Start(290,t=>{
+                    zoom.Draw(QuickChatExpansion.Interpolate(first,last,Math.Min(1,t/.88)),t);
+                    if(t<.9)return;
                     if(cloaked){DesktopInterop.SetWindowCloaked(handle,false);cloaked=false;}
-                    overlay.Opacity=1-(t-.68)/.32;
+                    overlay.Opacity=Math.Min(1,(1-t)*10);
                 },()=>{if(cloaked)DesktopInterop.SetWindowCloaked(handle,false);overlay.Close();});
                 playing=true;
             }
@@ -140,10 +160,13 @@ namespace Dafeiyu
         }
 
         static Window ShowOverlay(BitmapSource bitmap,Rect bounds,double opacity,string name)
+        {return ShowOverlay(new Image{Source=bitmap,Stretch=Stretch.Fill,IsHitTestVisible=false},bounds,opacity,name);}
+
+        static Window ShowOverlay(FrameworkElement content,Rect bounds,double opacity,string name)
         {
             var overlay=new Window{Name=name,AllowsTransparency=true,WindowStyle=WindowStyle.None,ResizeMode=ResizeMode.NoResize,
                 ShowActivated=false,ShowInTaskbar=false,Topmost=true,Background=Brushes.Transparent,Focusable=false,Opacity=opacity,
-                Content=new Image{Source=bitmap,Stretch=Stretch.Fill,IsHitTestVisible=false}};
+                Content=content};
             try
             {
                 var handle=new WindowInteropHelper(overlay).EnsureHandle();
@@ -156,6 +179,38 @@ namespace Dafeiyu
             }
             catch(InvalidOperationException){overlay.Close();return null;}
             catch(ArgumentException){overlay.Close();return null;}
+        }
+
+        static Rect RelativeBounds(Rect bounds,Rect cover,DpiScale dpi)
+        {
+            return new Rect((bounds.X-cover.X)/dpi.DpiScaleX,(bounds.Y-cover.Y)/dpi.DpiScaleY,
+                bounds.Width/dpi.DpiScaleX,bounds.Height/dpi.DpiScaleY);
+        }
+
+        sealed class ExpansionVisual:Canvas
+        {
+            readonly Grid frame=new Grid{ClipToBounds=true};
+            readonly Image from,to;
+            readonly BlurEffect blur=new BlurEffect{RenderingBias=RenderingBias.Performance};
+
+            internal ExpansionVisual(BitmapSource source,BitmapSource destination)
+            {
+                from=new Image{Source=source,Stretch=Stretch.UniformToFill,Effect=blur};
+                to=new Image{Source=destination,Stretch=Stretch.UniformToFill,Opacity=0};
+                frame.Children.Add(from);frame.Children.Add(to);
+                Children.Add(frame);
+            }
+
+            internal void Draw(Rect bounds,double progress)
+            {
+                SetLeft(frame,bounds.X);SetTop(frame,bounds.Y);
+                frame.Width=bounds.Width;frame.Height=bounds.Height;
+                double mix=Math.Max(0,Math.Min(1,(progress-.22)/.6));
+                blur.Radius=5*Math.Sin(Math.PI*mix);
+                if(to.Source==null)return;
+                to.Opacity=mix;
+                from.Opacity=1-mix;
+            }
         }
 
         void Start(double milliseconds,Action<double> drawFrame,Action complete)

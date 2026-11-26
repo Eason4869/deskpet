@@ -703,7 +703,7 @@ namespace Dafeiyu
             string warning="";
             if(hotkeys!=null){hotkeys.Dispose();hotkeys=new HotkeyRegistry(handle);foreach(var pair in Settings.Hotkeys.Where(p=>ShortcutCatalog.All.Any(d=>d.Global&&d.Id==p.Key))){string error;if(!hotkeys.TryBind(pair.Key,pair.Value,out error))warning=error;}}
             HotkeyWarning=warning;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;UpdateVoiceVolume(Settings.Volume);
-            ApplySettingsCore(false);if(chat!=null)chat.RefreshAppearance();return warning;
+            ApplySettingsCore(false);RefreshChatArtworkOpacity();if(chat!=null)chat.RefreshAppearance();return warning;
         }
         void ApplySettingsCore(bool persist)
         {
@@ -1255,6 +1255,18 @@ namespace Dafeiyu
             }));
         }
         public void RefreshChatAppearance(){CancelPendingGreeting();if(chat!=null)chat.RefreshAppearance();if(quick!=null)quick.RefreshPersona();if(preferences!=null)preferences.RefreshTextProviders();}
+        internal void SetChatArtworkOpacity(int opacity)
+        {
+            if(Settings.ChatArtworkOpacity==opacity)return;
+            Settings.ChatArtworkOpacity=opacity;
+            RefreshChatArtworkOpacity();
+            SaveSettings();
+        }
+        internal void RefreshChatArtworkOpacity()
+        {
+            if(Application.Current==null)return;
+            foreach(var window in Application.Current.Windows.OfType<ChatWindow>())window.RefreshArtworkOpacity();
+        }
         public void ReloadConversation(){DismissGreeting();if(chat!=null)chat.ReloadHistory();if(quick!=null)quick.RefreshPersona();}
         private void ConversationMemoryChanged()
         {if(closing)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(ConversationMemoryChanged));return;}DismissGreeting();}

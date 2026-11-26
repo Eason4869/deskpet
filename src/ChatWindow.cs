@@ -58,7 +58,7 @@ namespace Dafeiyu
             earlier=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeI")));earlier.Name="HistoryEarlier";earlier.FontSize=11;earlier.Click+=delegate{double offset=scroll.VerticalOffset,extent=scroll.ExtentHeight;visibleTurns+=50;ReloadHistory(false);Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{scroll.UpdateLayout();scroll.ScrollToVerticalOffset(offset+Math.Max(0,scroll.ExtentHeight-extent));}));};historyTools.Children.Add(earlier);
             export=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeJ")));export.Name="ExportChat";export.FontSize=11;export.Click+=delegate{Export();};DockPanel.SetDock(export,Dock.Right);scroll.Content=null;var historyBody=new StackPanel();historyBody.Children.Add(historyTools);historyBody.Children.Add(messages);scroll.Content=historyBody;
             var contextIcon=UiIcons.Image("file",AgentUi.Muted);contextIcon.Width=contextIcon.Height=15;contextIcon.Margin=new Thickness(0,0,7,0);contextNotice.Children.Add(contextIcon);contextLabel.Name="ContextCompactionLabel";contextNotice.Children.Add(contextLabel);
-            Grid.SetRow(scroll,1);messageArea.Children.Add(scroll);scroll.Background=Brushes.Transparent;atmosphere=ChatAtmosphere.AttachSurface(root,1,1);atmosphere.Margin=new Thickness(0,0,0,8);atmosphere.ArtworkOpacity=.30;atmosphere.SetSkin(pet.Skin);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);InitializeHistoryNavigation();
+            Grid.SetRow(scroll,1);messageArea.Children.Add(scroll);scroll.Background=Brushes.Transparent;atmosphere=ChatAtmosphere.AttachSurface(root,1,1);atmosphere.Margin=new Thickness(0,0,0,8);RefreshArtworkOpacity();atmosphere.SetSkin(pet.Skin);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);InitializeHistoryNavigation();
             status=Ui.Text("",11,Ui.Muted);status.Name="ChatStatus";
             input=new MarkdownEditor();input.Name="MessageInput";input.MaxLength=8000;
             record=UiIcons.Button("mic",()=>(TextResources.Get("chatWindow.chatWindow.uiIcons.alternativeA")));record.Name="VoiceRecord";
@@ -75,6 +75,7 @@ namespace Dafeiyu
             Closed+=delegate {closed=true;pet.Workspaces.StateChanged-=PruneConversationPreviews;CloseTransientSummary();CloseConversationPreviews();UnmountWorkspace(true);DetachEntryControls();};
             Loaded+=delegate {input.Focus();};
         }
+        internal void RefreshArtworkOpacity(){atmosphere.ArtworkOpacity=pet.Settings.ChatArtworkOpacity/100d;}
         void RestoreWindowSize()
         {
             var settings=pet.Settings;

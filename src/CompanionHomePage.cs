@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 
 namespace Dafeiyu
 {
@@ -20,6 +21,8 @@ namespace Dafeiyu
         readonly HolidayKeepsakeAlbumView holidayAlbum;
         bool holidaySelected;
         bool entrancePending=true;
+        readonly DispatcherTimer entranceTimer=new DispatcherTimer(DispatcherPriority.Loaded){Interval=TimeSpan.FromMilliseconds(55)};
+        Action playEntrance;
         readonly System.Windows.Threading.DispatcherTimer holidayPulse=new System.Windows.Threading.DispatcherTimer();
         internal Task PendingHoliday {get{return holidayAlbum.Pending;}}
         async void ObserveShownHome(){if(disposed)return;var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome);}
@@ -46,7 +49,14 @@ namespace Dafeiyu
             holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,async delegate{var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.Store.DirectoryPath);
             holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
             Loaded+=delegate{holidayPulse.Start();ObserveShownHome();};Unloaded+=delegate{holidayPulse.Stop();};
-            IsVisibleChanged+=delegate{if(IsVisible)entrancePending=true;};
+            IsVisibleChanged+=delegate{if(!IsVisible){entranceTimer.Stop();playEntrance=null;}};
+            entranceTimer.Tick+=delegate
+            {
+                entranceTimer.Stop();
+                if(disposed||!IsVisible||playEntrance==null)return;
+                var play=playEntrance;playEntrance=null;entrancePending=false;
+                play();
+            };
 
             PendingRetry=PendingSettings=Task.FromResult(true);Name = "CompanionHomePage"; VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled; Background = ThemeManager.Surface;
@@ -64,6 +74,7 @@ namespace Dafeiyu
             else if(View!=null&&(!Object.ReferenceEquals(displayedSkin,owner.Skin)||displayedName!=owner.Skin.DisplayName))Render();
         }
         public Task RefreshAsync(){return refreshTask=LoadAndRenderAsync();}
+        internal void PrepareEntrance(){entrancePending=true;}
         internal void RequestNavigationAnchor(string anchor)
         {navigateToSettings=anchor=="CompanionRelationshipSettings";navigationIdentity=navigateToSettings?owner.RelationshipCompanionId:null;if(navigateToSettings)settingsOpen=true;}
         async Task LoadAndRenderAsync()
@@ -88,8 +99,6 @@ namespace Dafeiyu
         void Render()
         {
             if(View==null||View.CompanionId!=owner.RelationshipCompanionId){ObserveRefresh();return;}
-            bool animate=entrancePending&&IsVisible&&SystemParameters.ClientAreaAnimation;
-            if(IsVisible)entrancePending=false;
             displayedSkin=owner.Skin;displayedName=owner.Skin.DisplayName;
             int version=revision;double scroll=VerticalOffset;
             var focused=Keyboard.FocusedElement as FrameworkElement;
@@ -118,11 +127,11 @@ namespace Dafeiyu
             var relation=Section(()=> (TextResources.Get("relationship.home.relation")));relation.Margin=new Thickness(0);
             var profileBox=HomeVisual.Box(profileContent,true);profileBox.Name="CompanionProfileCard";var relationBox=HomeVisual.Box(relation,false);relationBox.Name="CompanionRelationshipCard";relationBox.Background=new SolidColorBrush(ThemeManager.IsDark?Color.FromRgb(43,53,69):Color.FromRgb(244,247,252));
             var top=new Grid{Margin=new Thickness(0,20,0,0)};top.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(55,GridUnitType.Star)});top.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(45,GridUnitType.Star)});top.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});top.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});top.Children.Add(profileBox);top.Children.Add(relationBox);body.Children.Add(top);
-            UniformGrid nodes=null;Grid progressRow=null;StackPanel stats=null;Grid bottom=null;WrapPanel cardsWrap=null;
+            UniformGrid nodes=null;Grid progressRow=null;StackPanel stats=null;Grid bottom=null;WrapPanel cardsWrap=null;FrameworkElement ring=null;
             if(View.Snapshot!=null){
                 var p=View.Progress;var words=new StackPanel{Margin=new Thickness(18,0,0,0),VerticalAlignment=VerticalAlignment.Center};
                 var stage=Text(()=> (RelationshipContent.StageName(p.StageId)),26,"CompanionRelationshipStage");stage.FontWeight=FontWeights.SemiBold;words.Children.Add(stage);words.Children.Add(Text(()=> (p.ScoreText),28,"CompanionRelationshipScore"));var next=Text(()=> (p.NextText));next.Foreground=AgentUi.Muted;words.Children.Add(next);
-                progressRow=new Grid{Margin=new Thickness(0,14,0,16)};progressRow.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(112)});progressRow.ColumnDefinitions.Add(new ColumnDefinition());progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.Children.Add(HomeVisual.Ring(p.Fraction,animate));Grid.SetColumn(words,1);progressRow.Children.Add(words);relation.Children.Add(progressRow);
+                progressRow=new Grid{Margin=new Thickness(0,14,0,16)};progressRow.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(112)});progressRow.ColumnDefinitions.Add(new ColumnDefinition());progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});ring=HomeVisual.Ring(p.Fraction);progressRow.Children.Add(ring);Grid.SetColumn(words,1);progressRow.Children.Add(words);relation.Children.Add(progressRow);
                 nodes=HomeVisual.Nodes(p);relation.Children.Add(nodes);var relationScope=Label(()=>(TextResources.Get("relationship.home.globalScope")),12);relationScope.Foreground=AgentUi.Muted;relation.Children.Add(relationScope);
                 int statusIndex=0;foreach(string explanation in View.StatusTexts){int statusPosition=statusIndex++;var state=Text(()=>View.StatusTexts.ElementAtOrDefault(statusPosition)??"",13,statusPosition==0?"RelationshipGrowthStatus":null);state.Margin=new Thickness(0,14,0,0);state.Foreground=AgentUi.Muted;relation.Children.Add(state);}
                 stats=new StackPanel{Margin=new Thickness(0,12,0,0)};stats.Children.Add(HomeVisual.Stat("heart",()=> (TextResources.Get("relationship.home.todayLabel")),()=> (View.TodayPoints+" / 20"),"CompanionTodayGrowth"));stats.Children.Add(HomeVisual.Stat("sun",()=> (TextResources.Get("relationship.home.activeDaysLabel")),()=> (TextResources.Format("relationship.home.daysValue",View.ActiveDays)),"CompanionActiveDays"));stats.Children.Add(HomeVisual.Stat("calendar",()=> (TextResources.Get("relationship.home.acquaintanceDaysLabel")),()=> (TextResources.Format("relationship.home.daysValue",View.AcquaintanceDays)),"CompanionAcquaintanceDays"));relation.Children.Add(stats);
@@ -163,17 +172,19 @@ namespace Dafeiyu
             var settingsExp=new Expander{HorizontalContentAlignment=HorizontalAlignment.Stretch,Name="CompanionRelationshipSettings",Header=HomeVisual.Header("settings",()=> (TextResources.Get("relationship.home.settings"))),Foreground=AgentUi.Ink,IsExpanded=settingsOpen,Content=settings};settingsExp.Expanded+=delegate{settingsOpen=true;};settingsExp.Collapsed+=delegate{settingsOpen=false;};
             var groups=new StackPanel();groups.Children.Add(rules);groups.Children.Add(new Border{Height=1,Background=AgentUi.Line,Margin=new Thickness(0,10,0,10)});groups.Children.Add(settingsExp);
             var settingsBox=HomeVisual.Box(groups,false);body.Children.Add(settingsBox);
-            if(animate)
+            if(entrancePending&&IsVisible&&SystemParameters.ClientAreaAnimation)
             {
-                FloatIn(profileBox,0);FloatIn(relationBox,45);
+                var cards=new List<Action>{PrepareFloat(profileBox,0),PrepareFloat(relationBox,55)};
                 if(bottom!=null&&!holidaySelected)
                 {
-                    FloatIn((FrameworkElement)bottom.Children[0],115);
+                    cards.Add(PrepareFloat((FrameworkElement)bottom.Children[0],115));
                     int index=0;
-                    foreach(FrameworkElement card in cardsWrap.Children)FloatIn(card,95+Math.Min(index++,3)*25);
+                    foreach(FrameworkElement card in cardsWrap.Children)cards.Add(PrepareFloat(card,95+Math.Min(index++,3)*25));
                 }
-                if(holidaySelected)FloatIn(holidayAlbum,95);
-                FloatIn(settingsBox,140);
+                cards.Add(PrepareFloat(settingsBox,140));
+                var playRing=HomeVisual.PrepareRingSweep(ring);
+                playEntrance=delegate{foreach(var play in cards)play();playRing();};
+                entranceTimer.Stop();entranceTimer.Start();
             }
             updateLayout=delegate{
                 double viewport=ViewportWidth>0?ViewportWidth:ActualWidth;double width=Math.Min(1080,Math.Max(0,viewport-(ActualWidth<600?32:56)));bool wide=width>=760;body.Margin=new Thickness(ActualWidth<600?16:28,24,ActualWidth<600?16:28,28);
@@ -189,17 +200,21 @@ namespace Dafeiyu
                 if(Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive)settingsExp.Focus();
             }
         }
-        static void FloatIn(FrameworkElement card,int delay)
+        static Action PrepareFloat(FrameworkElement card,int delay)
         {
-            var offset=new TranslateTransform(0,12);
+            var offset=new TranslateTransform(0,20);
             card.RenderTransform=offset;
-            var slide=new DoubleAnimation(12,0,TimeSpan.FromMilliseconds(260))
+            var slide=new DoubleAnimation(20,0,TimeSpan.FromMilliseconds(340))
             {
                 BeginTime=TimeSpan.FromMilliseconds(delay),FillBehavior=FillBehavior.HoldEnd,
                 EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}
             };
             slide.Completed+=delegate{offset.Y=0;offset.BeginAnimation(TranslateTransform.YProperty,null);};
-            offset.BeginAnimation(TranslateTransform.YProperty,slide);
+            return delegate
+            {
+                if(SystemParameters.ClientAreaAnimation)offset.BeginAnimation(TranslateTransform.YProperty,slide);
+                else offset.Y=0;
+            };
         }
         void AddSetting(StackPanel parent,string name,System.Func<string> label,bool value,int kind)
         {
@@ -233,6 +248,6 @@ LocalizedUi.Automation(check,label);
             finally{saving=false;}
             if(!disposed)await RefreshAsync();
         }
-        public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();holidayAlbum.Dispose();ThemeManager.Changed-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;body.Children.Clear();captures.Clear();scenes.Dispose();}
+        public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();entranceTimer.Stop();playEntrance=null;holidayAlbum.Dispose();ThemeManager.Changed-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;body.Children.Clear();captures.Clear();scenes.Dispose();}
  TextBlock Label(System.Func<string> value,double size=13,string name=null){return LocalizedUi.With(Label(value(),size,name),"Text",value);} TextBlock Text(System.Func<string> value,double size=13,string name=null){return LocalizedUi.With(Text(value(),size,name),"Text",value);}    }
 }

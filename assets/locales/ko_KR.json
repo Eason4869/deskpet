@@ -3996,6 +3996,7 @@
   "themeTransition.motion.ripple": "잔물결",
   "themeTransition.motion.zipper": "지퍼",
   "themeTransition.sound.enabled": "테마 전환 효과음",
+  "chatAtmosphere.opacity": "채팅 캐릭터 일러스트 불투명도",
   "themeTransition.sound.volume": "테마 전환 음량",
   "ui.readOnlyMenu.header": "모두 선택",
   "ui.replySpeechToggle.toggle": "TTS 출력",

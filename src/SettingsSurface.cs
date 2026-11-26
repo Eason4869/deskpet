@@ -21,7 +21,7 @@ namespace Dafeiyu
         }
         internal static CheckBox Toggle(Func<string> label,bool value,Action<bool> changed)
         {return LocalizedUi.With(Ui.Toggle(label(),value,changed,true),"Content",label);}
-        internal static Slider StyleSlider(Slider slider,int precision=0)
+        internal static Slider StyleSlider(Slider slider,int precision=0,string unit=null)
         {
             if(sliderTemplate==null)sliderTemplate=(ControlTemplate)ThemeManager.Parse(@"
 <ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Slider'>
@@ -85,6 +85,7 @@ namespace Dafeiyu
                 tooltip.Foreground=Ui.Ink;
                 tooltip.BorderBrush=ThemeManager.CardBorder;
                 tooltip.Padding=new Thickness(8,4,8,4);
+                if(unit!=null)tooltip.ContentStringFormat="{0}"+unit;
             }),true);
             return slider;
         }

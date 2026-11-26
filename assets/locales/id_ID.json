@@ -3996,6 +3996,7 @@
   "themeTransition.motion.ripple": "Riak",
   "themeTransition.motion.zipper": "Ritsleting",
   "themeTransition.sound.enabled": "Suara saat tema berganti",
+  "chatAtmosphere.opacity": "Opasitas ilustrasi karakter di obrolan",
   "themeTransition.sound.volume": "Volume saat tema berganti",
   "ui.readOnlyMenu.header": "Pilih semua",
   "ui.replySpeechToggle.toggle": "Keluaran TTS",

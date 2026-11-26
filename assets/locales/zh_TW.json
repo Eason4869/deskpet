@@ -3996,6 +3996,7 @@
   "themeTransition.motion.ripple": "漣漪",
   "themeTransition.motion.zipper": "拉鍊",
   "themeTransition.sound.enabled": "主題切換音效",
+  "chatAtmosphere.opacity": "立繪不透明度",
   "themeTransition.sound.volume": "主題切換音量",
   "ui.readOnlyMenu.header": "全選",
   "ui.replySpeechToggle.toggle": "TTS 輸出",

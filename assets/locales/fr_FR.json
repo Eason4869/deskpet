@@ -3996,6 +3996,7 @@
   "themeTransition.motion.ripple": "Ondulation",
   "themeTransition.motion.zipper": "Fermeture éclair",
   "themeTransition.sound.enabled": "Son du changement de thème",
+  "chatAtmosphere.opacity": "Opacité de l’illustration dans le chat",
   "themeTransition.sound.volume": "Volume du son de transition",
   "ui.readOnlyMenu.header": "Tout sélectionner",
   "ui.replySpeechToggle.toggle": "Sortie TTS",

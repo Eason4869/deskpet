@@ -152,6 +152,13 @@ namespace Dafeiyu.Tests
                 Check(themeSound.IsChecked==false&&themeVolume.Value==30,"appearance settings expose opt-in sound and 30 percent volume");
                 themeSound.IsChecked=true;themeVolume.Value=41;
                 Check(store.Load().ThemeTransitionSoundEnabled&&store.Load().ThemeTransitionSoundVolume==41,"appearance controls persist both theme audio preferences");
+                var artworkOpacity=All<Slider>(main).Single(s=>s.Name=="ChatArtworkOpacity");
+                Check(artworkOpacity.Template==themeVolume.Template&&artworkOpacity.Width==themeVolume.Width&&artworkOpacity.Value==30,
+                    "artwork opacity uses the volume slider style and defaults to 30 percent");
+                artworkOpacity.Value=48;
+                Check(All<ChatAtmosphere>(main).Single().ArtworkOpacity==.48&&store.Load().ChatArtworkOpacity==48,
+                    "artwork opacity updates the open chat and survives settings reload");
+                artworkOpacity.Value=30;
                 var titleSwitch=All<ThemeTitleSwitch>(main).Single();
                 var titleLight=All<Button>(titleSwitch).Single(b=>b.Name=="AppThemeLight");
                 var titleDark=All<Button>(titleSwitch).Single(b=>b.Name=="AppThemeDark");

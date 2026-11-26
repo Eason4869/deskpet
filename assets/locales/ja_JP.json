@@ -3996,6 +3996,7 @@
   "themeTransition.motion.ripple": "波紋",
   "themeTransition.motion.zipper": "ジッパー",
   "themeTransition.sound.enabled": "テーマ切り替え音",
+  "chatAtmosphere.opacity": "チャットの立ち絵の不透明度",
   "themeTransition.sound.volume": "テーマ切り替え音の音量",
   "ui.readOnlyMenu.header": "すべて選択",
   "ui.replySpeechToggle.toggle": "TTS出力",

@@ -3996,6 +3996,7 @@
   "themeTransition.motion.ripple": "लहर",
   "themeTransition.motion.zipper": "ज़िप",
   "themeTransition.sound.enabled": "थीम बदलने की ध्वनि",
+  "chatAtmosphere.opacity": "चैट में साथी के चित्र की अपारदर्शिता",
   "themeTransition.sound.volume": "थीम बदलने की ध्वनि का स्तर",
   "ui.readOnlyMenu.header": "सभी चुनें",
   "ui.replySpeechToggle.toggle": "TTS आउटपुट",

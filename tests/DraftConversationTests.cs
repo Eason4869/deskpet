@@ -55,8 +55,8 @@ var restored=Pet(directory);try{restored.NewActiveConversation();Pump();var inpu
                     Check(overlay!=null,"expansion begins after the asynchronous workspace opens");
                     var destination=DesktopInterop.Bounds(new System.Windows.Interop.WindowInteropHelper(Chat()).Handle);
                     var frame=DesktopInterop.Bounds(new System.Windows.Interop.WindowInteropHelper(overlay).Handle);
-                    Check(frame.Width>=Math.Min(start.Width,destination.Width)&&frame.Width<=Math.Max(start.Width,destination.Width),
-                        "the native expansion stays between the source and destination sizes");
+                    Check(frame.Contains(start)&&frame.Contains(destination),
+                        "the fixed transition surface covers the source and destination native bounds");
                     Check(QuickChatExpansion.Interpolate(start,destination,0)==start&&QuickChatExpansion.Interpolate(start,destination,1)==destination,
                         "the expansion curve connects the exact source and destination bounds");
                 }

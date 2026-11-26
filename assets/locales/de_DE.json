@@ -3996,6 +3996,7 @@
   "themeTransition.motion.ripple": "Wellen",
   "themeTransition.motion.zipper": "Reißverschluss",
   "themeTransition.sound.enabled": "Ton beim Designwechsel",
+  "chatAtmosphere.opacity": "Deckkraft der Charakterillustration im Chat",
   "themeTransition.sound.volume": "Lautstärke beim Designwechsel",
   "ui.readOnlyMenu.header": "Alles auswählen",
   "ui.replySpeechToggle.toggle": "TTS-Ausgabe",
