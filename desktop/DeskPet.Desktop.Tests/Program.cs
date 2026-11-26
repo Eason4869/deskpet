@@ -138,14 +138,14 @@ try
             Switch(titleLight);
             window.Width += 30;
             window.UpdateLayout();
-            Until(() => !Overlay());
+            CompleteThemeReveal(window);
             Check(store.Load().ThemeMode == "light" && draft.Text == "Preserve draft",
-                "Desktop resize settles the selected mode and preserves the draft");
+                "Desktop resize preserves the selected mode and the draft");
             owner.Settings.ThemeTransitionEffect = ThemeTransitionMotion.Off;
             Switch(titleDark);
             Check(!Overlay() && store.Load().ThemeMode == "dark" && store.Load().ThemeTransitionEffect == "off",
                 "Desktop Off immediately switches the palette and remembers the choice");
-            foreach (var effect in new[] { ThemeTransitionMotion.Ripple, ThemeTransitionMotion.Refraction, ThemeTransitionMotion.Zipper })
+            foreach (var effect in ThemeTransitionMotion.AnimatedEffects)
             {
                 owner.Settings.ThemeTransitionEffect = effect;
                 owner.SetThemeMode("light");
@@ -154,6 +154,14 @@ try
                 Until(() => { AvaloniaHeadlessPlatform.ForceRenderTimerTick(1); return !Overlay(); });
                 Check(store.Load().ThemeMode == "dark" && store.Load().ThemeTransitionEffect == effect,
                     $"Desktop {effect} remembers its choice and preserves the resulting theme");
+                Switch(titleLight);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick(1);
+                var previousOverlay = window.GetVisualDescendants().OfType<Control>().SingleOrDefault(c => c.Name == "LiquidThemeOverlay");
+                Switch(titleDark);
+                if (!reducedMotion)
+                    Check(previousOverlay != null && window.GetVisualDescendants().Contains(previousOverlay),
+                        $"Desktop {effect} reverses without replacing the existing mask");
+                CompleteThemeReveal(window);
             }
             owner.Settings.ThemeTransitionEffect = ThemeTransitionMotion.RandomSelection;
             owner.SetThemeMode("light");

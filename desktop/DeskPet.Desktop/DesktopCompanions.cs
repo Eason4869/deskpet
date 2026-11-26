@@ -159,7 +159,6 @@ internal sealed partial class DesktopController
         }
         if(!Skins.Any(s=>s.PickerKey==requested.PickerKey))return;
         Observation.Invalidate();long token=officialCompanions.BeginSelection();latestCompanionToken=token;companionSelectionGeneration++;
-        fullChat?.CompanionReveal?.Cancel();
         companionSelection?.Cancel();awaitingCompanionFrame=null;companionClocks.Clear();companionClocks[token]=System.Diagnostics.Stopwatch.StartNew();
         using var cancellation=CancellationTokenSource.CreateLinkedTokenSource(companionLifetime.Token);companionSelection=cancellation;companionRequestKey=requested.PickerKey;
         Settings.PendingOfficialCompanionId="";CompanionSelectionNotice="";

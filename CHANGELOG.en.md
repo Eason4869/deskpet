@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.8-dev.2 · Development preview
+
+- Flow, Ripple, Refraction, and Zipper can reverse smoothly from the current frame when you switch back mid-transition. Selecting the active theme keeps the animation going. Follow System also supports reversals.
+- Avatar Ripple and Zipper Entrance continue from the current frame when you select another companion. An animation already under way keeps playing while the next companion loads.
+- Theme and companion animations keep playing as you scroll, switch conversations, edit or send messages, or resize the window. Revealed areas update immediately.
+
 ## 1.0.8-dev.1 · Development preview
 
 - The Windows Work agent can use `git_push` to push to the project's GitHub `origin`. The approval prompt shows the branch and commit. GitHub CLI, fine-grained PATs, and an optional HTTP proxy are supported.

@@ -57,8 +57,18 @@ internal static class CompanionWindowRevealChecks
             Check(scroll.Offset.Y>0,"the fixture applied a programmatic scroll");
             Check(Overlay(),"a programmatic viewport update does not cancel the role reveal");
             now+=TimeSpan.FromMilliseconds(600);AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Check(Overlay(),"zipper retains both layers during the animation");
-            now+=TimeSpan.FromMilliseconds(120);AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Check(Overlay(),"the zipper is still revealing the live content");
+            var previous=host.Children.Single(control=>control.Name=="CompanionWindowOverlay");
+            reveal.Prepare(7,key,"last");
+            Check(Overlay()&&!host.Children.Contains(previous),"a third role starts from a single composited overlay");
+            key="last";reveal.MarkCommitted(7,key);reveal.OnContentRefreshed();
+            Dispatcher.UIThread.RunJobs();
+            window.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Key=Key.Tab});
+            Check(Overlay(),"keyboard input leaves a committed overlay active");
+            eligible=false;
+            window.Width+=30;Dispatcher.UIThread.RunJobs();
+            Check(Overlay(),"navigation and window resize keep the reveal active");
+            now+=TimeSpan.FromMilliseconds(720);AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             var deadline=DateTime.UtcNow.AddSeconds(2);
             while(Overlay()&&DateTime.UtcNow<deadline)
             {
@@ -67,10 +77,6 @@ internal static class CompanionWindowRevealChecks
                 Thread.Sleep(1);
             }
             Check(!Overlay(),"completion removes the overlay");
-            reveal.Prepare(7,key,"last");
-            key="last";reveal.MarkCommitted(7,key);
-            window.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Key=Key.Tab});
-            Check(!Overlay(),"input interrupts a committed overlay");
         }
         finally{window.Close();}
         return checks+CheckMainWindow(directory,capture);
@@ -145,7 +151,8 @@ internal static class CompanionWindowRevealChecks
                 task.GetAwaiter().GetResult();
                 Dispatcher.UIThread.RunJobs();
                 var captured=chat.GetVisualDescendants().OfType<LiquidThemeReveal.SnapshotLayer>()
-                    .Any(layer=>layer.Name=="CompanionWindowOverlay"&&layer.Children.Count>1);
+                    .Any(layer=>layer.Name=="CompanionWindowOverlay") &&
+                    (bool)typeof(CompanionWindowReveal).GetField("playing",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(reveal)!;
                 Check(captured&&!observationSave.IsCompleted,
                     "an in-flight preference save leaves the applied companion eligible for the reveal");
             }
@@ -171,7 +178,7 @@ internal static class CompanionWindowRevealChecks
                 Console.WriteLine("Avalonia capture "+output);
             }
             now+=TimeSpan.FromMilliseconds(500);
-            Until(()=>!Overlay());
+            Until(()=>{AvaloniaHeadlessPlatform.ForceRenderTimerTick();return !Overlay();});
             Check(chat.CurrentPage=="chat"&&owner.Skin.PickerKey==target.PickerKey,"completed role switch leaves the live chat");
             chat.Close();
         }

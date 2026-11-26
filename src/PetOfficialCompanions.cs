@@ -110,7 +110,6 @@ namespace Dafeiyu
         long BeginCompanionSelection(SkinDefinition target)
         {
             if(officialSelection!=null)officialSelection.Cancel();
-            if(chat!=null&&chat.CompanionReveal!=null)chat.CompanionReveal.Cancel();
             officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;renderedSelection=null;
             bool hadPending=!String.IsNullOrEmpty(Settings.PendingOfficialCompanionId);Settings.PendingOfficialCompanionId="";
             if(hadPending)SaveSettings();return officialRequest;

@@ -208,11 +208,23 @@ namespace Dafeiyu.Tests
                     CompleteReveal(main);
                     Check(!HasOverlay(main)&&store.Load().ThemeMode=="system","system reveal clears without changing the saved preference");
                 }
+                if(SystemParameters.ClientAreaAnimation)
+                {
+                    bool initial=ThemeManager.IsDark;
+                    ThemeManager.SetSystemTheme(!initial);Pump(240);
+                    var before=All<FrameworkElement>(main).Single(e=>e.Name=="LiquidThemeOverlay");
+                    ThemeManager.SetSystemTheme(initial);
+                    Check(All<FrameworkElement>(main).Contains(before),"another system appearance change reverses the active mask");
+                    CompleteReveal(main);
+                    Check(ThemeManager.IsDark==initial&&store.Load().ThemeMode=="system","automatic reversal preserves Follow System");
+                }
                 Click(titleLight);CompleteReveal(main);
                 Check(store.Load().ThemeMode=="light"&&picker.Value=="light","the sun leaves follow-system mode directly");
                 Click(titleDark);
                 main.Width-=8;main.UpdateLayout();Pump();
-                Check(!HasOverlay(main)&&store.Load().ThemeMode=="dark","resizing settles the requested theme and clears the layer");
+                Check(HasOverlay(main)==SystemParameters.ClientAreaAnimation,"resizing keeps the theme animation active");
+                CompleteReveal(main);
+                Check(store.Load().ThemeMode=="dark","resizing leaves the requested theme committed at completion");
                 motion.SelectedValue=ThemeTransitionMotion.Off;
                 Check(store.Load().ThemeTransitionEffect=="off","changing the motion dropdown immediately persists Off");
                 Click(lightChoice);Pump();
@@ -222,7 +234,7 @@ namespace Dafeiyu.Tests
                 Click(titleSystem);
                 ThemeManager.SetSystemTheme(!ThemeManager.IsDark);
                 Check(!HasOverlay(main)&&store.Load().ThemeMode=="system","Off also suppresses automatic system animation");
-                foreach(string effect in new[]{ThemeTransitionMotion.Ripple,ThemeTransitionMotion.Refraction,ThemeTransitionMotion.Zipper})
+                foreach(string effect in ThemeTransitionMotion.AnimatedEffects)
                 {
                     motion.SelectedValue=effect;
                     pet.SetThemeMode("light");Pump();
@@ -231,6 +243,14 @@ namespace Dafeiyu.Tests
                     CompleteReveal(main);
                     Check(!HasOverlay(main)&&store.Load().ThemeTransitionEffect==effect&&store.Load().ThemeMode=="dark",
                         effect+" selection and completed palette survive reload ("+store.Load().ThemeMode+", "+store.Load().ThemeTransitionEffect+")");
+                    Click(titleLight);Pump(320);
+                    var originalOverlay=All<FrameworkElement>(main).SingleOrDefault(e=>e.Name=="LiquidThemeOverlay");
+                    Click(titleDark);
+                    if(SystemParameters.ClientAreaAnimation)
+                        Check(originalOverlay!=null&&All<FrameworkElement>(main).Contains(originalOverlay),
+                            effect+" keeps the rendered mask when reversing");
+                    CompleteReveal(main);
+                    Check(store.Load().ThemeMode=="dark",effect+" saves the last requested theme");
                 }
                 motion.SelectedValue=ThemeTransitionMotion.RandomSelection;
                 pet.SetThemeMode("light");

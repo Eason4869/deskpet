@@ -2,8 +2,8 @@ using System;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace Dafeiyu
@@ -18,7 +18,7 @@ namespace Dafeiyu
         readonly Func<string> selectedKey,setting;
         readonly Func<Point> avatar;
         readonly Func<double> seam;
-        readonly Action interruptTheme;
+        readonly Func<FrameworkElement,BitmapSource> takeOverTheme;
         readonly Func<TimeSpan> now;
         readonly DispatcherTimer timeout;
         LiquidThemeReveal.SnapshotLayer layer;
@@ -28,52 +28,45 @@ namespace Dafeiyu
         int generation;
         bool committed,playing,refreshQueued,disposed;
         TimeSpan started,duration;
-        Size bounds;
-        DpiScale dpi;
+        TimeSpan? lastRenderingTime;
 
         internal CompanionWindowReveal(Window window,Grid host,FrameworkElement content,Func<bool> eligible,
-            Func<string> selectedKey,Func<string> setting,Func<Point> avatar,Func<double> seam,Action interruptTheme,
+            Func<string> selectedKey,Func<string> setting,Func<Point> avatar,Func<double> seam,Func<FrameworkElement,BitmapSource> takeOverTheme,
             Func<bool> reducedMotion=null,Func<TimeSpan> now=null)
         {
             this.window=window;this.host=host;this.content=content;this.eligible=eligible;this.selectedKey=selectedKey;
-            this.setting=setting;this.avatar=avatar;this.seam=seam;this.interruptTheme=interruptTheme;
+            this.setting=setting;this.avatar=avatar;this.seam=seam;this.takeOverTheme=takeOverTheme;
             this.reducedMotion=reducedMotion??(()=>!SystemParameters.ClientAreaAnimation);
             var clock=Stopwatch.StartNew();
             this.now=now??(()=>clock.Elapsed);
             timeout=new DispatcherTimer(DispatcherPriority.Normal,window.Dispatcher){Interval=RefreshLimit};
             timeout.Tick+=Interrupt;
-            content.SizeChanged+=Interrupt;
-            window.DpiChanged+=OnDpiChanged;
-            window.Deactivated+=Interrupt;
-            window.StateChanged+=Interrupt;
+            window.StateChanged+=StateChanged;
             window.IsVisibleChanged+=VisibilityChanged;
-            window.PreviewMouseDown+=Interrupt;
-            window.PreviewMouseWheel+=Interrupt;
-            window.PreviewKeyDown+=Interrupt;
-            window.PreviewTouchDown+=Interrupt;
             window.Closed+=Closed;
             ThemeManager.Changed+=Cancel;
         }
 
-        bool CanShow()
+        bool CanContinue()
         {
-            return !disposed&&eligible()&&window.IsVisible&&content.IsVisible&&window.WindowState!=WindowState.Minimized;
+            return !disposed&&window.IsVisible&&content.IsVisible&&window.WindowState!=WindowState.Minimized;
         }
 
         internal void Prepare(long token,string currentKey,string nextKey)
         {
-            Cancel();
-            if(currentKey==nextKey||!CanShow())return;
-            interruptTheme();
+            if(currentKey==nextKey)return;
             string effect=CompanionTransitionMotion.Resolve(setting());
-            if(effect==CompanionTransitionMotion.Off||reducedMotion()||content.ActualWidth<1||content.ActualHeight<1||
-                LiquidThemeReveal.HasUncapturableSurface(content))return;
-            var before=LiquidThemeReveal.Capture(content);
+            if(!CanContinue()||!eligible()||effect==CompanionTransitionMotion.Off||reducedMotion()||
+                content.ActualWidth<1||content.ActualHeight<1||LiquidThemeReveal.HasUncapturableSurface(content))
+            {Cancel();return;}
+            // The old mask, decorations and visible live content become one bitmap.
+            // A burst of selections never accumulates a stack of overlays.
+            var before=takeOverTheme(content)??LiquidThemeReveal.Capture(layer==null?content:host);
+            Cancel();
             if(before==null)return;
             try
             {
-                bounds=content.RenderSize;
-                dpi=VisualTreeHelper.GetDpi(content);
+                Size bounds=content.RenderSize;
                 Point origin=avatar();
                 var shape=CompanionRevealPaths.Create(effect,bounds.Width,bounds.Height,origin.X,origin.Y,seam());
                 paths=ThemeRevealPaths.ForCompanion(shape);
@@ -104,16 +97,14 @@ namespace Dafeiyu
             int pending=generation;
             window.Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(()=>{
                 if(pending!=generation)return;
-                if(now()-started>=RefreshLimit||!CanShow()||selectedKey()!=targetKey||reducedMotion())
+                if(now()-started>=RefreshLimit||!CanContinue()||selectedKey()!=targetKey||reducedMotion())
                 {Cancel();return;}
                 try
                 {
                     content.UpdateLayout();
                     if(pending!=generation)return;
-                    if(content.RenderSize!=bounds||LiquidThemeReveal.HasUncapturableSurface(content))
+                    if(LiquidThemeReveal.HasUncapturableSurface(content))
                     {Cancel();return;}
-                    var after=LiquidThemeReveal.Capture(content);
-                    if(after==null||now()-started>=RefreshLimit||!layer.SetAfter(after)){Cancel();return;}
                 }
                 catch(InvalidOperationException){Cancel();return;}
                 catch(ArgumentException){Cancel();return;}
@@ -121,6 +112,7 @@ namespace Dafeiyu
                 timeout.Stop();
                 playing=true;
                 started=now();
+                lastRenderingTime=null;
                 CompositionTarget.Rendering+=Frame;
             }));
         }
@@ -128,8 +120,14 @@ namespace Dafeiyu
         void Frame(object sender,EventArgs args)
         {
             if(!playing)return;
+            var render=args as RenderingEventArgs;
+            if(render!=null)
+            {
+                if(lastRenderingTime==render.RenderingTime)return;
+                lastRenderingTime=render.RenderingTime;
+            }
             double progress=(now()-started).TotalMilliseconds/duration.TotalMilliseconds;
-            if(progress>=1||!CanShow()||selectedKey()!=targetKey||reducedMotion()){Cancel();return;}
+            if(progress>=1||!CanContinue()||selectedKey()!=targetKey||reducedMotion()){Cancel();return;}
             try{layer.SetFrame(paths,progress);}
             catch(InvalidOperationException){Cancel();}
             catch(ArgumentException){Cancel();}
@@ -150,10 +148,7 @@ namespace Dafeiyu
         }
 
         void VisibilityChanged(object sender,DependencyPropertyChangedEventArgs args){if(!window.IsVisible)Cancel();}
-        void OnDpiChanged(object sender,DpiChangedEventArgs args)
-        {
-            if(layer!=null&&(args.NewDpi.DpiScaleX!=dpi.DpiScaleX||args.NewDpi.DpiScaleY!=dpi.DpiScaleY))Cancel();
-        }
+        void StateChanged(object sender,EventArgs args){if(window.WindowState==WindowState.Minimized)Cancel();}
         void Interrupt(object sender,EventArgs args){Cancel();}
         void Closed(object sender,EventArgs args){Dispose();}
 
@@ -163,15 +158,8 @@ namespace Dafeiyu
             disposed=true;
             Cancel();
             timeout.Tick-=Interrupt;
-            content.SizeChanged-=Interrupt;
-            window.DpiChanged-=OnDpiChanged;
-            window.Deactivated-=Interrupt;
-            window.StateChanged-=Interrupt;
+            window.StateChanged-=StateChanged;
             window.IsVisibleChanged-=VisibilityChanged;
-            window.PreviewMouseDown-=Interrupt;
-            window.PreviewMouseWheel-=Interrupt;
-            window.PreviewKeyDown-=Interrupt;
-            window.PreviewTouchDown-=Interrupt;
             window.Closed-=Closed;
             ThemeManager.Changed-=Cancel;
         }

@@ -82,10 +82,34 @@ namespace Dafeiyu.Tests
                     zipper.WriteReveal(1,points);
                     Check(points.MinX<=0&&points.MaxX>=w&&points.MinY<=0&&points.MaxY>=h,"zipper opens the full viewport");
                 }
-                Console.WriteLine("Companion transition geometry: "+checks+" passed");
+                CheckThemeReversal();
+                Console.WriteLine("Companion geometry and theme reversals: "+checks+" passed");
                 return 0;
             }
             catch(Exception ex){Console.Error.WriteLine(ex);return 1;}
+        }
+
+        static void CheckThemeReversal()
+        {
+            var timeline=new ThemeRevealTimeline();
+            foreach(double start in new[]{.001,.5,.999})
+            {
+                timeline.Start(TimeSpan.FromSeconds(2));
+                timeline.Advance(TimeSpan.FromSeconds(start*2));
+                double painted=timeline.Progress;
+                timeline.Retarget(true);
+                timeline.Advance(TimeSpan.Zero);
+                Check(timeline.Progress==painted,"reverse starts on the exact painted frame");
+                for(int ms=1;ms<timeline.Duration.TotalMilliseconds;ms+=4)
+                {
+                    timeline.Advance(TimeSpan.FromMilliseconds(ms));
+                    Check(timeline.Progress>=0&&timeline.Progress<=1,"a moving reversal stays within the mask range");
+                }
+                Check(!timeline.Advance(timeline.Duration)&&timeline.Progress==0,"reversal ends at the starting theme");
+                timeline.Retarget(false);
+                timeline.Advance(timeline.Duration);
+                Check(timeline.Progress==1,"another retarget can reach the opposite endpoint");
+            }
         }
 
         sealed class RecordingOutline:ILiquidThemeOutline

@@ -1,8 +1,6 @@
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Dafeiyu;
@@ -29,7 +27,6 @@ internal sealed class CompanionWindowReveal:IDisposable
     private int generation;
     private bool committed,playing,refreshQueued,disposed;
     private TimeSpan started,duration;
-    private Size bounds;
 
     internal CompanionWindowReveal(Window window,Grid host,Control content,Func<bool> eligible,
         Func<string> selectedKey,Func<string> setting,Func<Point> avatar,Func<bool>? reducedMotion=null,
@@ -42,32 +39,28 @@ internal sealed class CompanionWindowReveal:IDisposable
         this.now=now??(()=>clock.Elapsed);
         timeout=new DispatcherTimer{Interval=RefreshLimit};
         timeout.Tick+=Interrupt;
-        content.SizeChanged+=Interrupt;
-        window.ScalingChanged+=Interrupt;
-        window.Deactivated+=Interrupt;
         window.PropertyChanged+=WindowChanged;
-        window.AddHandler(InputElement.PointerPressedEvent,OnInput,RoutingStrategies.Tunnel,handledEventsToo:true);
-        window.AddHandler(InputElement.PointerWheelChangedEvent,OnInput,RoutingStrategies.Tunnel,handledEventsToo:true);
-        window.AddHandler(InputElement.KeyDownEvent,OnInput,RoutingStrategies.Tunnel,handledEventsToo:true);
         window.Closed+=Closed;
         DesktopTheme.AppearanceChanged+=Cancel;
     }
 
-    private bool CanShow()=>!disposed&&eligible()&&window.IsVisible&&content.IsEffectivelyVisible&&window.WindowState!=WindowState.Minimized;
+    private bool CanContinue()=>!disposed&&window.IsVisible&&content.IsEffectivelyVisible&&window.WindowState!=WindowState.Minimized;
 
     internal void Prepare(long token,string currentKey,string nextKey)
     {
-        Cancel();
-        if(currentKey==nextKey||!CanShow())return;
-        interruptTheme?.Invoke();
+        if(currentKey==nextKey)return;
         string effect=CompanionTransitionMotion.Resolve(setting());
-        if(effect==CompanionTransitionMotion.Off||reducedMotion()||content.Bounds.Width<1||content.Bounds.Height<1||
-            LiquidThemeReveal.HasUncapturableSurface(content))return;
-        var before=LiquidThemeReveal.Capture(window,content);
+        if(!CanContinue()||!eligible()||effect==CompanionTransitionMotion.Off||reducedMotion()||
+            content.Bounds.Width<1||content.Bounds.Height<1||LiquidThemeReveal.HasUncapturableSurface(content))
+        {Cancel();return;}
+        // Capture the composition before replacing its overlay.
+        var before=LiquidThemeReveal.Capture(window,host);
+        interruptTheme?.Invoke();
+        Cancel();
         if(before==null)return;
         try
         {
-            bounds=content.Bounds.Size;
+            Size bounds=content.Bounds.Size;
             Point origin=avatar();
             var shape=CompanionRevealPaths.Create(effect,bounds.Width,bounds.Height,origin.X,origin.Y,.23*bounds.Width);
             paths=ThemeRevealPaths.ForCompanion(shape);
@@ -98,23 +91,17 @@ internal sealed class CompanionWindowReveal:IDisposable
         int pending=generation;
         Dispatcher.UIThread.Post(()=>{
             if(pending!=generation)return;
-            if(now()-started>=RefreshLimit||!CanShow()||selectedKey()!=targetKey||reducedMotion())
+            if(now()-started>=RefreshLimit||!CanContinue()||selectedKey()!=targetKey||reducedMotion())
             {Cancel();return;}
-            RenderTargetBitmap? after=null;
             try
             {
                 content.UpdateLayout();
                 if(pending!=generation)return;
-                if(content.Bounds.Size!=bounds||LiquidThemeReveal.HasUncapturableSurface(content))
+                if(LiquidThemeReveal.HasUncapturableSurface(content))
                 {Cancel();return;}
-                after=LiquidThemeReveal.Capture(window,content);
-                if(after==null||now()-started>=RefreshLimit||!layer!.SetAfter(after))
-                {Cancel();return;}
-                after=null;
             }
             catch(Exception error) when(error is InvalidOperationException or ArgumentException or OutOfMemoryException)
             {Cancel();return;}
-            finally{after?.Dispose();}
             timeout.Stop();
             playing=true;
             started=now();
@@ -129,7 +116,7 @@ internal sealed class CompanionWindowReveal:IDisposable
     private bool RenderFrame()
     {
         double progress=(now()-started).TotalMilliseconds/duration.TotalMilliseconds;
-        if(progress>=1||!CanShow()||selectedKey()!=targetKey||reducedMotion()){Cancel();return false;}
+        if(progress>=1||!CanContinue()||selectedKey()!=targetKey||reducedMotion()){Cancel();return false;}
         try{layer!.SetFrame(paths!,progress);return true;}
         catch(Exception error) when(error is InvalidOperationException or ArgumentException or OutOfMemoryException){Cancel();return false;}
     }
@@ -145,7 +132,6 @@ internal sealed class CompanionWindowReveal:IDisposable
         layer=null;paths=null;targetKey=null;
     }
 
-    private void OnInput(object? sender,RoutedEventArgs args)=>Cancel();
     private void WindowChanged(object? sender,AvaloniaPropertyChangedEventArgs args)
     {
         if(args.Property==Visual.IsVisibleProperty&&!window.IsVisible||
@@ -159,13 +145,7 @@ internal sealed class CompanionWindowReveal:IDisposable
         if(disposed)return;
         disposed=true;Cancel();
         timeout.Tick-=Interrupt;
-        content.SizeChanged-=Interrupt;
-        window.ScalingChanged-=Interrupt;
-        window.Deactivated-=Interrupt;
         window.PropertyChanged-=WindowChanged;
-        window.RemoveHandler(InputElement.PointerPressedEvent,OnInput);
-        window.RemoveHandler(InputElement.PointerWheelChangedEvent,OnInput);
-        window.RemoveHandler(InputElement.KeyDownEvent,OnInput);
         window.Closed-=Closed;
         DesktopTheme.AppearanceChanged-=Cancel;
     }

@@ -72,7 +72,7 @@ namespace Dafeiyu
                     new Point(Math.Min(24,body.ActualWidth/2),Math.Max(0,body.ActualHeight-24)),
                 ()=>navigation!=null&&navigation.IsVisible&&!sidebarTemporary?
                     navigation.TranslatePoint(new Point(navigation.ActualWidth,0),body).X:.23*body.ActualWidth,
-                ThemeReveal.InterruptForCompanion);
+                ThemeReveal.TakeOverForCompanion);
             ThemeReveal.BeforeCapture=CompanionReveal.Cancel;
             sidebarHidden=false;shellReady=true;RecordPage("home");RefreshShellAppearance();
             PreviewKeyDown+=ShellKeyDown;PreviewMouseDown+=delegate(object sender,MouseButtonEventArgs e){if(sidebarTemporary&&!navigation.IsMouseOver&&!shellSidebar.IsMouseOver){sidebarTemporary=false;RefreshWorkspaceLayout();}if(e.ChangedButton==MouseButton.XButton1){e.Handled=true;TravelPage(-1);}else if(e.ChangedButton==MouseButton.XButton2){e.Handled=true;TravelPage(1);}};
@@ -125,7 +125,6 @@ namespace Dafeiyu
         }
         void SetShellPage(string page)
         {
-            if(page!=shellPage&&CompanionReveal!=null)CompanionReveal.Cancel();
             CloseTransientSummary();CloseProfileMenu();shellPage=page;if(companionPage!=null)companionPage.Visibility=page=="companion"?Visibility.Visible:Visibility.Collapsed;if(imagePage!=null)imagePage.Visibility=page=="images"?Visibility.Visible:Visibility.Collapsed;if(scheduledTasksPage!=null)scheduledTasksPage.Visibility=page=="scheduledTasks"?Visibility.Visible:Visibility.Collapsed;homePage.Visibility=page=="home"?Visibility.Visible:Visibility.Collapsed;if(settingsPage!=null)settingsPage.Visibility=page=="settings"?Visibility.Visible:Visibility.Collapsed;if(usagePage!=null)usagePage.Visibility=page=="usage"?Visibility.Visible:Visibility.Collapsed;if(mcpPage!=null)mcpPage.Visibility=page=="mcp"?Visibility.Visible:Visibility.Collapsed;RefreshShellAppearance();if(page=="home")Dispatcher.BeginInvoke(new Action(RefreshWorkspaceLayout));
         }
         void RecordPage(string page)

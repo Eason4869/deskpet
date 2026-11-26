@@ -240,7 +240,6 @@ internal sealed partial class ChatWindow : Window
     internal void NavigateHistory(int delta) { var next = routeIndex + delta; if (next < 0 || next >= routes.Count) return; routeIndex = next; ApplyRoute(); }
     private void ApplyRoute()
     {
-        CompanionReveal?.Cancel();
         pageHost.Content = null;
         pageHost.Content = CompanionRouteContent();
         routeBack.IsEnabled = routeIndex > 0;
