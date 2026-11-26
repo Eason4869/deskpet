@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.8-dev.1 · Development preview
+
+- The Windows Work agent can use `git_push` to push to the project's GitHub `origin`. The approval prompt shows the branch and commit. GitHub CLI, fine-grained PATs, and an optional HTTP proxy are supported.
+- The Workspace pane on Windows can pause, resume, edit, and delete a goal. Pause state is saved per conversation. Queued requests and checkpoints cannot resume a goal invalidated by an edit or deletion.
+- The GitHub and Gmail cards on Windows have a right-aligned Manage button. Their rounded dialogs adapt to light and dark themes and provide connection status, sign-in options, and account management. Gmail web sign-in is available independently of in-app OAuth configuration.
+- Fixed stale requests overriding a newer companion selection and transitions being cut short or skipped when the chat scrolls automatically or settings are being saved.
+
 ## [1.0.7](https://github.com/Eason4869/deskpet/releases/tag/v1.0.7) · Production release
 
 ### Appearance and settings

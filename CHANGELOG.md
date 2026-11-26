@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.8-dev.1 · 开发预览
+
+- Windows 工作 Agent 新增 `git_push`。推送以当前项目的 GitHub `origin` 为准，审批时显示分支和提交。支持 GitHub CLI、细粒度 PAT 和可选的 HTTP 代理。
+- Windows 右侧工作空间可暂停、继续、修改和删除目标。暂停状态按会话保存，修改或删除目标后，旧的排队请求和检查点不会恢复已失效的目标。
+- Windows 插件页的 GitHub 和 Gmail 卡片统一使用右侧「管理」按钮。圆角浮窗适配亮色和暗色，提供连接状态、授权入口和账户管理。Gmail 网页登录入口独立于应用内 OAuth 配置。
+- 修复连续切换伙伴时旧请求覆盖新选择的问题，以及聊天自动滚动或设置保存导致切换动效中断、漏播的情况。
+
 ## [1.0.7](https://github.com/Eason4869/deskpet/releases/tag/v1.0.7) · 正式版
 
 ### 主题与设置
