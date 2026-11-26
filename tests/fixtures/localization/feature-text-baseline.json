@@ -4466,12 +4466,6 @@
       "argument_count": 0
     },
     {
-      "key": "gitHubApp.hideSettings",
-      "expected": "收起设置",
-      "format": false,
-      "argument_count": 0
-    },
-    {
       "key": "gitHubApp.hint",
       "expected": "在 GitHub 创建细粒度个人访问令牌，并选择要授权的仓库。",
       "format": false,
@@ -4480,12 +4474,6 @@
     {
       "key": "gitHubApp.invalidToken",
       "expected": "请输入有效的细粒度个人访问令牌。",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "gitHubApp.manage",
-      "expected": "管理连接",
       "format": false,
       "argument_count": 0
     },
@@ -4527,7 +4515,7 @@
     },
     {
       "key": "gitHubApp.tokenHint",
-      "expected": "创建拉取请求需要 Pull requests 读写权限。推送使用本机 Git 凭据。",
+      "expected": "使用细粒度 PAT 时，推送需要 Contents 读写权限，创建拉取请求需要 Pull requests 读写权限。",
       "format": false,
       "argument_count": 0
     },
@@ -5062,6 +5050,138 @@
     {
       "key": "companionTransition.motion.zipper",
       "expected": "拉链开场",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.manage",
+      "expected": "管理",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.management.title",
+      "expected": "管理 {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "apps.management.connection",
+      "expected": "连接状态",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.management.authorization",
+      "expected": "授权方式",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.management.description",
+      "expected": "将 Gmail 连接到 DeskPet 后，可以在应用内按关键词搜索和阅读邮件。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.management.permissions",
+      "expected": "DeskPet 请求 Gmail 只读权限。可在此断开连接，也可在 Google 账号中管理授权。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.management.web",
+      "expected": "打开 Gmail 网页",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "apps.gmail.management.googleAccount",
+      "expected": "管理 Google 账号授权",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.management.description",
+      "expected": "将 GitHub 连接到 DeskPet 后，可在工作区按审批流程操作仓库、提交和分支，并创建拉取请求。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.management.login",
+      "expected": "打开 GitHub 登录页",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.management.cliHint",
+      "expected": "复用本机 GitHub CLI 的授权。首次使用时打开设备授权，完成后返回这里连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workspaceGoal.pause",
+      "expected": "暂停",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workspaceGoal.resume",
+      "expected": "继续",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workspaceGoal.edit",
+      "expected": "修改",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workspaceGoal.paused",
+      "expected": "已暂停",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workspaceGoal.deleteTitle",
+      "expected": "删除目标？",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workspaceGoal.deleteDescription",
+      "expected": "将停止正在执行的目标，并移除这段对话的目标。聊天记录和已完成的操作会保留。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workspaceGoal.staleQueued",
+      "expected": "这条排队消息引用了已暂停、修改或删除的目标。请先继续目标，或编辑或移除这条排队消息。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "workspaceGoal.staleTask",
+      "expected": "这项任务关联的目标已暂停、修改或删除。请先继续原目标，或用当前目标开始新任务。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.management.pushNetwork",
+      "expected": "推送网络",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.management.pushProxy",
+      "expected": "使用代理推送到 GitHub",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "gitHubApp.management.pushProxyAddress",
+      "expected": "HTTP 代理地址",
       "format": false,
       "argument_count": 0
     }

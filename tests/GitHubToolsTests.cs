@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 namespace Dafeiyu.Tests
@@ -67,7 +68,9 @@ namespace Dafeiyu.Tests
                 GitHubAppApi();
                 CreateRepositoryWithoutAnExistingBinding();
                 AuthenticatedTransportChecksAccountBeforeWriting();
+                GitHubAccountRequestUsesConfiguredProxy();
                 AgentGitHubWorkflow();
+                AgentPushUsesProjectOrigin();
                 GitHubAppWorkspace();
                 GitWorkspaceChangesRead();
                 foreach(string tool in new[]{"fetch_url","github_read_issue"})foreach(string mode in new[]{"http","network","body","timeout"})
@@ -173,10 +176,12 @@ namespace Dafeiyu.Tests
         sealed class GitHubApproval : IAgentApprovalProvider
         {
             internal bool Allow = true;
+            internal Action BeforeReturning;
             internal readonly List<AgentApprovalRequest> Requests = new List<AgentApprovalRequest>();
             public Task<bool> ApproveAsync(AgentApprovalRequest request)
             {
                 Requests.Add(request);
+                if (BeforeReturning != null) BeforeReturning();
                 return Task.FromResult(Allow);
             }
         }
@@ -249,6 +254,92 @@ namespace Dafeiyu.Tests
             finally { DeleteGitFixture(root); }
         }
 
+        static void AgentPushUsesProjectOrigin()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "deskpet-agent-push-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                Git(root, "init", "-b", "feature/publish");
+                Git(root, "config", "user.name", "DeskPet fixture");
+                Git(root, "config", "user.email", "deskpet@example.test");
+                File.WriteAllText(Path.Combine(root, "push.txt"), "approved bytes");
+                Git(root, "add", "--", "push.txt");
+                Git(root, "commit", "-qm", "Approved commit");
+                string revision = Git(root, "rev-parse", "HEAD").Trim();
+                Git(root, "remote", "add", "origin", "https://github.com/fixture/project.git");
+                Git(root, "remote", "add", "upstream", "https://github.com/fixture/upstream.git");
+                var profiles = new AgentProfileRegistry();
+                var approval = new GitHubApproval { Allow = false };
+                var handler = new Handler();
+                using (var workspace = new AgentWorkspace(root, true))
+                {
+                    workspace.ConfigureGitHubAutomation(new PetSettings());
+                    workspace.ConfigureGitHub(GitHubClient.ForApp(null, "fixture-token", handler));
+                    workspace.ConfigureKernel(profiles.PermissionRuntime("build"), null, approval, null, null);
+                    workspace.ConfigureAgentProfile(profiles.Get("build"));
+                    workspace.ConfigureDesktopSession();
+                    var tools = workspace.AvailableToolNames.Split(new[] { ", " }, StringSplitOptions.None);
+                    Check(tools.Contains("git_push") && tools.Contains("github_push"),
+                        "A checked-out project with a GitHub origin exposes push when the optional default repository is empty");
+                    workspace.ConfigureGitHub(GitHubClient.ForApp("fixture/default", "fixture-token", handler));
+                    Func<string> push = () => workspace.ExecuteAsync("git_push", "{}", CancellationToken.None).GetAwaiter().GetResult();
+                    Check(TextResources.IsToolError(push()) && approval.Requests.Count == 1 && handler.Requests.Count == 0 &&
+                        approval.Requests[0].Action == "github_write" &&
+                        approval.Requests[0].Resource.Contains("github.com/fixture/project") &&
+                        approval.Requests[0].Resource.Contains("refs/heads/feature/publish") &&
+                        approval.Requests[0].Resource.Contains(revision) &&
+                        !approval.Requests[0].Resource.Contains("fixture/default"),
+                        "Push approval identifies the actual origin, branch and commit even with a different default repository and an upstream remote");
+                    approval.Allow = true;
+                    approval.BeforeReturning = () => Git(root, "switch", "-c", "feature/changed");
+                    Check(TextResources.IsToolError(push()) && handler.Requests.Count == 0 &&
+                        Git(root, "branch", "--show-current").Trim() == "feature/changed",
+                        "Changing branches during approval stops before authentication or any push");
+                }
+            }
+            finally { DeleteGitFixture(root); }
+        }
+
+        static void GitHubAccountRequestUsesConfiguredProxy()
+        {
+            // The target sits in a reserved documentation subnet. Only the local test proxy can respond.
+            const string target = "http://192.0.2.1/";
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            try
+            {
+                var endpoint = (IPEndPoint)listener.LocalEndpoint;
+                var observed = Task.Run(() =>
+                {
+                    using (var socket = listener.AcceptTcpClient())
+                    using (var stream = socket.GetStream())
+                    using (var reader = new StreamReader(stream, System.Text.Encoding.ASCII))
+                    {
+                        socket.ReceiveTimeout = 5000;
+                        string first = reader.ReadLine();
+                        string line;
+                        do { line = reader.ReadLine(); } while (!String.IsNullOrEmpty(line));
+                        const string body = "{\"login\":\"proxy-fixture\"}";
+                        byte[] response = System.Text.Encoding.ASCII.GetBytes(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + body.Length +
+                            "\r\nConnection: close\r\n\r\n" + body);
+                        stream.Write(response, 0, response.Length);
+                        return first;
+                    }
+                });
+                using (var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(8)))
+                using (var client = new GitHubClient(new Uri(target), null, "", "fixture-token",
+                    proxyAddress: "http://127.0.0.1:" + endpoint.Port))
+                {
+                    string login = client.GetAuthenticatedLoginAsync(deadline.Token).GetAwaiter().GetResult();
+                    Check(login == "proxy-fixture" && observed.GetAwaiter().GetResult() == "GET " + target + "user HTTP/1.1",
+                        "GitHub account validation reaches the configured proxy before Git transport");
+                }
+            }
+            finally { listener.Stop(); }
+        }
+
         static void GitHubAppWorkspace()
         {
             string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "gh-" + Guid.NewGuid().ToString("N"));
@@ -302,6 +393,23 @@ namespace Dafeiyu.Tests
                 git.Push(push, cancel);
                 Check(pushedRef == push.Revision + ":refs/heads/feature/app" && pushedBlob == "staged bytes",
                     "The push transports only the confirmed commit, with an unpushed staged edit left local");
+
+                Git(workspace, "remote", "set-url", "--push", "origin", "git@github.com:fixture/sample.git");
+                string usedRemote = null;
+                GitHubAppGit.RunCommand observePush = (directory, args, isolated, cancellation) => {
+                    if (args[0] != "push") return GitHubAppGit.RunWindows(directory, args, isolated, cancellation);
+                    usedRemote = args[5];
+                    return new CommandResult { Output = "", ExitCode = 0 };
+                };
+                var ssh = git.Inspect(workspace, repo, GitHubWorkspaceAction.Push, cancel);
+                new GitHubAppGit(observePush).Push(ssh, cancel);
+                Check(usedRemote == "ssh://git@github.com/fixture/sample.git",
+                    "An SSH origin uses the existing SSH credentials when DeskPet is disconnected");
+                var cliAccount = new GitHubPushAuthentication { Login = "fixture-user", CliExecutable = "C:\\GitHub CLI\\gh.exe" };
+                new GitHubAppGit(observePush, cliAccount).Push(ssh, cancel);
+                Check(usedRemote == "https://github.com/fixture/sample.git" &&
+                    Git(workspace, "remote", "get-url", "--push", "origin").Trim() == "git@github.com:fixture/sample.git",
+                    "A connected GitHub CLI account can push an SSH-origin project using HTTPS without rewriting its remote");
 
                 Git(workspace, "remote", "set-url", "--push", "origin", "https://github.com/other/sample.git");
                 bool wrongRemote = false;

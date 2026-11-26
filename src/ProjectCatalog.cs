@@ -9,13 +9,18 @@ namespace Dafeiyu
     [DataContract]
     internal sealed class ConversationWorkOptions
     {
+        internal const string PausedGoalMode="goal-paused";
         [DataMember(EmitDefaultValue=false)] internal string Mode {get;private set;}
         [DataMember(EmitDefaultValue=false)] internal string Goal {get;private set;}
+        [DataMember(EmitDefaultValue=false)] internal string GoalRevision {get;private set;}
+        [DataMember(EmitDefaultValue=false)] internal bool GoalPaused {get;private set;}
 
-        internal ConversationWorkOptions(string mode,string goal)
+        internal ConversationWorkOptions(string mode,string goal,string goalRevision=null,bool goalPaused=false)
         {
             Mode=mode;
             Goal=goal;
+            GoalRevision=goalRevision;
+            GoalPaused=goalPaused;
             Normalize();
         }
 
@@ -23,14 +28,34 @@ namespace Dafeiyu
 
         void Normalize()
         {
-            if(Mode!=null&&Mode!="plan"&&Mode!="goal")Mode="off";
             Goal=(Goal??"").Trim();
             if(Goal.Length>4000)Goal=Goal.Substring(0,Char.IsHighSurrogate(Goal[3999])?3999:4000);
+            if(Mode==PausedGoalMode)GoalPaused=true;
+            if(Goal.Length==0)GoalPaused=false;
+            if(Mode!=null&&Mode!="plan"&&Mode!="goal")Mode="off";
+        }
+
+        internal ConversationWorkOptions WithMode(string mode)
+        {
+            return new ConversationWorkOptions(mode,Goal,GoalRevision,GoalPaused);
+        }
+
+        internal ConversationWorkOptions WithGoalPaused(bool paused)
+        {
+            return new ConversationWorkOptions(Mode,Goal,GoalRevision,paused);
+        }
+
+        internal ConversationWorkOptions WithGoal(string goal)
+        {
+            var next=new ConversationWorkOptions(Mode,goal,GoalRevision,GoalPaused);
+            if(next.Goal!=Goal)next.GoalRevision=Guid.NewGuid().ToString("N");
+            return next;
         }
 
         internal string Apply(PetSettings settings,bool allowWork)
         {
             string mode=allowWork?(Mode??(settings.AgentPlanMode?"plan":"off")):"off";
+            if(mode=="goal"&&GoalPaused)mode="off";
             settings.AgentPlanMode=mode=="plan";
             settings.AgentGoal=mode=="goal"?Goal??"":"";
             return mode=="plan"||mode=="goal"?mode:"";

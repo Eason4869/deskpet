@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -22,6 +23,34 @@ namespace Dafeiyu.Tests
         static void Save(FrameworkElement page,string name){page.UpdateLayout();var bitmap=new RenderTargetBitmap((int)Math.Ceiling(page.ActualWidth),(int)Math.Ceiling(page.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(page);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var file=File.Create(Path.Combine(evidence,name)))encoder.Save(file);}
         static string Skill(string root,string name,string description){string directory=Path.Combine(root,name);Directory.CreateDirectory(directory);File.WriteAllText(Path.Combine(directory,"SKILL.md"),"---\nname: "+name+"\ndescription: "+description+"\n---\n\n# Local instructions\nRead this fixture when the user asks for its workflow.\n");File.WriteAllText(Path.Combine(directory,"never-run.cmd"),"@echo unexpected>\""+Path.Combine(root,"executed.txt")+"\"");return directory;}
         static void Inside(FrameworkElement page,FrameworkElement child){Point at=child.TranslatePoint(new Point(),page);Check(at.X>=-1&&at.X+child.ActualWidth<=page.ActualWidth+1,child.Name+" stays inside the narrow page");}
+        static void WithManagementDialog(PluginsPage page,Window host,string action,string name,Action<Window> verify)
+        {
+            Exception failure=null;
+            bool visited=false;
+            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate
+            {
+                var dialog=host.OwnedWindows.OfType<Window>().SingleOrDefault(window=>window.Name==name);
+                try
+                {
+                    Check(dialog!=null&&dialog.IsVisible&&dialog.Owner==host,"management opens one owned window");
+                    var frame=dialog.Content as Border;
+                    Check(frame!=null&&frame.CornerRadius.TopLeft>=14&&dialog.AllowsTransparency,"management uses rounded window chrome");
+                    var scroll=Control<ScrollViewer>(dialog,"AppManagementScroll");
+                    Check(scroll.ExtentWidth<=scroll.ViewportWidth+1,"management content fits its viewport");
+                    verify(dialog);
+                    var escape=new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(dialog),
+                        Environment.TickCount,Key.Escape){RoutedEvent=Keyboard.KeyDownEvent};
+                    dialog.RaiseEvent(escape);
+                    Check(!dialog.IsVisible,"Escape dismisses the management window");
+                    visited=true;
+                }
+                catch(Exception error){failure=error;}
+                finally{if(dialog!=null&&dialog.IsVisible)dialog.Close();}
+            }));
+            Click(page,action);
+            if(failure!=null)throw failure;
+            Check(visited,"management dialog completed without changing the app tab");
+        }
 
         [STAThread] public static int Main(string[] args)
         {
@@ -31,6 +60,7 @@ namespace Dafeiyu.Tests
             evidence=Path.Combine(Directory.GetCurrentDirectory(),"work","plugins-ui-evidence");Directory.CreateDirectory(evidence);Directory.CreateDirectory(fixture);
             try{
                 var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,AgentEnabled=true,OnboardingState="completed"};foreach(var key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
+                settings.GitHub=new ConnectionSettings { BaseUrl=GitHubClient.PublicApi, Protocol="github", ApiKey="github_pat_plugins_fixture" };
                 pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(fixture,"data","settings.json")),null);
                 page=new PluginsPage(pet);host=new Window{Content=page};Ui.Window(host,"插件 · 本地样本验收",1050,840);host.MinWidth=0;host.MinHeight=0;host.Show();Pump();
                 ThemeManager.Apply("dark");Pump();var selectedTab=Control<Button>(page,"PluginsSkillsTab");Check(((SolidColorBrush)selectedTab.Background).Color!=((SolidColorBrush)page.Background).Color,"dark selected plugin tab visibly separates from the page");ThemeManager.Apply("light");Pump();
@@ -63,19 +93,78 @@ namespace Dafeiyu.Tests
                 Check(Control<Border>(page,"GitHubAppLogo").Child is Viewbox&&
                     ((Image)Control<Border>(page,"GmailAppLogo").Child).Source!=null,
                     "both Apps cards render their built-in brand icons without a network request");
-                Check(!Control<Button>(page,"GmailConnect").IsEnabled&&!Control<Button>(page,"GmailView").IsVisible,
-                    "Gmail requires an embedded publisher configuration and a connected account");
+                var gitHubCard=Control<GitHubAppPanel>(page,"GitHubAppPanel");
+                var gmailCard=Control<GmailConnectionRow>(page,"GmailAppRow");
+                Check(All<Button>(gitHubCard).Select(button=>button.Name).SequenceEqual(new[]{"ManageGitHubApp"})&&
+                    All<Button>(gmailCard).Select(button=>button.Name).SequenceEqual(new[]{"ManageGmailApp"}),
+                    "both cards expose a single management action");
                 Save(page,"plugins-apps.png");
                 ThemeManager.Apply("dark");Pump();Save(page,"plugins-apps-dark.png");ThemeManager.Apply("light");Pump();
                 host.Width=360;Pump();
                 var appsScroll=Control<ScrollViewer>(page,"ManagedAppsScroll");
                 Check(appsScroll.ExtentWidth<=appsScroll.ViewportWidth+1,"Apps fits the narrow plugin page");
-                Click(page,"ManageGitHubApp");
-                Check(Control<Button>(page,"ConnectGitHubCli").IsVisible&&Control<Button>(page,"AuthorizeGitHubCli").IsVisible&&
-                    Control<PasswordBox>(page,"GitHubAppToken").IsVisible&&String.IsNullOrEmpty(pet.Settings.GitHubCliAccount),
-                    "GitHub management keeps CLI device authorization and PAT available without signing in automatically");
-                Check(appsScroll.ExtentWidth<=appsScroll.ViewportWidth+1,"GitHub connection controls fit the narrow plugin page");
-                Click(page,"ManageGitHubApp");
+                foreach(string name in new[]{"ManageGitHubApp","ManageGmailApp"})
+                {
+                    var manage=Control<Button>(page,name);
+                    Point right=manage.TranslatePoint(new Point(manage.ActualWidth,0),appsScroll);
+                    Check(right.X>=appsScroll.ViewportWidth-25&&right.X<=appsScroll.ViewportWidth+1,
+                        name+" stays at the right edge of the narrow app card");
+                    string appName=name=="ManageGitHubApp"?"GitHub":"Gmail";
+                    Check(Equals(manage.Content,"管理")&&
+                        System.Windows.Automation.AutomationProperties.GetName(manage)=="管理 "+appName,
+                        name+" uses the shared caption and identifies the app to screen readers");
+                }
+                WithManagementDialog(page,host,"ManageGitHubApp","GitHubAppManagement",dialog=>
+                {
+                    Check(Control<Button>(dialog,"ConnectGitHubCli").IsVisible&&Control<Button>(dialog,"AuthorizeGitHubCli").IsVisible&&
+                        Control<PasswordBox>(dialog,"GitHubAppToken").IsVisible&&String.IsNullOrEmpty(pet.Settings.GitHubCliAccount),
+                        "GitHub management keeps explicit CLI authorization and PAT connection available");
+                    Check(Equals(Control<Button>(dialog,"OpenGitHubWeb").Tag,new Uri("https://github.com/login")),
+                        "GitHub management links to the public sign-in page");
+                    Check(Control<Button>(dialog,"DisconnectGitHubApp").IsVisible,
+                        "a connected GitHub account can disconnect from the management window");
+                    var proxySwitch=Control<CheckBox>(dialog,"UseGitHubPushProxy");
+                    var proxyAddress=Control<TextBox>(dialog,"GitHubPushProxyAddress");
+                    Check(proxySwitch.IsChecked==false&&!proxyAddress.IsEnabled,"GitHub push uses a direct connection by default");
+                    proxySwitch.IsChecked=true;
+                    proxyAddress.Text="127.0.0.1:17890";
+                    Click(dialog,"SaveGitHubPushNetwork");
+                    var saveDeadline=DateTime.UtcNow.AddSeconds(10);
+                    while(!pet.Settings.GitHub.UseProxy)
+                    {
+                        if(DateTime.UtcNow>saveDeadline)throw new TimeoutException("GitHub push proxy save did not complete");
+                        Pump();System.Threading.Thread.Sleep(1);
+                    }
+                    Pump();
+                    Check(pet.Store.Load().GitHub.ProxyAddress=="http://127.0.0.1:17890/",
+                        "GitHub push network settings save a validated proxy endpoint");
+                    Save((FrameworkElement)dialog.Content,"plugins-github-management.png");
+                    Click(dialog,"DisconnectGitHubApp");
+                    var deadline=DateTime.UtcNow.AddSeconds(10);
+                    while(GitHubAppConnection.IsConnected(pet.Settings))
+                    {
+                        if(DateTime.UtcNow>deadline)throw new TimeoutException("GitHub disconnection did not complete");
+                        Pump();System.Threading.Thread.Sleep(1);
+                    }
+                    Pump();
+                    Check(!Control<Button>(dialog,"DisconnectGitHubApp").IsVisible&&
+                        !GitHubAppConnection.IsConnected(pet.Store.Load()),"disconnect saves the cleared connection and refreshes the dialog");
+                    Check(pet.Store.Load().GitHub.UseProxy&&pet.Store.Load().GitHub.ProxyAddress=="http://127.0.0.1:17890/",
+                        "Disconnect clears the account and retains the independent GitHub push network setting");
+                });
+                ThemeManager.Apply("dark");Pump();
+                WithManagementDialog(page,host,"ManageGmailApp","GmailAppManagement",dialog=>
+                {
+                    Check(!Control<Button>(dialog,"GmailConnect").IsEnabled&&!Control<Button>(dialog,"GmailView").IsVisible,
+                        "DeskPet mail access remains gated by the OAuth client and account");
+                    var gmailWeb=Control<Button>(dialog,"OpenGmailWeb");
+                    Check(gmailWeb.IsEnabled&&Equals(gmailWeb.Tag,new Uri("https://mail.google.com/")),
+                        "Gmail web sign-in is usable even when the OAuth client is missing");
+                    Check(Equals(Control<Button>(dialog,"ManageGoogleAccountAccess").Tag,new Uri("https://myaccount.google.com/connections")),
+                        "Gmail management links to Google Account permissions");
+                    Save((FrameworkElement)dialog.Content,"plugins-gmail-management-dark.png");
+                });
+                ThemeManager.Apply("light");Pump();
                 host.Width=1050;Pump();
                 Click(page,"PluginsMcpTab");
                 Check(ReferenceEquals(Control<TextBox>(page,"McpServerName"),mcpName)&&mcpName.Text=="unsaved plugin fixture",

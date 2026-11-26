@@ -134,6 +134,56 @@ namespace Dafeiyu.Tests
                 Check(!chip.IsVisible&&workspace.EffectiveSettings().AgentGoal==""&&pet.ConversationGoal(workspace.Session).Length>0,
                     "closing goal mode stops applying the goal while preserving its saved text");
             }, true);
+            Run("workspace goal controls pause, edit, resume and delete a saved draft goal", delegate(PetWindow pet)
+            {
+                var chat=Open(pet);
+                var workspace=(ConversationWorkspace)typeof(ChatWindow).GetField("workspace",hidden).GetValue(chat);
+                pet.SetConversationWorkMode(workspace.Session,"goal");
+                pet.SetConversationGoal(workspace.Session,"Write the first draft");
+                typeof(ChatWindow).GetMethod("OpenWorkspacePlanGoal",hidden).Invoke(chat,new object[]{false});
+                chat.UpdateLayout();Pump();
+                var area=(PreviewWorkspace)typeof(ChatWindow).GetField("filePreview",hidden).GetValue(chat);
+                var pane=(WorkspacePlanGoalPane)area.Selected;
+                var toggle=All<Button>(pane).Single(button=>button.Name=="PauseWorkspaceGoal");
+                toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(pet.ConversationGoal(workspace.Session)=="Write the first draft"&&workspace.EffectiveSettings().AgentGoal=="",
+                    "pausing hides the goal from requests but keeps the saved draft goal");
+
+                var composer=(ConversationComposer)typeof(ChatWindow).GetField("composer",hidden).GetValue(chat);
+                typeof(ConversationComposer).GetMethod("ChangeComposerWorkMode",hidden).Invoke(composer,new object[]{"plan"});Pump();
+                Check(workspace.EffectiveSettings().AgentPlanMode&&
+                    All<TextBlock>(pane).Any(text=>text.IsVisible&&text.Text==TextResources.Get("workspaceGoal.paused")),
+                    "switching the composer to Plan keeps the outstanding goal explicitly paused");
+
+                Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate
+                {
+                    var modal=Application.Current.Windows.OfType<Window>().Single(window=>window.Name=="EditWorkspaceGoalDialog");
+                    All<TextBox>(modal).Single(field=>field.Name=="WorkspaceGoalInput").Text="Review the finished draft";
+                    All<Button>(modal).Single(button=>button.Name=="SaveWorkspaceGoal").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }));
+                All<Button>(pane).Single(button=>button.Name=="EditWorkspaceGoal").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(pet.ConversationGoal(workspace.Session)=="Review the finished draft"&&workspace.EffectiveSettings().AgentGoal==""&&
+                    workspace.EffectiveSettings().AgentPlanMode,"editing a paused goal keeps Plan Mode active");
+                typeof(ConversationComposer).GetMethod("SelectGoalMode",hidden).Invoke(composer,null);Pump();
+                Check(workspace.EffectiveSettings().AgentPlanMode&&workspace.EffectiveSettings().AgentGoal=="",
+                    "selecting Goal opens the paused goal pane without resuming it");
+                toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(workspace.EffectiveSettings().AgentGoal=="Review the finished draft","resuming uses the edited goal");
+
+                var delete=All<Button>(pane).Single(button=>button.Name=="DeleteWorkspaceGoal");
+                Action<string> closeConfirmation=buttonName=>Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate
+                {
+                    var modal=Application.Current.Windows.OfType<Window>().Single(window=>window.Name=="DeleteWorkspaceGoalDialog");
+                    All<Button>(modal).Single(button=>button.Name==buttonName).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }));
+                closeConfirmation("KeepWorkspaceGoal");
+                delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(pet.ConversationGoal(workspace.Session)=="Review the finished draft","canceling confirmation keeps the goal");
+                closeConfirmation("ConfirmDeleteWorkspaceGoal");
+                delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(pet.ConversationGoal(workspace.Session)==""&&workspace.EffectiveSettings().AgentGoal==""&&!toggle.IsVisible&&
+                    All<FlowDocumentScrollViewer>(pane).Single().Document==null,"confirmed deletion clears saved goal and the open pane");
+            }, true);
             Run("plan completion offers one explicit execution and retains the exact plan through a Work rebind", delegate(PetWindow pet)
             {
                 pet.Settings.Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:9",Model="plan-fixture"};

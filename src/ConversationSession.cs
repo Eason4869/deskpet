@@ -92,6 +92,7 @@ namespace Dafeiyu
             public readonly StringBuilder Partial=new StringBuilder();public readonly Stopwatch Checkpoint=Stopwatch.StartNew();
             public readonly StringBuilder Reasoning=new StringBuilder();public readonly Stopwatch ThinkingTime=Stopwatch.StartNew();public readonly Stopwatch ProcessingTime=new Stopwatch();public List<ChatAttachment> Attachments;
             public AgentWorkspace Workspace;public AgentTaskState ResumeTask;public bool AgentTaskFinished;
+            public string ManagedGoal,GoalRevision;
             public AgentTurnRecording TurnRecording;public bool TurnRecordingDisabled;
             public string RelationshipCompanionId,RelationshipEventId;public bool RelationshipWork,RelationshipSucceeded;
             public readonly List<AgentToolEvent> ToolEvents=new List<AgentToolEvent>();public bool Regenerating;
@@ -172,14 +173,21 @@ namespace Dafeiyu
             internal RequestActivity(IDisposable ordinary,IDisposable binding){this.ordinary=ordinary;this.binding=binding;}
             public void Dispose(){var project=Interlocked.Exchange(ref binding,null);try{if(project!=null)project.Dispose();}finally{var activity=Interlocked.Exchange(ref ordinary,null);if(activity!=null)activity.Dispose();}}
         }
-        private Operation Begin(PetSettings settings,ConversationStage stage)
+        private Operation Begin(PetSettings settings,ConversationStage stage,Action checkAdmission=null)
         {
             Operation op;
             lock(gate)
             {
                 if(disposed) throw new ObjectDisposedException("ConversationSession");
                 if(active!=null) throw new InvalidOperationException(TextResources.Get("conversationSession.begin.text"));
+                if(checkAdmission!=null)checkAdmission();
                 var admission=EnterRequestActivity();try{op=new Operation { Language=LanguageRequestScope.Capture(),Maintenance=admission,Snapshot=settings.Copy(),Live=settings,History=History,PersonaId=personaId }; op.Snapshot.Text.RequestContextCapacity=ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit);op.RelationshipCompanionId=CaptureRelationshipCompanion();op.RelationshipEventId="turn-"+Guid.NewGuid().ToString("N");op.RelationshipWork=settings.AgentEnabled;active=op; LastNotice="";CancelPredictions();}catch{admission.Dispose();throw;}
+                var goal=GoalOptions==null?null:GoalOptions();
+                if(goal!=null&&!String.IsNullOrEmpty(goal.Goal)&&goal.Goal==op.Snapshot.AgentGoal)
+                {
+                    op.ManagedGoal=goal.Goal;
+                    op.GoalRevision=goal.GoalRevision;
+                }
             }
             SetStage(stage); return op;
         }
@@ -209,14 +217,27 @@ namespace Dafeiyu
             op.History.Update(reply.Id,"","pending",tools:op.ToolEvents,processingMilliseconds:op.ProcessingTime.ElapsedMilliseconds);
             if(op.TurnRecording!=null)BeginAgentTurnSegment(op,op.Workspace.TaskState.Id);
         }
-        public async Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null,Action onAgentStarted=null,string relationshipCompanionId=null,Action<bool> onImagePreprocessing=null)
+        public Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null,Action onAgentStarted=null,string relationshipCompanionId=null,Action<bool> onImagePreprocessing=null)
+        {
+            return SendQueuedTextAsync(text,settings,petName,steeringContext,attachments,resumeTask,kernelInputId,guidanceId,
+                onAgentStarted,relationshipCompanionId,onImagePreprocessing,null);
+        }
+
+        internal async Task SendQueuedTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext,
+            IList<ChatAttachment> attachments,AgentTaskState resumeTask,string kernelInputId,string guidanceId,Action onAgentStarted,
+            string relationshipCompanionId,Action<bool> onImagePreprocessing,Action checkAdmission)
         {
             // Operation completion must remain runnable after a host stops its UI dispatcher.
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text=TextResources.Get("conversationSession.sendTextAsync.text");
 
             text=(text??"").Trim(); if(text.Length==0 || text.Length>8000) throw new ApiException(TextResources.Get("conversationSession.sendTextAsync.text.alternativeB"));
             ApiClient.ValidateConnection(settings.Text,ApiClient.ChatPath(settings.Text));
-            Operation op=Begin(settings,ConversationStage.Thinking);
+            Operation op=Begin(settings,ConversationStage.Thinking,delegate
+            {
+                if(checkAdmission!=null)checkAdmission();
+                if(resumeTask!=null&&!CanResumeAgentTask(resumeTask))
+                    throw new InvalidOperationException(GoalTaskUnavailableNotice());
+            });
             op.AgentStarted=onAgentStarted;op.ImagePreprocessing=onImagePreprocessing;op.KernelInputId=kernelInputId;op.DeferredKernel=BeforeUserTurnAcceptedAsync!=null||files.Any(f=>f.IsImage)||op.History.Messages.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage))||(steeringContext!=null&&steeringContext.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage)))||(resumeTask!=null&&resumeTask.Guidance!=null&&resumeTask.Guidance.Any(g=>g.Attachments!=null&&g.Attachments.Any(a=>a.IsImage)));op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
             op.Attachments=files;op.ResumeTask=resumeTask==null?null:resumeTask.Copy();
             if(relationshipCompanionId!=null)op.RelationshipCompanionId=relationshipCompanionId;
@@ -346,7 +367,10 @@ namespace Dafeiyu
                     op.Workspace.SetAttachmentScope(AttachmentDataRoot,request);
                     if(kernelSession==null&&(QuestionProvider!=null||ImageClient!=null))kernelSession=new AgentSessionModel(Guid.NewGuid().ToString("N"),"","local-"+Guid.NewGuid().ToString("N"));
                     op.Workspace.AttachKernelSession(kernelSession);
-                    var state=op.ResumeTask??new AgentTaskState{PersonaId=op.PersonaId,Workspace=op.Workspace.Root,Goal=text,RelationshipCompanionId=op.RelationshipCompanionId,RelationshipEventId=op.RelationshipEventId,RelationshipSucceeded=op.RelationshipSucceeded};
+                    var state=op.ResumeTask??new AgentTaskState{PersonaId=op.PersonaId,Workspace=op.Workspace.Root,Goal=text,
+                        ConversationGoal=op.ManagedGoal,
+                        ConversationGoalRevision=op.GoalRevision,RelationshipCompanionId=op.RelationshipCompanionId,
+                        RelationshipEventId=op.RelationshipEventId,RelationshipSucceeded=op.RelationshipSucceeded};
                     if(state.PersonaId!=op.PersonaId)throw new InvalidOperationException(TextResources.Get("conversationSession.requestReply.text.alternativeA"));
                     op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);
                     lock(gate){if(!disposed&&active==op)BeginAgentTurnSegment(op,state.Id);}
@@ -545,6 +569,15 @@ namespace Dafeiyu
             string text=TextResources.Format("conversationSession.resumeAgentTaskAsync.textStateGoal",state.Goal);if(text.Length>8000)text=text.Substring(0,8000);
             return SendTextAsync(text,settings,name,resumeTask:state);
         }
+        internal Func<ConversationWorkOptions> GoalOptions {get;set;}
+        internal bool CanResumeAgentTask(AgentTaskState task)
+        {
+            if(task==null||String.IsNullOrEmpty(task.ConversationGoal))return true;
+            var current=GoalOptions==null?null:GoalOptions();
+            return current!=null&&current.Mode=="goal"&&!current.GoalPaused&&
+                current.Goal==task.ConversationGoal&&current.GoalRevision==task.ConversationGoalRevision;
+        }
+        internal static string GoalTaskUnavailableNotice(){return TextResources.Get("workspaceGoal.staleTask");}
         internal string AttachmentDataRoot {get;set;}
         internal string AttachmentOwnerId {get;set;}
         internal bool AttachmentHistoryEnabled {get{return store!=null&&saveEnabled();}}
@@ -573,9 +606,19 @@ namespace Dafeiyu
         }
         public void SetVolume(int volume) { lock(gate)if(active!=null)active.Live.Volume=Math.Max(0,Math.Min(100,volume));speech.SetVolume(volume); }
         public void StopSpeech() { lock(gate)if(active!=null)active.SuppressSpeech=true;speech.Stop(); }
-        public async Task StopAsync()
+        public Task StopAsync(){return StopAsync(false);}
+        internal Task StopGoalAsync(){return StopAsync(true);}
+
+        async Task StopAsync(bool goalOnly)
         {
-            Operation op; lock(gate){CancelPredictions();op=active;} if(op==null) { speech.Stop();await FlushHistoryAsync();return; }
+            Operation op;
+            lock(gate)
+            {
+                op=active;
+                if(goalOnly&&(op==null||String.IsNullOrWhiteSpace(op.Snapshot.AgentGoal)))return;
+                CancelPredictions();
+            }
+            if(op==null) { speech.Stop();await FlushHistoryAsync();return; }
             try { op.Cancel.Cancel(); } catch(ObjectDisposedException) { return; }
             speech.Stop();
             if(op.Recorder!=null && !op.Finishing)

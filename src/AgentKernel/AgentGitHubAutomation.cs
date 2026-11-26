@@ -12,10 +12,12 @@ namespace Dafeiyu
     public sealed partial class AgentWorkspace
     {
         bool githubAutomation, githubLoginStarted, githubHumanApproval;
+        string githubPushProxy;
 
         internal void ConfigureGitHubAutomation(PetSettings settings)
         {
             githubAutomation = WindowsCommandRunner.IsWindowsHost;
+            githubPushProxy = GitHubClient.ConfiguredProxyAddress(settings.GitHub);
             ConfigureGitHub(GitHubClient.ForConnection(settings.GitHubRepository, settings));
         }
 
@@ -24,7 +26,7 @@ namespace Dafeiyu
             switch (name)
             {
                 case "github_login": case "github_create_repository": case "github_initialize":
-                case "github_bind": case "github_branch": case "github_commit": case "github_push":
+                case "github_bind": case "github_branch": case "github_commit": case "git_push": case "github_push":
                     return true;
                 default: return false;
             }
@@ -38,7 +40,7 @@ namespace Dafeiyu
             {
                 case "github_create_repository": case "github_bind":
                     return github != null && github.CanCreateRepository;
-                case "github_push": return githubConnected;
+                case "git_push": case "github_push": return github != null && HasGitHubPushOrigin();
                 default: return true;
             }
         }
@@ -48,9 +50,44 @@ namespace Dafeiyu
             if (name == "github_bind") return "github.com/" + WorkSummaryRepository.Normalize(GetString(args, "repository", "")) + " :: " + Root;
             if (name == "github_create_repository")
                 return "github.com :: " + GetString(args, "name", "") + " (" + GetString(args, "visibility", "private") + ")";
-            if (name == "github_push") return "github.com/" + (github == null ? "" : github.Repository) + " :: " + Root;
             if (name == "github_login") return "github.com :: " + Root;
             return Root;
+        }
+
+        static bool IsGitHubPushTool(string name) { return name == "git_push" || name == "github_push"; }
+
+        bool HasGitHubPushOrigin()
+        {
+            try
+            {
+                var project = WorkSummaryRepository.Read(Root, CancellationToken.None);
+                return project != null && project.Repository.Length != 0 && project.Branch.Length != 0;
+            }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+            catch (ArgumentException) { return false; }
+        }
+
+        GitHubAppGit.Snapshot InspectGitHubPush(CancellationToken token)
+        {
+            string repository = new GitHubAgentLocal(Root).CurrentRepository(token);
+            if (repository.Length == 0) throw new GitHubAppGitException("workSummary.gitHub.incompatiblePush");
+            return new GitHubAppGit().Inspect(Root, repository, GitHubWorkspaceAction.Push, token);
+        }
+
+        static string GitHubPushResource(GitHubAppGit.Snapshot snapshot)
+        {
+            return snapshot.Remote + " :: refs/heads/" + snapshot.Branch + " @ " + snapshot.Revision + " :: " + snapshot.Directory;
+        }
+
+        string PrepareGitHubPush(CancellationToken token, out string resource)
+        {
+            resource = null;
+            try { resource = GitHubPushResource(InspectGitHubPush(token)); return null; }
+            catch (GitHubAppGitException error) { return GitHubToolError(error.LocalizedMessage()); }
+            catch (UnauthorizedAccessException) { return GitHubToolError(new GitHubAppGitException("workSummary.gitHub.invalidWorktree").LocalizedMessage()); }
+            catch (IOException) { return GitHubToolError(new GitHubAppGitException("workSummary.gitHub.invalidWorktree").LocalizedMessage()); }
+            catch (ArgumentException) { return GitHubToolError(new GitHubAppGitException("workSummary.gitHub.invalidWorktree").LocalizedMessage()); }
         }
 
         async Task<string> ExecuteGitHubAutomationAsync(string name, Dictionary<string, object> args,
@@ -59,7 +96,7 @@ namespace Dafeiyu
             await gate.WaitAsync(token).ConfigureAwait(false);
             try
             {
-                if (!GitHubAutomationAvailable(name) || GitHubAutomationResource(name, args) != authorizedResource)
+                if (!GitHubAutomationAvailable(name) || (!IsGitHubPushTool(name) && GitHubAutomationResource(name, args) != authorizedResource))
                     return GitHubToolError(TextResources.Get("workSummary.gitHub.changed"));
 
                 var json = new JavaScriptSerializer();
@@ -93,15 +130,14 @@ namespace Dafeiyu
                         var selected = paths.Cast<object>().Take(33).Select(path => path as string).ToArray();
                         if (selected.Length > 32) return GitHubToolError(TextResources.Get("workSummary.gitHub.invalidInput"));
                         return json.Serialize(new { commit = local.CommitSelected(selected, GetString(args, "message", ""), token) });
+                    case "git_push":
                     case "github_push":
-                        string current = local.CurrentRepository(token);
-                        if (!String.Equals(current, github.Repository, StringComparison.OrdinalIgnoreCase))
-                            return GitHubToolError(TextResources.Get("workSummary.gitHub.incompatiblePush"));
-                        var reader = new GitHubAppGit();
-                        var snapshot = reader.Inspect(Root, current, GitHubWorkspaceAction.Push, token);
+                        var snapshot = InspectGitHubPush(token);
+                        if (GitHubPushResource(snapshot) != authorizedResource)
+                            return GitHubToolError(TextResources.Get("workSummary.gitHub.changed"));
                         var authentication = await github.GetPushAuthenticationAsync(token).ConfigureAwait(false);
-                        new GitHubAppGit(authentication: authentication).Push(snapshot, token, beforeEffect);
-                        return json.Serialize(new { repository = current, branch = snapshot.Branch, commit = snapshot.Revision });
+                        new GitHubAppGit(authentication: authentication, proxyAddress: githubPushProxy).Push(snapshot, token, beforeEffect);
+                        return json.Serialize(new { repository = snapshot.Repository, branch = snapshot.Branch, commit = snapshot.Revision });
                     default:
                         return GitHubToolError(TextResources.Get("gitHubClient.executeCoreAsync.text"));
                 }
@@ -136,7 +172,7 @@ namespace Dafeiyu
             var cli = GitHubCliTransport.Find();
             if (cli == null) return GitHubToolError(TextResources.Get("gitHubApp.cliUnavailable"));
             string account;
-            using (var candidate = GitHubClient.ForCli(repository, "", cli))
+            using (var candidate = GitHubClient.ForCli(repository, "", cli, githubPushProxy))
             {
                 try { account = await candidate.GetAuthenticatedLoginAsync(token).ConfigureAwait(false); }
                 catch (ApiException)
@@ -144,7 +180,7 @@ namespace Dafeiyu
                     if (openBrowser && !githubLoginStarted)
                     {
                         begin();
-                        cli.OpenLogin();
+                        cli.OpenLogin(githubPushProxy);
                         githubLoginStarted = true;
                     }
                     return new JavaScriptSerializer().Serialize(new {
@@ -152,7 +188,7 @@ namespace Dafeiyu
                     });
                 }
             }
-            ConfigureGitHub(GitHubClient.ForCli(repository, account, cli));
+            ConfigureGitHub(GitHubClient.ForCli(repository, account, cli, githubPushProxy));
             githubLoginStarted = false;
             return new JavaScriptSerializer().Serialize(new { status = "connected", login = account, repository });
         }

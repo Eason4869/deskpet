@@ -55,7 +55,8 @@ namespace Dafeiyu
             return null;
         }
 
-        internal async Task<string> SendAsync(HttpMethod method, string path, string jsonBody, CancellationToken cancellationToken)
+        internal async Task<string> SendAsync(HttpMethod method, string path, string jsonBody, CancellationToken cancellationToken,
+            string proxyAddress = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!AllowsRequest(method, path) || (method == HttpMethod.Post) != (jsonBody != null))
@@ -76,7 +77,7 @@ namespace Dafeiyu
                 timeout.CancelAfter(TimeSpan.FromSeconds(20));
                 try
                 {
-                    process.StartInfo = ApiStartInfo(arguments);
+                    process.StartInfo = ApiStartInfo(arguments, proxyAddress);
                     if (!process.Start()) throw RequestFailed();
                     using (timeout.Token.Register(() => Stop(process)))
                     {
@@ -134,7 +135,7 @@ namespace Dafeiyu
             return true;
         }
 
-        ProcessStartInfo ApiStartInfo(List<string> arguments)
+        ProcessStartInfo ApiStartInfo(List<string> arguments, string proxyAddress)
         {
             var start = new ProcessStartInfo { FileName = ExecutablePath, WorkingDirectory = WorkingDirectory(), UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true };
@@ -144,7 +145,7 @@ namespace Dafeiyu
             start.Arguments = String.Join(" ", arguments.Select(WindowsCommandRunner.Quote));
 #endif
             start.EnvironmentVariables.Clear();
-            foreach (var item in ProcessEnvironment(false)) start.EnvironmentVariables[item.Key] = item.Value;
+            foreach (var item in ProcessEnvironment(false, proxyAddress)) start.EnvironmentVariables[item.Key] = item.Value;
             return start;
         }
 
@@ -154,7 +155,7 @@ namespace Dafeiyu
             return system.Length > 0 ? system : AppDomain.CurrentDomain.BaseDirectory;
         }
 
-        static SortedDictionary<string, string> ProcessEnvironment(bool interactive)
+        static SortedDictionary<string, string> ProcessEnvironment(bool interactive, string proxyAddress)
         {
             var result = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (string name in EnvironmentNames)
@@ -164,6 +165,7 @@ namespace Dafeiyu
             }
             result["GH_TELEMETRY"] = "0";
             result["GH_NO_UPDATE_NOTIFIER"] = "1";
+            if (!String.IsNullOrEmpty(proxyAddress)) result["HTTPS_PROXY"] = ProxyConfiguration.Endpoint(proxyAddress).AbsoluteUri;
             if (!interactive)
             {
                 result["GH_PROMPT_DISABLED"] = "1";
@@ -239,13 +241,13 @@ namespace Dafeiyu
         static ApiException RequestFailed() { return new ApiException(TextResources.Get("gitHubClient.executeAsync.text.alternativeA")); }
         static ApiException OutputLimit() { return new ApiException(TextResources.Get("gitHubClient.sendJsonAsync.text")); }
 
-        internal void OpenLogin()
+        internal void OpenLogin(string proxyAddress = null)
         {
             if (!WindowsCommandRunner.IsWindowsHost) throw new PlatformNotSupportedException();
             const uint NewConsole = 0x10, UnicodeEnvironment = 0x400;
             var command = new StringBuilder(WindowsCommandRunner.Quote(ExecutablePath) + " auth login --web --hostname github.com --skip-ssh-key");
             var environment = new StringBuilder();
-            foreach (var item in ProcessEnvironment(true)) environment.Append(item.Key).Append('=').Append(item.Value).Append('\0');
+            foreach (var item in ProcessEnvironment(true, proxyAddress)) environment.Append(item.Key).Append('=').Append(item.Value).Append('\0');
             environment.Append('\0');
             IntPtr block = Marshal.StringToHGlobalUni(environment.ToString());
             try

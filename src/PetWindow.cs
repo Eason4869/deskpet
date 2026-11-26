@@ -797,18 +797,31 @@ namespace Dafeiyu
         }
         internal string ConversationGoal(ConversationSession session)
         {
+            var options=ConversationGoalOptions(session);
+            return options==null?"":options.Goal;
+        }
+        internal ConversationWorkOptions ConversationGoalOptions(ConversationSession session)
+        {
             var workspace=ConversationModeWorkspace(session);
-            var options=workspace==null||!workspace.SupportsWorkOptions?null:workspace.Definition.WorkOptions;
-            return options==null?"":options.Goal??"";
+            return workspace==null||!workspace.SupportsWorkOptions?null:workspace.Definition.WorkOptions;
         }
         internal void SetConversationPlanMode(ConversationSession session,bool enabled){SetConversationWorkMode(session,enabled?"plan":"");}
         internal Action SetConversationWorkMode(ConversationSession session,string mode)
         {
-            return UpdateConversationWorkOptions(session,previous=>new ConversationWorkOptions(mode??"",previous==null?null:previous.Goal));
+            return UpdateConversationWorkOptions(session,previous=>(previous??new ConversationWorkOptions(null,null)).WithMode(mode??""));
         }
         internal void SetConversationGoal(ConversationSession session,string goal)
         {
-            UpdateConversationWorkOptions(session,previous=>new ConversationWorkOptions(previous==null?null:previous.Mode,goal));
+            UpdateConversationWorkOptions(session,previous=>(previous??new ConversationWorkOptions(null,null)).WithGoal(goal));
+        }
+        internal async System.Threading.Tasks.Task ChangeWorkspaceGoalAsync(ConversationSession session,ConversationWorkOptions expected,ConversationWorkOptions next)
+        {
+            if(expected==null||String.IsNullOrEmpty(expected.Goal))return;
+            var workspace=ConversationModeWorkspace(session);
+            if(workspace==null)return;
+            if(UpdateConversationWorkOptions(session,previous=>ReferenceEquals(previous,expected)?next:null)==null)return;
+            if(next.GoalPaused||next.Goal!=expected.Goal)await session.StopGoalAsync();
+            workspace.Queue.OwnerChanged();
         }
         readonly object conversationWorkOptionsGate=new object();
         Action UpdateConversationWorkOptions(ConversationSession session,Func<ConversationWorkOptions,ConversationWorkOptions> change)
@@ -816,18 +829,19 @@ namespace Dafeiyu
             var workspace=ConversationModeWorkspace(session);
             if(workspace==null||!workspace.SupportsWorkOptions)return null;
             ConversationWorkOptions previous,options;
-            using(session.EnterRequestActivity())lock(conversationWorkOptionsGate)
+            using(session.EnterRequestActivity())lock(session.SynchronizationRoot)lock(conversationWorkOptionsGate)
             {
                 previous=workspace.Definition.WorkOptions;
                 options=change(previous);
-                if(previous!=null&&previous.Mode==options.Mode&&previous.Goal==options.Goal)return null;
+                if(options==null||previous!=null&&previous.Mode==options.Mode&&previous.Goal==options.Goal&&
+                    previous.GoalRevision==options.GoalRevision&&previous.GoalPaused==options.GoalPaused)return null;
                 SaveWorkspaceWorkOptions(workspace,options);
             }
             RefreshChatAppearance();
             return delegate
             {
                 if(workspace.IsDisposed||!ReferenceEquals(ConversationModeWorkspace(session),workspace))return;
-                using(session.EnterRequestActivity())lock(conversationWorkOptionsGate)
+                using(session.EnterRequestActivity())lock(session.SynchronizationRoot)lock(conversationWorkOptionsGate)
                 {
                     if(!ReferenceEquals(workspace.Definition.WorkOptions,options))return;
                     SaveWorkspaceWorkOptions(workspace,previous);

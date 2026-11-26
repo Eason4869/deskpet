@@ -62,6 +62,7 @@ namespace Dafeiyu
             D("github_branch","从当前 HEAD 创建并切换到一个新分支。",false,Fields("branch",P("string","新分支名")),"branch"),
             D("github_commit","提交当前工作区中明确列出的文件，保留其他暂存的更改。",false,
                 Fields("paths",new{type="array",items=new{type="string"},minItems=1,maxItems=32},"message",P("string","提交说明")),"paths","message"),
+            D("git_push","Git 推送。将当前分支已提交的内容推送到当前工作区 origin 指向的 GitHub 仓库。用户审批目标分支和提交后执行，不需要终端。",false,Fields()),
             D("github_push","把当前已提交分支推送到绑定的 GitHub 仓库。不会强制推送或发送未提交的文件。",false,Fields()),
             D("github_create_pull_request","创建 GitHub Pull Request。",false,Fields("title",P("string","标题"),"body",P("string","正文"),"head",P("string","来源分支"),"base",P("string","目标分支")),"title","head","base"),
             D("spawn_subagent","启动真正独立的只读 explore worker。最大并行 4、深度 1，不允许写入或终端。",true,Fields("profile",P("string","explore"),"input",P("string","子任务输入")),"profile","input"),

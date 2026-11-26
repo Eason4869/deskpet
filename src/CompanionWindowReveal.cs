@@ -21,7 +21,6 @@ namespace Dafeiyu
         readonly Action interruptTheme;
         readonly Func<TimeSpan> now;
         readonly DispatcherTimer timeout;
-        readonly ScrollChangedEventHandler scrollChanged;
         LiquidThemeReveal.SnapshotLayer layer;
         ThemeRevealPaths paths;
         string targetKey;
@@ -43,7 +42,6 @@ namespace Dafeiyu
             this.now=now??(()=>clock.Elapsed);
             timeout=new DispatcherTimer(DispatcherPriority.Normal,window.Dispatcher){Interval=RefreshLimit};
             timeout.Tick+=Interrupt;
-            scrollChanged=Scrolled;
             content.SizeChanged+=Interrupt;
             window.DpiChanged+=OnDpiChanged;
             window.Deactivated+=Interrupt;
@@ -52,7 +50,7 @@ namespace Dafeiyu
             window.PreviewMouseDown+=Interrupt;
             window.PreviewMouseWheel+=Interrupt;
             window.PreviewKeyDown+=Interrupt;
-            window.AddHandler(ScrollViewer.ScrollChangedEvent,scrollChanged,true);
+            window.PreviewTouchDown+=Interrupt;
             window.Closed+=Closed;
             ThemeManager.Changed+=Cancel;
         }
@@ -152,8 +150,6 @@ namespace Dafeiyu
         }
 
         void VisibilityChanged(object sender,DependencyPropertyChangedEventArgs args){if(!window.IsVisible)Cancel();}
-        void Scrolled(object sender,ScrollChangedEventArgs args)
-        {if(playing&&(args.HorizontalChange!=0||args.VerticalChange!=0))Cancel();}
         void OnDpiChanged(object sender,DpiChangedEventArgs args)
         {
             if(layer!=null&&(args.NewDpi.DpiScaleX!=dpi.DpiScaleX||args.NewDpi.DpiScaleY!=dpi.DpiScaleY))Cancel();
@@ -175,7 +171,7 @@ namespace Dafeiyu
             window.PreviewMouseDown-=Interrupt;
             window.PreviewMouseWheel-=Interrupt;
             window.PreviewKeyDown-=Interrupt;
-            window.RemoveHandler(ScrollViewer.ScrollChangedEvent,scrollChanged);
+            window.PreviewTouchDown-=Interrupt;
             window.Closed-=Closed;
             ThemeManager.Changed-=Cancel;
         }

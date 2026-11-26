@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
 namespace Dafeiyu.Tests
@@ -13,6 +15,8 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1&&args[0]=="--project-goal-resume-only")using(var protector=new TestProtector())
+            {SecretProtection.Configure(protector);ProjectGoalResume().GetAwaiter().GetResult();return 0;}
             if(args.Length==1&&args[0]=="--scheduled-tasks-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ScheduledTaskTests.Run();}
             if(args.Length==1&&args[0]=="--desktop-observation-policy-only")return DesktopObservationPolicyTests.Main() | DesktopObservationServiceTests.Main();
             if(args.Length==1&&args[0]=="--greeting-regression-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return GreetingTests.Main() | AiGreetingTests.Main() | HolidayGreetingTests.Main() | RequestLanguageSnapshotTests.Main();}
@@ -147,6 +151,7 @@ namespace Dafeiyu.Tests
                 {
                     SecretProtection.Configure(protector);
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
+                    ProjectGoalResume().GetAwaiter().GetResult();
                     int result=0;
                     foreach(var test in new Func<int>[] { ScheduledTaskTests.Run, ()=>ImageInputRouterTests.Main(new string[0]), ImageModelResolverTests.Main, ()=>CacheMaintenanceTests.Main(new string[0]), DataManagementTests.Main, HistoryMaintenanceTests.Main, DataMaintenanceAdmissionTests.Main, RelationshipFeedbackTests.Main, RelationshipPresentationTests.Main, RelationshipIntegrationTests.Main, RelationshipIdentityTests.Main, RelationshipRulesTests.Main, RelationshipStoreTests.Main, SpeechLanguagePolicyTests.RunAll, SystemLanguageTests.RunAll, LanguagePackTests.RunAll, ReplyLanguagePolicyTests.RunAll, AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLifecycleTests.Main, AgentJobViewStateTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
@@ -231,6 +236,38 @@ namespace Dafeiyu.Tests
         {
             var references=typeof(PetSettings).Assembly.GetReferencedAssemblies().Select(a=>a.Name).ToArray();
             Check(!references.Any(name=>name=="PresentationFramework" || name=="PresentationCore" || name=="WindowsBase" || name=="System.Windows.Forms" || name=="System.Speech" || name=="System.Security.Cryptography.ProtectedData"),"portable business assembly has no Windows UI, speech or DPAPI references");
+        }
+        static async Task ProjectGoalResume()
+        {
+            if(!OperatingSystem.IsWindows())return;
+            string root=Path.Combine(AppContext.BaseDirectory,"portable-project-goal",Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            var project=new ProjectDefinition{Id="project",Name="fixture",Workspace=root,Goal="Portable project objective"};
+            var conversation=new ConversationDefinition{Id="work",Mode="work"};
+            var settings=new PetSettings{ReadReplies=false,Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:9",Model="fixture"}};
+            var api=new ProjectGoalApi();
+            using(var workspace=ConversationWorkspace.Create(project,conversation,root,"pet",()=>api,()=>new UnusedSpeech(),()=>null,()=>settings,()=>true))
+            {
+                await workspace.Session.SendTextAsync("Start a portable task",workspace.EffectiveSettings(),"pet");
+                Check(workspace.Session.CurrentAgentTask!=null,"the portable project objective creates a real Agent checkpoint");
+                await workspace.Session.ResumeAgentTaskAsync(workspace.EffectiveSettings(),"pet");
+                Check(api.Goals.SequenceEqual(new[]{true,true}),"the portable project goal remains available when resuming its checkpoint");
+            }
+        }
+        sealed class ProjectGoalApi:IConversationApi,IAgentConversationApi
+        {
+            internal readonly List<bool> Goals=new List<bool>();
+            public Task<string> ChatAgentAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,
+                Action<string> text,Action<string> reasoning,Action<AgentToolEvent> tool,bool stream,CancellationToken cancel)
+            {
+                Goals.Add(messages.Any(message=>message.Role=="system"&&message.Content.Contains("Portable project objective")));
+                return Task.FromResult("Fixture completed.");
+            }
+            public Task<string> ChatAsync(ConnectionSettings settings,IList<ChatMessage> messages,CancellationToken cancel)
+            {throw new InvalidOperationException("Project goal must reach the Agent.");}
+            public Task<string> TranscribeAsync(ConnectionSettings settings,byte[] audio,CancellationToken cancel){throw new NotSupportedException();}
+            public Task<byte[]> SpeechAsync(ConnectionSettings settings,string voice,string text,CancellationToken cancel){throw new NotSupportedException();}
+            public void Dispose(){}
         }
         static void Check(bool condition,string message){if(!condition)throw new Exception(message);contractChecks++;Console.WriteLine("PASS "+message);}
         sealed class TeeWriter:TextWriter

@@ -49,7 +49,6 @@ internal sealed class CompanionWindowReveal:IDisposable
         window.AddHandler(InputElement.PointerPressedEvent,OnInput,RoutingStrategies.Tunnel,handledEventsToo:true);
         window.AddHandler(InputElement.PointerWheelChangedEvent,OnInput,RoutingStrategies.Tunnel,handledEventsToo:true);
         window.AddHandler(InputElement.KeyDownEvent,OnInput,RoutingStrategies.Tunnel,handledEventsToo:true);
-        window.AddHandler(ScrollViewer.ScrollChangedEvent,Scrolled,handledEventsToo:true);
         window.Closed+=Closed;
         DesktopTheme.AppearanceChanged+=Cancel;
     }
@@ -147,8 +146,6 @@ internal sealed class CompanionWindowReveal:IDisposable
     }
 
     private void OnInput(object? sender,RoutedEventArgs args)=>Cancel();
-    private void Scrolled(object? sender,ScrollChangedEventArgs args)
-    {if(playing&&args.OffsetDelta!=default)Cancel();}
     private void WindowChanged(object? sender,AvaloniaPropertyChangedEventArgs args)
     {
         if(args.Property==Visual.IsVisibleProperty&&!window.IsVisible||
@@ -169,7 +166,6 @@ internal sealed class CompanionWindowReveal:IDisposable
         window.RemoveHandler(InputElement.PointerPressedEvent,OnInput);
         window.RemoveHandler(InputElement.PointerWheelChangedEvent,OnInput);
         window.RemoveHandler(InputElement.KeyDownEvent,OnInput);
-        window.RemoveHandler(ScrollViewer.ScrollChangedEvent,Scrolled);
         window.Closed-=Closed;
         DesktopTheme.AppearanceChanged-=Cancel;
     }

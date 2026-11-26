@@ -16,17 +16,17 @@ namespace Dafeiyu
             }
         }
 
-        internal static FrameworkElement GitHub()
+        internal static FrameworkElement GitHub(System.Func<string> description = null)
         {
             var image = UiIcons.Image("github", ThemeManager.Brush("#181818", "#FFFFFF"));
             image.Width = image.Height = 26;
-            return Create("GitHub", () => TextResources.Get("gitHubApp.description"), image);
+            return Create("GitHub", description ?? (() => TextResources.Get("gitHubApp.description")), image);
         }
 
-        internal static FrameworkElement Gmail()
+        internal static FrameworkElement Gmail(System.Func<string> description = null)
         {
             var image = new Image { Source = LoadGmailLogo(), Width = 22, Height = 22 };
-            return Create("Gmail", () => TextResources.Get("apps.gmail.description"), image);
+            return Create("Gmail", description ?? (() => TextResources.Get("apps.gmail.description")), image);
         }
 
         static FrameworkElement Create(string name, System.Func<string> description, FrameworkElement icon)

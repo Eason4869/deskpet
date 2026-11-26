@@ -196,6 +196,7 @@ internal sealed partial class DesktopController
                     catch(Exception error) when(error is IOException or InvalidDataException or InvalidOperationException or ArgumentException){nextCatalog.ReportUnavailable(outfit);}}
             }
             if(!Owns())return;SelectionStage(token,next,origin,"prepared",cached);
+            if(!Owns())return;
             if(!CanSelectCompanion()||(GuideLocked&&guide?.AllowsCompanionPreparation!=true)){
                 CompanionSelectionNotice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");SelectionStage(token,next,origin,"reselect-required");Notify();return;
             }
@@ -204,6 +205,7 @@ internal sealed partial class DesktopController
             bool changed=Skin.PickerKey!=next.PickerKey;
             if(changed&&origin is not (CompanionSelectionOrigin.StartupRestore or CompanionSelectionOrigin.Onboarding))
                 reveal=fullChat?.PrepareCompanionReveal(token,Skin.PickerKey,next.PickerKey);
+            if(!Owns())return;
             Pet.CancelHolidayForSkinChange();if(next.OfficialCharacterId==null)next.PackageHolidayCatalog=nextCatalog;
             PersonaProfiles.SaveVoices(Settings);Skin=next;PersonaProfiles.Activate(Settings,next.Id,next.Prompt,next.Voices,next.OfficialCharacterId??next.BuiltinCharacterId);Session.SelectPersona(next.Id);
             Settings.SelectedCompanionKey=next.PickerKey;Settings.PendingOfficialCompanionId="";ReplaceCompanionEntry(next);
@@ -211,7 +213,10 @@ internal sealed partial class DesktopController
             var oldPins=activeCompanionPins;activeCompanionPins=preparedPins;preparedPins=null;
             if(changed&&origin!=CompanionSelectionOrigin.StartupRestore)awaitingCompanionFrame=new CompanionSelectionUpdate(token,next.PickerKey,origin.ToString(),"render-pending",0);
             Pet.SelectSkin();oldPins?.Dispose();Save();if(tray!=null)tray.ToolTipText="DeskPet · "+next.Name;
-            if(!deferredSettingsSave)reveal?.MarkCommitted(token,Skin.PickerKey);
+            reveal?.MarkCommitted(token,Skin.PickerKey);
+            // An in-flight settings write can persist the selection later. The live
+            // companion and chat should still publish the applied selection now.
+            if(deferredSettingsSave)Notify();
             SelectionStage(token,next,origin,"committed",cached);
             if(next.OfficialCharacterId!=null&&origin!=CompanionSelectionOrigin.StartupRestore)Run(()=>RefreshOfficialAsync(next,token,OfficialCompanionCheckMode.Cached,origin));
         }catch(OperationCanceledException){if(officialCompanions.OwnsSelection(token))SelectionStage(token,requested,origin,"cancelled");}

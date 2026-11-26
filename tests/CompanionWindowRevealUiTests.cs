@@ -25,7 +25,8 @@ namespace Dafeiyu.Tests
         [STAThread] public static int Main(string[] args)
         {
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};
-            var content=new Border{Background=Ui.Blue};
+            var scroll=new ScrollViewer{Content=new Border{Height=1400},VerticalScrollBarVisibility=ScrollBarVisibility.Hidden};
+            var content=new Border{Background=Ui.Blue,Child=scroll};
             var host=new Grid();
             host.Children.Add(content);
             var window=new Window{Content=host,Width=620,Height=410,ShowInTaskbar=false};
@@ -71,6 +72,9 @@ namespace Dafeiyu.Tests
                     reveal.AbortPending(7);
                     reveal.OnContentRefreshed();Pump();
                     Check(overlay()!=null,"a successful role change begins the animation after refresh");
+                    scroll.ScrollToVerticalOffset(120);Pump();
+                    Check(scroll.VerticalOffset>0,"the fixture applied a programmatic scroll");
+                    Check(overlay()!=null,"a programmatic viewport update does not cancel the role reveal");
                     window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(window),0,Key.Tab)
                         {RoutedEvent=Keyboard.PreviewKeyDownEvent});
                     Check(overlay()==null,"input interrupts the animation and releases the overlay");
@@ -117,6 +121,17 @@ namespace Dafeiyu.Tests
                         .SetValue(chat.CompanionReveal,new Func<bool>(()=>chat.CurrentPage=="home"));
                 var original=pet.Skin;
                 var next=pet.Catalog.Skins.First(s=>s.BuiltinCharacterId=="marfu"&&!s.IsPlaceholder);
+                Action<CompanionSelectionUpdate> cancelPrepared=update=>{
+                    if(update.Stage=="prepared")pet.CancelCompanionSelection(update.Request);
+                };
+                pet.CompanionSelectionChanged+=cancelPrepared;
+                var cancelled=pet.RequestSkinAsync(next,CompanionSelectionOrigin.MainWindow,chat);
+                var cancellationWait=Stopwatch.StartNew();
+                while(!cancelled.IsCompleted&&cancellationWait.Elapsed<TimeSpan.FromSeconds(10)){Pump();Thread.Sleep(2);}
+                pet.CompanionSelectionChanged-=cancelPrepared;
+                Check(cancelled.IsCompleted&&!cancelled.GetAwaiter().GetResult()&&pet.Skin.PickerKey==original.PickerKey&&
+                    cfg.SelectedCompanionKey==original.PickerKey&&!HasOverlay(chat),
+                    "a cancellation at preparation completion cannot publish the new role or animation");
                 bool committed=false,covered=false;
                 pet.CompanionSelectionChanged+=update=>{
                     if(update.Stage!="committed")return;

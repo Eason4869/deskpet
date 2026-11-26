@@ -15,10 +15,15 @@ namespace Dafeiyu
     {
         readonly PetWindow pet;
         readonly TextBox repository = Ui.Field();
+        readonly TextBox pushProxyAddress = Ui.Field();
         readonly PasswordBox token = new PasswordBox { MinHeight = 38, Padding = new Thickness(10, 7, 10, 7),
-            Background = ThemeManager.Surface, BorderBrush = Ui.Line, BorderThickness = new Thickness(1), MaxLength = 512 };
-        readonly TextBlock connection = Ui.Text("", 12, Ui.Muted), status = Ui.Text("", 12, Ui.Muted);
-        readonly Button connect, disconnect, saveRepository;
+            Background = ThemeManager.FieldSurface, BorderBrush = Ui.Line, BorderThickness = new Thickness(1), MaxLength = 512 };
+        readonly TextBlock connection = Ui.Text("", 12, Ui.Muted), dialogConnection = Ui.Text("", 12, Ui.Muted);
+        readonly TextBlock status = Ui.Text("", 12, Ui.Muted);
+        readonly StackPanel details = new StackPanel { Name = "GitHubAppSettings" };
+        readonly Button manage, connect, disconnect;
+        readonly CheckBox usePushProxy;
+        AppManagementWindow management;
         CancellationTokenSource pending;
         string login;
         bool disposed;
@@ -28,74 +33,89 @@ namespace Dafeiyu
             this.pet = pet;
             Name = "GitHubAppPanel";
             LocalizedUi.Automation(this, () => TextResources.Get("gitHubApp.connection"));
-            var body = new StackPanel();
-            body.Children.Add(AppCardHeader.GitHub());
             connection.Name = "GitHubAppConnectionStatus";
-            connection.Margin = new Thickness(0, 5, 0, 10);
-            body.Children.Add(connection);
+            Content = AppManagementWindow.CreateCard("GitHub", AppCardHeader.GitHub(), connection, out manage);
+            manage.Click += delegate { OpenManagement(); };
 
-            var details = new StackPanel { Name = "GitHubAppSettings", Visibility = Visibility.Collapsed, Margin = new Thickness(0, 10, 0, 0) };
-            Func<string> manageLabel = () => details.Visibility == Visibility.Visible ? TextResources.Get("gitHubApp.hideSettings") : TextResources.Get("gitHubApp.manage");
-            var manage = LocalizedUi.Button(manageLabel);
-            manage.Name = "ManageGitHubApp";
-            manage.Click += delegate {
-                details.Visibility = details.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
-                LocalizedUi.Set(manage, "Content", manageLabel);
-                LocalizedUi.Automation(manage, manageLabel);
-            };
+            var connectionSection = AppManagementWindow.AddSection(details, () => TextResources.Get("apps.management.connection"));
+            dialogConnection.Name = "GitHubAppManagementStatus";
+            connectionSection.Children.Add(dialogConnection);
+            var web = AppManagementWindow.WebLink(() => TextResources.Get("gitHubApp.management.login"),
+                "OpenGitHubWeb", "https://github.com/login");
             disconnect = LocalizedUi.Button(() => TextResources.Get("gitHubApp.disconnect"));
             disconnect.Name = "DisconnectGitHubApp";
             disconnect.Click += async delegate { await DisconnectAsync(); };
-            var actions = new WrapPanel();
-            actions.Children.Add(manage);
-            actions.Children.Add(disconnect);
-            body.Children.Add(actions);
+            AppManagementWindow.AddActions(connectionSection, web, disconnect);
 
-            AddHint(details, () => TextResources.Get("gitHubApp.hint"), 0);
-            token.Name = "GitHubAppToken";
-            AddField(details, () => TextResources.Get("gitHubApp.token"), token);
-            AddHint(details, () => TextResources.Get("gitHubApp.tokenHint"), 8);
-            var createToken = LocalizedUi.Button(() => TextResources.Get("gitHubApp.tokenPage"));
-            createToken.Name = "OpenGitHubTokenSettings";
-            createToken.Click += delegate { MarkdownLinkMenu.OpenExternally(new Uri("https://github.com/settings/personal-access-tokens/new")); };
-            connect = LocalizedUi.Button(() => TextResources.Get("gitHubApp.connect"), true);
-            connect.Name = "ConnectGitHubApp";
-            connect.Click += async delegate { await ConnectAsync(); };
-            var accountActions = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
-            accountActions.Children.Add(connect);
-            accountActions.Children.Add(createToken);
-            details.Children.Add(accountActions);
-            var cliActions = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
+            var auth = AppManagementWindow.AddSection(details, () => TextResources.Get("apps.management.authorization"));
+            AddHint(auth, () => TextResources.Get("gitHubApp.management.cliHint"), 0);
             var connectCli = LocalizedUi.Button(() => TextResources.Get("gitHubApp.cliConnect"), true);
             connectCli.Name = "ConnectGitHubCli";
             connectCli.Click += async delegate { await ConnectCliAsync(); };
             var loginCli = LocalizedUi.Button(() => TextResources.Get("gitHubApp.cliLogin"));
             loginCli.Name = "AuthorizeGitHubCli";
             loginCli.Click += delegate { OpenCliLogin(); };
-            cliActions.Children.Add(connectCli);
-            cliActions.Children.Add(loginCli);
-            details.Children.Add(cliActions);
+            AppManagementWindow.AddActions(auth, connectCli, loginCli);
+            auth.Children.Add(new Border { Height = 1, Background = ThemeManager.CardBorder, Margin = new Thickness(0, 7, 0, 0) });
+            token.Name = "GitHubAppToken";
+            AddField(auth, () => TextResources.Get("gitHubApp.token"), token);
+            AddHint(auth, () => TextResources.Get("gitHubApp.hint"), 5);
+            AddHint(auth, () => TextResources.Get("gitHubApp.tokenHint"), 4);
+            var createToken = AppManagementWindow.WebLink(() => TextResources.Get("gitHubApp.tokenPage"),
+                "OpenGitHubTokenSettings", "https://github.com/settings/personal-access-tokens/new");
+            connect = LocalizedUi.Button(() => TextResources.Get("gitHubApp.connect"));
+            connect.Name = "ConnectGitHubApp";
+            connect.Click += async delegate { await ConnectAsync(); };
+            AppManagementWindow.AddActions(auth, connect, createToken);
 
+            var repositorySection = AppManagementWindow.AddSection(details, () => TextResources.Get("gitHubApp.repository"));
             repository.Name = "GitHubAppDefaultRepository";
             repository.MaxLength = 300;
             repository.Text = pet.Settings.GitHubRepository ?? "";
-            AddField(details, () => TextResources.Get("gitHubApp.repository"), repository);
-            saveRepository = LocalizedUi.Button(() => TextResources.Get("gitHubApp.saveRepository"));
-            saveRepository.HorizontalAlignment = HorizontalAlignment.Left;
-            saveRepository.Margin = new Thickness(0, 10, 0, 0);
+            LocalizedUi.Automation(repository, () => TextResources.Get("gitHubApp.repository"));
+            repositorySection.Children.Add(repository);
+            var saveRepository = LocalizedUi.Button(() => TextResources.Get("gitHubApp.saveRepository"));
             saveRepository.Name = "SaveGitHubAppRepository";
             saveRepository.Click += async delegate { await SaveRepositoryAsync(); };
-            details.Children.Add(saveRepository);
-            body.Children.Add(details);
+            AppManagementWindow.AddActions(repositorySection, saveRepository);
+
+            var pushNetwork = AppManagementWindow.AddSection(details, () => TextResources.Get("gitHubApp.management.pushNetwork"));
+            pushProxyAddress.Name = "GitHubPushProxyAddress";
+            pushProxyAddress.MaxLength = 300;
+            usePushProxy = SettingsSurface.Toggle(() => TextResources.Get("gitHubApp.management.pushProxy"),
+                pet.Settings.GitHub != null && pet.Settings.GitHub.UseProxy, enabled => pushProxyAddress.IsEnabled = enabled);
+            usePushProxy.Name = "UseGitHubPushProxy";
+            pushNetwork.Children.Add(usePushProxy);
+            AddField(pushNetwork, () => TextResources.Get("gitHubApp.management.pushProxyAddress"), pushProxyAddress);
+            var saveNetwork = LocalizedUi.Button(() => TextResources.Get("common.save"));
+            saveNetwork.Name = "SaveGitHubPushNetwork";
+            saveNetwork.Click += async delegate { await SavePushNetworkAsync(); };
+            AppManagementWindow.AddActions(pushNetwork, saveNetwork);
 
             status.Name = "GitHubAppStatus";
             status.Visibility = Visibility.Collapsed;
-            status.Margin = new Thickness(0, 8, 0, 0);
-            body.Children.Add(status);
-            Content = new Border { Child = body, BorderBrush = Ui.Line, BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(13), Padding = new Thickness(16), Margin = new Thickness(0, 0, 0, 10) };
             token.PasswordChanged += delegate { Refresh(); };
             Refresh();
+        }
+
+        void OpenManagement()
+        {
+            if (disposed || management != null) return;
+            Refresh();
+            var current = pet.Settings.GitHub;
+            usePushProxy.IsChecked = current != null && current.UseProxy;
+            pushProxyAddress.IsEnabled = usePushProxy.IsChecked == true;
+            pushProxyAddress.Text = ProxyConfiguration.DisplayAddress(current == null ? null : current.ProxyAddress);
+            var header = AppCardHeader.GitHub(() => TextResources.Get("gitHubApp.management.description"));
+            management = new AppManagementWindow(Window.GetWindow(this), "GitHub", header, details, status, 640);
+            try { management.ShowDialog(); }
+            finally
+            {
+                management = null;
+                if (pending != null) pending.Cancel();
+                token.Clear();
+                if (!disposed && IsVisible) manage.Focus();
+            }
         }
 
         static void AddHint(Panel panel, Func<string> label, int top)
@@ -114,12 +134,15 @@ namespace Dafeiyu
             panel.Children.Add(field);
         }
 
-        void Refresh()
+        internal void Refresh()
         {
+            if (disposed) return;
             bool connected = GitHubAppConnection.IsConnected(pet.Settings);
             string account = GitHubClient.UsesCli(pet.Settings) ? pet.Settings.GitHubCliAccount : login;
-            LocalizedUi.Set(connection, "Text", () => !connected ? TextResources.Get("gitHubApp.disconnected") :
-                String.IsNullOrEmpty(account) ? TextResources.Get("gitHubApp.connected") : TextResources.Format("gitHubApp.connectedAs", account));
+            Func<string> label = () => !connected ? TextResources.Get("gitHubApp.disconnected") :
+                String.IsNullOrEmpty(account) ? TextResources.Get("gitHubApp.connected") : TextResources.Format("gitHubApp.connectedAs", account);
+            LocalizedUi.Set(connection, "Text", label);
+            LocalizedUi.Set(dialogConnection, "Text", label);
             disconnect.Visibility = connected ? Visibility.Visible : Visibility.Collapsed;
             using (var value = token.SecurePassword) connect.IsEnabled = value.Length > 0 ||
                 (GitHubClient.UsesCli(pet.Settings) && GitHubAppConnection.ReadToken(pet.Settings).Length > 0);
@@ -136,12 +159,14 @@ namespace Dafeiyu
             }
             string confirmedLogin = null;
             await RunAsync("connectGitHub", async cancel => {
-                using (var client = GitHubClient.ForApp(null, value))
+                using (var client = GitHubClient.ForApp(null, value, proxyAddress: GitHubClient.ConfiguredProxyAddress(pet.Settings.GitHub)))
                     confirmedLogin = await client.GetAuthenticatedLoginAsync(cancel);
                 cancel.ThrowIfCancellationRequested();
-                var connectionSettings = new ConnectionSettings { BaseUrl = GitHubClient.PublicApi, Protocol = "github", ApiKey = value };
                 if (!await pet.PersistSettingsAsync(settings => {
-                    settings.GitHub = connectionSettings.Copy(); settings.GitHubCliAccount = null;
+                    var next = PublicConnection(settings.GitHub, "github");
+                    next.ApiKey = value;
+                    settings.GitHub = next;
+                    settings.GitHubCliAccount = null;
                 })) return false;
                 login = confirmedLogin;
                 token.Clear();
@@ -155,12 +180,12 @@ namespace Dafeiyu
             if (cli == null) { ShowStatus(() => TextResources.Get("gitHubApp.cliUnavailable")); return; }
             await RunAsync("connectGitHubCli", async cancel => {
                 string account;
-                using (var client = GitHubClient.ForCli(null, "", cli))
+                using (var client = GitHubClient.ForCli(null, "", cli, GitHubClient.ConfiguredProxyAddress(pet.Settings.GitHub)))
                     account = await client.GetAuthenticatedLoginAsync(cancel);
                 cancel.ThrowIfCancellationRequested();
                 return await pet.PersistSettingsAsync(settings => {
                     var previous = settings.GitHub;
-                    var connectionSettings = new ConnectionSettings { BaseUrl = GitHubClient.PublicApi, Protocol = GitHubClient.CliProtocol };
+                    var connectionSettings = PublicConnection(previous, GitHubClient.CliProtocol);
                     if (previous != null && GitHubClient.IsPublicEndpoint(previous.BaseUrl))
                         connectionSettings.EncryptedKey = previous.EncryptedKey;
                     settings.GitHub = connectionSettings;
@@ -176,7 +201,7 @@ namespace Dafeiyu
             if (cli == null) { ShowStatus(() => TextResources.Get("gitHubApp.cliUnavailable")); return; }
             try
             {
-                cli.OpenLogin();
+                cli.OpenLogin(GitHubClient.ConfiguredProxyAddress(pet.Settings.GitHub));
                 ShowStatus(() => TextResources.Get("gitHubApp.cliLoginPending"));
             }
             catch (Exception error)
@@ -190,7 +215,7 @@ namespace Dafeiyu
         {
             await RunAsync("disconnectGitHub", async cancel => {
                 if (!await pet.PersistSettingsAsync(settings => {
-                    settings.GitHub = new ConnectionSettings { BaseUrl = GitHubClient.PublicApi, Protocol = "github" };
+                    settings.GitHub = PublicConnection(settings.GitHub, "github");
                     settings.GitHubCliAccount = null;
                 })) return false;
                 login = null;
@@ -214,6 +239,36 @@ namespace Dafeiyu
             });
         }
 
+        static ConnectionSettings PublicConnection(ConnectionSettings previous, string protocol)
+        {
+            return new ConnectionSettings
+            {
+                BaseUrl = GitHubClient.PublicApi, Protocol = protocol,
+                UseProxy = previous != null && previous.UseProxy,
+                ProxyAddress = ProxyConfiguration.Normalize(previous == null ? null : previous.ProxyAddress)
+            };
+        }
+
+        async Task SavePushNetworkAsync()
+        {
+            bool enabled = usePushProxy.IsChecked == true;
+            string address = null;
+            if (enabled)
+            {
+                try { address = ProxyConfiguration.Endpoint(pushProxyAddress.Text).AbsoluteUri; }
+                catch (InvalidOperationException error) { ShowStatus(() => error.Message); return; }
+            }
+            await RunAsync("saveGitHubPushNetwork", async cancel => {
+                if (!await pet.PersistSettingsAsync(settings => {
+                    if (settings.GitHub == null) settings.GitHub = PublicConnection(null, "github");
+                    settings.GitHub.UseProxy = enabled;
+                    if (address != null) settings.GitHub.ProxyAddress = address;
+                })) return false;
+                if (address != null) pushProxyAddress.Text = address;
+                return true;
+            });
+        }
+
         async Task RunAsync(string action, Func<CancellationToken, Task<bool>> work)
         {
             if (pending != null || disposed) return;
@@ -223,7 +278,7 @@ namespace Dafeiyu
                 status.Visibility = Visibility.Collapsed;
                 try
                 {
-                    bool saved = await pet.RunSettingsEditAsync(this, () => work(cancel.Token), action);
+                    bool saved = await pet.RunSettingsEditAsync(details, () => work(cancel.Token), action);
                     if (!disposed) ShowStatus(() => saved ? TextResources.Get("gitHubApp.saved") : TextResources.Get("gitHubApp.saveFailed"));
                 }
                 catch (OperationCanceledException) { if (!disposed) ShowStatus(() => TextResources.Get("gitHubApp.timeout")); }
@@ -244,9 +299,11 @@ namespace Dafeiyu
 
         public void Dispose()
         {
+            if (disposed) return;
             disposed = true;
             if (pending != null) pending.Cancel();
-            token.Clear();
+            if (management != null) management.Close();
+            else token.Clear();
         }
     }
 

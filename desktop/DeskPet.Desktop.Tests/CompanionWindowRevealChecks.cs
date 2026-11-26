@@ -19,7 +19,8 @@ internal static class CompanionWindowRevealChecks
         void Check(bool value,string description)
         {if(!value)throw new Exception(description);checks++;}
 
-        var content=new Border{Background=DesktopTheme.Surface};
+        var scroll=new ScrollViewer{Content=new Border{Height=1400}};
+        var content=new Border{Background=DesktopTheme.Surface,Child=scroll};
         var host=new Grid{Children={content}};
         var window=new Window{Content=host,Width=680,Height=430};
         string key="old",effect="ripple";
@@ -52,6 +53,9 @@ internal static class CompanionWindowRevealChecks
             key="next";reveal.MarkCommitted(6,key);reveal.OnContentRefreshed();
             Dispatcher.UIThread.RunJobs();
             Check(Overlay(),"the committed snapshot waits for native animation frames");
+            scroll.Offset=new Vector(0,120);Dispatcher.UIThread.RunJobs();
+            Check(scroll.Offset.Y>0,"the fixture applied a programmatic scroll");
+            Check(Overlay(),"a programmatic viewport update does not cancel the role reveal");
             now+=TimeSpan.FromMilliseconds(600);AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Check(Overlay(),"zipper retains both layers during the animation");
             now+=TimeSpan.FromMilliseconds(120);AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -113,11 +117,46 @@ internal static class CompanionWindowRevealChecks
             Check(quick.CompanionReveal==null,"quick chat has no role overlay");
             quick.Close();
             var target=owner.Skins.First(skin=>skin.OfficialCharacterId=="marfu"&&!skin.IsPlaceholder);
-            var task=owner.SelectSkinAsync(target,CompanionSelectionOrigin.MainWindow);
-            Until(()=>task.IsCompleted);
-            task.GetAwaiter().GetResult();
+            var original=owner.Skin;
+            void CancelPrepared(CompanionSelectionUpdate update)
+            {if(update.Stage=="prepared")owner.CancelCompanionSelection(update.Request);}
+            owner.CompanionSelectionChanged+=CancelPrepared;
+            var cancelled=owner.SelectSkinAsync(target,CompanionSelectionOrigin.MainWindow);
+            Until(()=>cancelled.IsCompleted);
+            cancelled.GetAwaiter().GetResult();
+            owner.CompanionSelectionChanged-=CancelPrepared;
+            Check(owner.Skin.PickerKey==original.PickerKey&&owner.Settings.SelectedCompanionKey==original.PickerKey,
+                "a cancellation at preparation completion cannot publish the new role");
             bool Overlay()=>chat.GetVisualDescendants().OfType<Control>().Any(element=>element.Name=="CompanionWindowOverlay");
-            Until(Overlay);
+            var store=(SettingsStore)typeof(DesktopController).GetField("store",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner)!;
+            using var saveStarted=new ManualResetEventSlim();
+            using var finishSave=new ManualResetEventSlim();
+            store.BeforeExactSave=()=>{
+                if(saveStarted.IsSet)return;
+                saveStarted.Set();
+                if(!finishSave.Wait(TimeSpan.FromSeconds(20)))throw new TimeoutException("fixture observation save");
+            };
+            var observationSave=owner.SaveObservationSettingsAsync(s=>s.DesktopObservationExcludedApps.Add("com.example.reveal"));
+            try
+            {
+                Until(()=>saveStarted.IsSet);
+                var task=owner.SelectSkinAsync(target,CompanionSelectionOrigin.MainWindow);
+                Until(()=>task.IsCompleted);
+                task.GetAwaiter().GetResult();
+                Dispatcher.UIThread.RunJobs();
+                var captured=chat.GetVisualDescendants().OfType<LiquidThemeReveal.SnapshotLayer>()
+                    .Any(layer=>layer.Name=="CompanionWindowOverlay"&&layer.Children.Count>1);
+                Check(captured&&!observationSave.IsCompleted,
+                    "an in-flight preference save leaves the applied companion eligible for the reveal");
+            }
+            finally
+            {
+                finishSave.Set();
+                Until(()=>observationSave.IsCompleted);
+                store.BeforeExactSave=null;
+            }
+            Check(observationSave.GetAwaiter().GetResult()&&new SettingsStore(Path.Combine(directory,"settings.json")).Load().SelectedCompanionKey==target.PickerKey,
+                "the preference transaction persists the selected companion alongside its own update");
             Check(owner.Skin.PickerKey==target.PickerKey,"the real role is committed before the animation");
             Dispatcher.UIThread.RunJobs();
             now+=TimeSpan.FromMilliseconds(340);

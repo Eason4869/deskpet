@@ -35,9 +35,13 @@ namespace Dafeiyu
             try
             {
                 var value=new JavaScriptSerializer().Deserialize<Dictionary<string,string>>(saved);
-                string owner,mode,goal;
+                string owner,mode,goal,revision,pausedText;
                 if(value==null||!value.TryGetValue("owner",out owner)||!value.TryGetValue("mode",out mode)||!value.TryGetValue("goal",out goal))return;
-                if(isPromoted==null||!isPromoted(owner))Definition.WorkOptions=new ConversationWorkOptions(mode,goal);
+                value.TryGetValue("goalRevision",out revision);
+                value.TryGetValue("goalPaused",out pausedText);
+                bool paused;
+                Boolean.TryParse(pausedText,out paused);
+                if(isPromoted==null||!isPromoted(owner))Definition.WorkOptions=new ConversationWorkOptions(mode,goal,revision,paused);
             }
             catch(ArgumentException) { }
             catch(InvalidOperationException) { }
@@ -46,7 +50,8 @@ namespace Dafeiyu
         internal void SaveDraftWorkOptions(ConversationWorkOptions options)
         {
             if(!IsDraft||draftWorkStore==null)throw new InvalidOperationException(TextResources.Get("petWindow.prepareConversationSubmission.text"));
-            var payload=options==null?"":new JavaScriptSerializer().Serialize(new Dictionary<string,string>{{"owner",Id},{"mode",options.Mode},{"goal",options.Goal}});
+            var payload=options==null?"":new JavaScriptSerializer().Serialize(new Dictionary<string,string>{
+                {"owner",Id},{"mode",options.Mode},{"goal",options.Goal},{"goalRevision",options.GoalRevision},{"goalPaused",options.GoalPaused.ToString()}});
             draftWorkStore.SaveNow(draftWorkScope,payload);
             Definition.WorkOptions=options;
         }
@@ -92,6 +97,9 @@ namespace Dafeiyu
             workspace.Session=new ConversationSession(apiFactory(),speechFactory(),recorderFactory,new HistoryStore(Path.Combine(workspace.DataDirectory,"history")),workspace.saveHistory,conversation.Id,maintenance);
             workspace.Session.AttachmentDataRoot=dataRoot;
             workspace.Session.AttachmentOwnerId=conversation.Id;
+#if !PORTABLE
+            workspace.Session.GoalOptions=()=>conversation.WorkOptions;
+#endif
             workspace.Session.SelectPersona(conversation.Mode=="work"?"work":String.IsNullOrEmpty(conversation.PetId)?personaId??"":conversation.PetId);
             var kernelStore=new AgentSessionStore(Path.Combine(workspace.DataDirectory,"kernel-sessions"));AgentSessionModel model=null;
             try{if(workspace.saveHistory())model=kernelStore.Load(project.Id,conversation.Id);else if(!transient)kernelStore.Clear();}
@@ -99,7 +107,8 @@ namespace Dafeiyu
             if(model==null)model=new AgentSessionModel(conversation.Id,project.Id,conversation.Id);
             if(model.RecoveryState=="running")model.RecoveryState="interrupted";
             workspace.Session.ConfigureKernelSession(model,kernelStore);
-            workspace.Queue=new ConversationQueue(workspace.Session,workspace.EffectiveSettings,requestName??delegate{return conversation.Name;},Path.Combine(workspace.DataDirectory,"queued-messages.json"),()=>workspace.persistenceAdmitted,ownerAllowed);
+            workspace.Queue=new ConversationQueue(workspace.Session,workspace.EffectiveSettings,requestName??delegate{return conversation.Name;},
+                Path.Combine(workspace.DataDirectory,"queued-messages.json"),()=>workspace.persistenceAdmitted,ownerAllowed,workspace.Session.GoalOptions);
             return workspace;
         }
         }
