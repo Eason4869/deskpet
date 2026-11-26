@@ -2,15 +2,20 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.8-dev.3 · Development preview
+
+- Full Chat on Windows has a minimum size of 520 × 560 logical pixels. Previously saved sizes below that limit are corrected when reopening.
+- Dropdowns match the light and dark palettes and rounded corners. Short choices such as image generation concurrency and the operation sound slider line up with the theme transition controls.
+- Companion artwork opacity, theme transition volume, and operation sound volume default to 50%. Saved values carry over.
+
 ## 1.0.8-dev.2 · Development preview
 
 - Flow, Ripple, Refraction, and Zipper can reverse smoothly from the current frame when you switch back mid-transition. Selecting the active theme keeps the animation going. Follow System also supports reversals.
 - Avatar Ripple and Zipper Entrance continue from the current frame when you select another companion. An animation already under way keeps playing while the next companion loads.
 - Theme and companion animations keep playing as you scroll, switch conversations, edit or send messages, or resize the window. Revealed areas update immediately.
 - The Windows quick chat bubble now has one continuous outline around its rounded corners and pointer, with a more visible border in dark mode.
-- Quick Chat on Windows expands from its screen position into Full Chat. Chat windows briefly fade in and out when opened or closed on their own. Full Chat remembers its size and maximized state and can be resized down to 520 × 560 logical pixels.
-- Adjust companion artwork opacity in Windows appearance settings. It defaults to 50%, with a live preview in the lower-right corner of Settings and Chat. The companion avatar in Settings has a rounded-square backdrop.
-- Dropdowns match the light and dark palettes and rounded corners. Compact options such as image generation concurrency are right-aligned. Theme and operation sound volumes both default to 50%.
+- Quick Chat on Windows expands from its screen position into Full Chat. Chat windows briefly fade in and out when opened or closed on their own. Full Chat remembers its size and maximized state.
+- Adjust companion artwork opacity in Windows appearance settings. It defaults to 30%, with a live preview in the lower-right corner of Settings and Chat. The companion avatar in Settings has a rounded-square backdrop.
 - Companion Home cards rise into place on Windows, and the relationship ring draws clockwise to the current progress.
 - The Windows usage heatmap reveals cells from bottom left to top right, and analysis bars grow up from the baseline.
 

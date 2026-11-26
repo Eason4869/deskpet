@@ -6,9 +6,9 @@ A desktop companion for everyday interactions, conversations, and project work.
 
 [Download the stable release](https://github.com/Eason4869/deskpet/releases/latest) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Report an issue](https://github.com/Eason4869/deskpet/issues)
 
-## Highlights in 1.0.7
+## Highlights
 
-![Avatar ripple and zipper transitions in the Windows chat window](previews/release-1.0.7/companion-transition.gif)
+![Flow transition between light and dark in the Windows chat window](previews/release-1.0.8-dev.3/theme-switch.gif)
 
 | Feature | Where to use it |
 | --- | --- |

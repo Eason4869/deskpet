@@ -6,9 +6,9 @@
 
 [下载正式版](https://github.com/Eason4869/deskpet/releases/latest) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [反馈问题](https://github.com/Eason4869/deskpet/issues)
 
-## 1.0.7 更新亮点
+## 功能亮点
 
-![Windows 主聊天窗口的头像涟漪和拉链开场](previews/release-1.0.7/companion-transition.gif)
+![Windows 主聊天窗口使用流水动效在亮色与暗色之间切换](previews/release-1.0.8-dev.3/theme-switch.gif)
 
 | 功能 | 怎么使用 |
 | --- | --- |
