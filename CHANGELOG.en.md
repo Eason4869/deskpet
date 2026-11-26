@@ -7,6 +7,7 @@
 - Flow, Ripple, Refraction, and Zipper can reverse smoothly from the current frame when you switch back mid-transition. Selecting the active theme keeps the animation going. Follow System also supports reversals.
 - Avatar Ripple and Zipper Entrance continue from the current frame when you select another companion. An animation already under way keeps playing while the next companion loads.
 - Theme and companion animations keep playing as you scroll, switch conversations, edit or send messages, or resize the window. Revealed areas update immediately.
+- The Windows quick chat bubble now has one continuous outline around its rounded corners and pointer, with a more visible border in dark mode.
 
 ## 1.0.8-dev.1 · Development preview
 

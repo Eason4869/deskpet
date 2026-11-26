@@ -46,28 +46,37 @@ namespace Dafeiyu
     {
         public static void Follow(Window window,PetWindow pet,Polygon tail)
         {
-            if(!window.IsVisible)return;
+            UpdateTail(tail,FollowPet(window,pet));
+        }
+        internal static double? FollowPet(Window window,PetWindow pet)
+        {
+            if(!window.IsVisible)return null;
             var other=new WindowInteropHelper(pet).Handle;
-            if(other==IntPtr.Zero)return;
+            if(other==IntPtr.Zero)return null;
             Rect petBounds=DesktopInterop.Bounds(other);
-            Follow(window,tail,other,new Point(petBounds.Left+petBounds.Width*.5,petBounds.Top+petBounds.Height*.12),pet.Settings.Topmost);
+            return Follow(window,other,new Point(petBounds.Left+petBounds.Width*.5,petBounds.Top+petBounds.Height*.12),pet.Settings.Topmost);
         }
         internal static void Follow(Window window,FrameworkElement target,Polygon tail)
         {
             var source=PresentationSource.FromVisual(target) as HwndSource;
             if(source==null)return;
-            Follow(window,tail,source.Handle,target.PointToScreen(new Point(target.ActualWidth/2,0)),false);
+            UpdateTail(tail,Follow(window,source.Handle,target.PointToScreen(new Point(target.ActualWidth/2,0)),false));
         }
-        static void Follow(Window window,Polygon tail,IntPtr target,Point anchor,bool topmost)
+        static double? Follow(Window window,IntPtr target,Point anchor,bool topmost)
         {
             var own=new WindowInteropHelper(window).Handle;
-            if(own==IntPtr.Zero)return;
+            if(own==IntPtr.Zero)return null;
             Rect b=DesktopInterop.Bounds(own),area=DesktopInterop.WorkArea(target);
             Point position=PetMath.ClampPosition(anchor.X-b.Width*.5,anchor.Y-b.Height-7,b.Width,b.Height,area);
             if(Math.Abs(b.Left-position.X)>=.5 || Math.Abs(b.Top-position.Y)>=.5)DesktopInterop.Move(own,position);
             if(window.Topmost!=topmost)window.Topmost=topmost;
             var source=HwndSource.FromHwnd(own);double scale=source.CompositionTarget.TransformToDevice.M11;
-            double x=Math.Max(20,Math.Min(window.Width-20,(anchor.X-position.X)/scale));
+            return Math.Max(20,Math.Min(window.Width-20,(anchor.X-position.X)/scale));
+        }
+        static void UpdateTail(Polygon tail,double? center)
+        {
+            if(!center.HasValue)return;
+            double x=center.Value;
             // Follow runs for every pet frame. Stable placement must not rebuild
             // the tail geometry or issue another native window move.
             if(tail.Points.Count!=3 || Math.Abs(tail.Points[1].X-x)>=.01)

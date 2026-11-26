@@ -281,6 +281,25 @@ namespace Dafeiyu.Tests
                 Check(((SolidColorBrush)editor.CaretBrush).Color==Colors.White,"dark chat caret is white");
                 ThemeManager.Apply("light");Check(((SolidColorBrush)editor.CaretBrush).Color.R<100,"existing caret returns to dark in light mode");ThemeManager.Apply("dark");
                 Capture(chat,"chat-dark.png");ThemeManager.Apply("light");Pump();Capture(chat,"chat-light.png");
+                var quick=new QuickChatWindow(pet);
+                try
+                {
+                    quick.Show();Pump();
+                    var frame=All<System.Windows.Shapes.Path>(quick).Single(p=>p.Name=="QuickChatOutline");
+                    Check(Painted(frame.Stroke)==Painted(Ui.Line),"light mode keeps the quick chat border color");
+                    double join=quick.ActualHeight-14.5;
+                    var tailPixels=Enumerable.Range(0,(int)quick.ActualWidth)
+                        .Where(x=>frame.Data.FillContains(new Point(x,join+5))).ToArray();
+                    Check(tailPixels.Length>0,"the quick chat silhouette includes the tail");
+                    var junction=new Point(tailPixels.Average(),join);
+                    Check(frame.Data.FillContains(junction)&&!frame.Data.StrokeContains(new Pen(frame.Stroke,1),junction),
+                        "the quick chat outline has no horizontal seam above the tail");
+                    ThemeManager.Apply("dark");Pump();
+                    Check(frame.StrokeThickness==1&&Contrast(Painted(frame.Stroke),Painted(frame.Fill))>=2.4,
+                        "dark quick chat has a visible outline around the rounded surface");
+                    Capture(quick,"quick-chat-dark.png");
+                }
+                finally{quick.Close();}
                 Console.WriteLine("Theme tests: "+checks+" passed");return 0;
             }catch(Exception e){Console.Error.WriteLine(e);return 1;}finally{foreach(Window window in app.Windows.Cast<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}
         }
