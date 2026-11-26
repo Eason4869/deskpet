@@ -1119,10 +1119,10 @@ namespace Dafeiyu
             if(quickWorkspace!=null&&quick!=null&&quick.IsVisible)
             {
                 var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);
-                quick.Hide();
+                if(expansion==null)quick.Hide();
                 if(project!=null){OpenProjectConversationCore(project,quickWorkspace.Definition,expansion);return;}
             }
-            if(quick!=null)quick.Hide();
+            if(quick!=null&&expansion==null)quick.Hide();
             DismissGreeting();
             if(chat==null)
             {
@@ -1262,8 +1262,11 @@ namespace Dafeiyu
             RefreshChatArtworkOpacity();
             SaveSettings();
         }
+        internal event Action ChatArtworkOpacityChanged;
         internal void RefreshChatArtworkOpacity()
         {
+            var changed=ChatArtworkOpacityChanged;
+            if(changed!=null)changed();
             if(Application.Current==null)return;
             foreach(var window in Application.Current.Windows.OfType<ChatWindow>())window.RefreshArtworkOpacity();
         }

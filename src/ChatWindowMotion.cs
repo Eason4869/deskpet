@@ -14,8 +14,10 @@ namespace Dafeiyu
     {
         internal readonly Rect Bounds;
         internal readonly BitmapSource Image;
+        readonly QuickChatWindow source;
 
-        QuickChatExpansion(Rect bounds,BitmapSource image){Bounds=bounds;Image=image;}
+        QuickChatExpansion(QuickChatWindow source,Rect bounds,BitmapSource image){this.source=source;Bounds=bounds;Image=image;}
+        internal void HideSource(){if(source.IsVisible)source.Hide();}
 
         internal static QuickChatExpansion Capture(QuickChatWindow quick)
         {
@@ -24,7 +26,7 @@ namespace Dafeiyu
             var root=quick.Content as FrameworkElement;
             if(handle==IntPtr.Zero||root==null||root.ActualWidth<1||root.ActualHeight<1)return null;
             var image=LiquidThemeReveal.Capture(root);
-            return image==null?null:new QuickChatExpansion(DesktopInterop.Bounds(handle),image);
+            return image==null?null:new QuickChatExpansion(quick,DesktopInterop.Bounds(handle),image);
         }
 
         internal static Rect Interpolate(Rect from,Rect to,double progress)
@@ -41,8 +43,12 @@ namespace Dafeiyu
         readonly Stopwatch clock=new Stopwatch();
         Action<double> draw;
         Action cleanup;
+        Action begin;
         double duration;
         bool expanding,closing;
+        bool primed;
+        int finishFrames;
+        TimeSpan? lastRenderingTime;
 
         internal ChatWindowMotion(Window window)
         {
@@ -112,11 +118,16 @@ namespace Dafeiyu
 
         internal void ShowExpanded(QuickChatExpansion source)
         {
-            if(source==null||!SystemParameters.ClientAreaAnimation){Show();return;}
+            if(source==null||!SystemParameters.ClientAreaAnimation)
+            {
+                if(source!=null)source.HideSource();
+                Show();return;
+            }
             Stop();
             expanding=true;
             var handle=new WindowInteropHelper(window).EnsureHandle();
-            bool cloaked=DesktopInterop.SetWindowCloaked(handle,true);
+            bool alreadyVisible=window.IsVisible&&window.WindowState!=WindowState.Minimized;
+            bool cloaked=!alreadyVisible&&DesktopInterop.SetWindowCloaked(handle,true);
             bool playing=false;
             try
             {
@@ -132,16 +143,17 @@ namespace Dafeiyu
                 Rect cover=Rect.Union(source.Bounds,target);
                 var zoom=new ExpansionVisual(source.Image,final);
                 var overlay=ShowOverlay(zoom,cover,1,"QuickChatExpansionOverlay");
-                if(overlay==null)return;
+                if(overlay==null){source.HideSource();return;}
                 var dpi=VisualTreeHelper.GetDpi(overlay);
                 Rect first=RelativeBounds(source.Bounds,cover,dpi),last=RelativeBounds(target,cover,dpi);
                 zoom.Draw(first,0);
                 Start(290,t=>{
-                    zoom.Draw(QuickChatExpansion.Interpolate(first,last,Math.Min(1,t/.88)),t);
-                    if(t<.9)return;
+                    zoom.Draw(QuickChatExpansion.Interpolate(first,last,t),t);
+                    if(t<1)return;
                     if(cloaked){DesktopInterop.SetWindowCloaked(handle,false);cloaked=false;}
-                    overlay.Opacity=Math.Min(1,(1-t)*10);
-                },()=>{if(cloaked)DesktopInterop.SetWindowCloaked(handle,false);overlay.Close();});
+                    if(final==null)overlay.Opacity=0;
+                },()=>{if(cloaked)DesktopInterop.SetWindowCloaked(handle,false);overlay.Close();},
+                    source.HideSource,holdAtEnd:2);
                 playing=true;
             }
             finally
@@ -209,21 +221,36 @@ namespace Dafeiyu
                 blur.Radius=5*Math.Sin(Math.PI*mix);
                 if(to.Source==null)return;
                 to.Opacity=mix;
-                from.Opacity=1-mix;
+                // The first image stays underneath until the second is opaque.
+                // Dimming both exposes the desktop through the middle of the blend.
             }
         }
 
-        void Start(double milliseconds,Action<double> drawFrame,Action complete)
+        void Start(double milliseconds,Action<double> drawFrame,Action complete,Action afterFirstPaint=null,int holdAtEnd=0)
         {
             duration=milliseconds;draw=drawFrame;cleanup=complete;
+            begin=afterFirstPaint;primed=false;finishFrames=holdAtEnd;lastRenderingTime=null;
             clock.Restart();
             CompositionTarget.Rendering+=Frame;
         }
 
         void Frame(object sender,EventArgs args)
         {
+            var render=args as RenderingEventArgs;
+            if(render!=null)
+            {
+                if(lastRenderingTime==render.RenderingTime)return;
+                lastRenderingTime=render.RenderingTime;
+            }
+            if(begin!=null&&CanAnimate)
+            {
+                if(!primed){primed=true;return;}
+                var start=begin;begin=null;
+                start();clock.Restart();return;
+            }
             double t=clock.Elapsed.TotalMilliseconds/duration;
             if(t<1&&CanAnimate){draw(t);return;}
+            if(finishFrames>0&&CanAnimate){finishFrames--;draw(1);return;}
             if(!closing){Stop();return;}
             try{window.Close();}
             finally{Stop();}
@@ -234,7 +261,7 @@ namespace Dafeiyu
             if(draw==null)return;
             CompositionTarget.Rendering-=Frame;
             var complete=cleanup;
-            draw=null;cleanup=null;closing=false;
+            draw=null;cleanup=null;begin=null;closing=false;
             clock.Stop();
             complete();
         }

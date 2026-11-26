@@ -156,8 +156,13 @@ namespace Dafeiyu.Tests
                 Check(artworkOpacity.Template==themeVolume.Template&&artworkOpacity.Width==themeVolume.Width&&artworkOpacity.Value==30,
                     "artwork opacity uses the volume slider style and defaults to 30 percent");
                 artworkOpacity.Value=48;
-                Check(All<ChatAtmosphere>(main).Single().ArtworkOpacity==.48&&store.Load().ChatArtworkOpacity==48,
+                Check(All<ChatAtmosphere>(main).Single(a=>a.Name=="ChatAtmosphere").ArtworkOpacity==.48&&store.Load().ChatArtworkOpacity==48,
                     "artwork opacity updates the open chat and survives settings reload");
+                var artworkPreview=All<Image>(main).Single(i=>i.Name=="SettingsCompanionArtwork");
+                Check(artworkPreview.IsVisible&&artworkPreview.Opacity==.48&&!artworkPreview.IsHitTestVisible,
+                    "settings preview shows the same live opacity without blocking controls");
+                artworkOpacity.Value=0;
+                Check(artworkPreview.Visibility==Visibility.Collapsed,"zero opacity also hides the settings preview");
                 artworkOpacity.Value=30;
                 var titleSwitch=All<ThemeTitleSwitch>(main).Single();
                 var titleLight=All<Button>(titleSwitch).Single(b=>b.Name=="AppThemeLight");

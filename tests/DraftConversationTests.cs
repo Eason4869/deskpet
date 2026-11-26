@@ -14,6 +14,8 @@ namespace Dafeiyu.Tests
     public static class DraftConversationTests
     {
         static int passed,failed;static string root;static readonly BindingFlags hidden=BindingFlags.Instance|BindingFlags.NonPublic;
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        static extern int DwmGetWindowAttribute(IntPtr handle,int attribute,out int value,int size);
         static void Check(bool ok,string text){if(!ok)throw new Exception(text);}
         static void Run(string name,Action action){try{action();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
         static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return(T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var x in All<T>(VisualTreeHelper.GetChild(root,i)))yield return x;}
@@ -45,6 +47,7 @@ var restored=Pet(directory);try{restored.NewActiveConversation();Pump();var inpu
                 p.ShowChat();
                 if(SystemParameters.ClientAreaAnimation)
                 {
+                    Check(quick.IsVisible,"the real quick chat stays visible while the expansion is being prepared");
                     Window overlay=null;
                     for(int i=0;i<18;i++)
                     {
@@ -59,6 +62,8 @@ var restored=Pet(directory);try{restored.NewActiveConversation();Pump();var inpu
                         "the fixed transition surface covers the source and destination native bounds");
                     Check(QuickChatExpansion.Interpolate(start,destination,0)==start&&QuickChatExpansion.Interpolate(start,destination,1)==destination,
                         "the expansion curve connects the exact source and destination bounds");
+                    for(int i=0;i<10&&quick.IsVisible;i++)Pump();
+                    Check(!quick.IsVisible,"the overlay takes over before the quick chat is hidden");
                 }
                 Pump();
                 var chat=Chat();
@@ -68,6 +73,12 @@ var restored=Pet(directory);try{restored.NewActiveConversation();Pump();var inpu
                 Check(quickInput.Text=="full window draft","quick and full views do not share the same conversation draft");
                 for(int i=0;i<10&&Application.Current.Windows.OfType<Window>().Any(w=>w.Name=="QuickChatExpansionOverlay");i++)Pump();
                 Check(!Application.Current.Windows.OfType<Window>().Any(w=>w.Name=="QuickChatExpansionOverlay"),"the expansion releases its visual overlay");
+                p.ShowChat();Pump();
+                var chatHandle=new System.Windows.Interop.WindowInteropHelper(chat).Handle;
+                int cloakFlags;
+                if(DwmGetWindowAttribute(chatHandle,14,out cloakFlags,sizeof(int))==0)
+                    Check((cloakFlags&1)==0,"an already visible full chat remains on screen during expansion");
+                for(int i=0;i<10&&Application.Current.Windows.OfType<Window>().Any(w=>w.Name=="QuickChatExpansionOverlay");i++)Pump();
                 quick.Close();
                 chat.Width=780;chat.Height=620;Pump();
                 double width=chat.ActualWidth,height=chat.ActualHeight;

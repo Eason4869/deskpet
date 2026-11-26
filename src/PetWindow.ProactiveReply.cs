@@ -119,7 +119,7 @@ namespace Dafeiyu
         {
             var expansion=QuickChatExpansion.Capture(binding.Quick);
             if(binding.Full==null){var window=new ChatWindow(this,binding.Workspace);binding.Full=window;if(binding.Quick!=null){window.ReplacePendingAttachments(binding.Quick.SnapshotPendingAttachments());binding.Quick.ReplacePendingAttachments(new ChatAttachment[0]);}window.Closing+=delegate{if(binding.Quick!=null)binding.Quick.ReplacePendingAttachments(window.SnapshotPendingAttachments(binding.Workspace.Session));};window.Closed+=delegate{if(ReferenceEquals(binding.Full,window))binding.Full=null;if(binding.Quick!=null){var oldQuick=binding.Quick;binding.Quick=null;oldQuick.Close();}CloseProactiveIfUnowned(binding);};}
-            if(binding.Quick!=null)binding.Quick.Hide();binding.Full.WindowMotion.ShowExpanded(expansion);
+            if(binding.Quick!=null&&expansion==null)binding.Quick.Hide();binding.Full.WindowMotion.ShowExpanded(expansion);
         }
         async void CloseProactiveIfUnowned(ReplyBinding binding)
         {
