@@ -67,7 +67,6 @@ internal static class DesktopAppearance
         var ink = DesktopTheme.Brush("#203754");
         var accent = DesktopTheme.Brush("#456DE6", "#83AAFF");
         var selected = DesktopTheme.Brush("#EDF3FF", "#263B58");
-        var hover = DesktopTheme.Brush("#F2F7FF", "#2D3A50");
         app.Resources["ComboBoxDropDownBackground"] = DesktopTheme.Surface;
         app.Resources["ComboBoxDropDownBorderBrush"] = DesktopTheme.CardBorder;
         app.Resources["ComboBoxDropdownBorderThickness"] = new Thickness(1);
@@ -84,7 +83,7 @@ internal static class DesktopAppearance
         Add(styles, s => s.Is<ComboBox>().Template().OfType<Popup>().Name("PART_Popup"),
             new Setter(Popup.VerticalOffsetProperty, 4d));
         Add(styles, s => s.Is<ComboBox>().Class(":pointerover").Template().OfType<Border>().Name("Background"),
-            new Setter(Border.BackgroundProperty, hover), new Setter(Border.BorderBrushProperty, DesktopTheme.CardBorder));
+            new Setter(Border.BackgroundProperty, Hover), new Setter(Border.BorderBrushProperty, DesktopTheme.CardBorder));
         foreach (var state in new[] { ":focus-within", ":dropdownopen", ":pressed" })
         {
             Add(styles, s => s.Is<ComboBox>().Class(state).Template().OfType<Border>().Name("Background"),
@@ -98,7 +97,7 @@ internal static class DesktopAppearance
             new Setter(TemplatedControl.ForegroundProperty, ink));
         foreach (var state in new[] { ":pointerover", ":focus-visible", ":pressed" })
             Add(styles, s => s.Is<ComboBoxItem>().Class(state).Template().OfType<ContentPresenter>(),
-                new Setter(ContentPresenter.BackgroundProperty, hover), new Setter(ContentPresenter.ForegroundProperty, ink),
+                new Setter(ContentPresenter.BackgroundProperty, Hover), new Setter(ContentPresenter.ForegroundProperty, ink),
                 new Setter(ContentPresenter.BorderBrushProperty, Brushes.Transparent));
         Add(styles, s => s.Is<ComboBoxItem>().Class(":selected").Template().OfType<ContentPresenter>(),
             new Setter(ContentPresenter.BackgroundProperty, selected), new Setter(ContentPresenter.ForegroundProperty, ink),
