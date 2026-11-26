@@ -8,10 +8,11 @@ namespace Dafeiyu
         void AddCapabilityFields()
         {
             toolSupport=CapabilityField("TextModelToolSupport");imageSupport=CapabilityField("TextModelImageSupport");
-            LocalizedUi.Label(modelForm,()=>(TextResources.Get("modelCapabilityUi.addCapabilityFields.text")),toolSupport);LocalizedUi.Label(modelForm,()=>(TextResources.Get("modelCapabilityUi.addCapabilityFields.text.alternativeA")),imageSupport);
+            modelForm.Children.Add(Ui.SettingRow(()=>TextResources.Get("modelCapabilityUi.addCapabilityFields.text"),null,toolSupport,alignRight:true,stackBelow:350));
+            modelForm.Children.Add(Ui.SettingRow(()=>TextResources.Get("modelCapabilityUi.addCapabilityFields.text.alternativeA"),null,imageSupport,alignRight:true,stackBelow:350));
             var help=LocalizedUi.Text(()=>(TextResources.Get("modelCapabilityUi.addCapabilityFields.text.alternativeB")),11,Ui.Muted);help.TextWrapping=System.Windows.TextWrapping.Wrap;modelForm.Children.Add(help);
         }
-        static ComboBox CapabilityField(string name){return LocalizedUi.Options(new ComboBox{Name=name,ItemsSource=new[]{TextResources.Get("modelCapabilityUi.capabilityField.itemsSource"),TextResources.Get("modelCapabilityUi.capabilityField.itemsSource.alternativeA"),TextResources.Get("modelCapabilityUi.capabilityField.itemsSource.alternativeB")},SelectedIndex=0,MinHeight=32},()=>(new[]{TextResources.Get("modelCapabilityUi.capabilityField.itemsSource"),TextResources.Get("modelCapabilityUi.capabilityField.itemsSource.alternativeA"),TextResources.Get("modelCapabilityUi.capabilityField.itemsSource.alternativeB")}));}
+        static ComboBox CapabilityField(string name){return LocalizedUi.Options(new ComboBox{Name=name,Width=180,ItemsSource=new[]{TextResources.Get("modelCapabilityUi.capabilityField.itemsSource"),TextResources.Get("modelCapabilityUi.capabilityField.itemsSource.alternativeA"),TextResources.Get("modelCapabilityUi.capabilityField.itemsSource.alternativeB")},SelectedIndex=0,MinHeight=32},()=>(new[]{TextResources.Get("modelCapabilityUi.capabilityField.itemsSource"),TextResources.Get("modelCapabilityUi.capabilityField.itemsSource.alternativeA"),TextResources.Get("modelCapabilityUi.capabilityField.itemsSource.alternativeB")}));}
         void RefreshCapabilityFields()
         {if(toolSupport==null || selected==null)return;var caps=selected.Capabilities(newModel.Text.Trim());toolSupport.SelectedIndex=(int)caps.Tools;imageSupport.SelectedIndex=(int)caps.Images;}
         void SaveCapabilityFields(string id)

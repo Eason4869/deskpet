@@ -193,7 +193,27 @@ namespace Dafeiyu
         }
         IntPtr ShellWindowMessage(IntPtr hwnd,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
         {
-            if(message==0x0024){var monitor=MonitorFromWindow(hwnd,2);var info=new MonitorInfo{Size=Marshal.SizeOf(typeof(MonitorInfo))};if(GetMonitorInfo(monitor,ref info)){var bounds=(MinMaxInfo)Marshal.PtrToStructure(lParam,typeof(MinMaxInfo));bounds.MaxPosition.X=info.Work.Left-info.Monitor.Left;bounds.MaxPosition.Y=info.Work.Top-info.Monitor.Top;bounds.MaxSize.X=info.Work.Right-info.Work.Left;bounds.MaxSize.Y=info.Work.Bottom-info.Work.Top;Marshal.StructureToPtr(bounds,lParam,false);handled=true;}}return IntPtr.Zero;
+            const int GetMinMaxInfoMessage=0x0024;
+            if(message!=GetMinMaxInfoMessage)return IntPtr.Zero;
+
+            var bounds=(MinMaxInfo)Marshal.PtrToStructure(lParam,typeof(MinMaxInfo));
+            var monitor=MonitorFromWindow(hwnd,2);
+            var info=new MonitorInfo{Size=Marshal.SizeOf(typeof(MonitorInfo))};
+            if(GetMonitorInfo(monitor,ref info))
+            {
+                bounds.MaxPosition.X=info.Work.Left-info.Monitor.Left;
+                bounds.MaxPosition.Y=info.Work.Top-info.Monitor.Top;
+                bounds.MaxSize.X=info.Work.Right-info.Work.Left;
+                bounds.MaxSize.Y=info.Work.Bottom-info.Work.Top;
+            }
+
+            // This hook handles the message before WPF can enforce its minimum during a native resize.
+            var dpi=VisualTreeHelper.GetDpi(this);
+            bounds.MinTrackSize.X=Math.Max(bounds.MinTrackSize.X,(int)Math.Ceiling(MinWidth*dpi.DpiScaleX));
+            bounds.MinTrackSize.Y=Math.Max(bounds.MinTrackSize.Y,(int)Math.Ceiling(MinHeight*dpi.DpiScaleY));
+            Marshal.StructureToPtr(bounds,lParam,false);
+            handled=true;
+            return IntPtr.Zero;
         }
         [StructLayout(LayoutKind.Sequential)]struct NativePoint{public int X,Y;}
         [StructLayout(LayoutKind.Sequential)]struct MinMaxInfo{public NativePoint Reserved,MaxSize,MaxPosition,MinTrackSize,MaxTrackSize;}

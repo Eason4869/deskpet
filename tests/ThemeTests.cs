@@ -27,6 +27,23 @@ namespace Dafeiyu.Tests
         static double Light(Color color){Func<byte,double> linear=c=>{double v=c/255.0;return v<=.04045?v/12.92:Math.Pow((v+.055)/1.055,2.4);};return .2126*linear(color.R)+.7152*linear(color.G)+.0722*linear(color.B);}
         static double Contrast(Color a,Color b){double x=Light(a),y=Light(b);return (Math.Max(x,y)+.05)/(Math.Min(x,y)+.05);}
         static System.Collections.Generic.IEnumerable<T> All<T>(DependencyObject root) where T:DependencyObject {if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var child in All<T>(VisualTreeHelper.GetChild(root,i)))yield return child;}
+        static void CheckDropdownAppearance(ComboBox dropdown,string theme)
+        {
+            dropdown.ApplyTemplate();
+            var surface=(Border)dropdown.Template.FindName("surface",dropdown);
+            var popup=(System.Windows.Controls.Primitives.Popup)dropdown.Template.FindName("PART_Popup",dropdown);
+            var menu=(Border)popup.Child;
+            Check(surface.CornerRadius.TopLeft==9&&Contrast(Painted(surface.BorderBrush),Painted(surface.Background))>1.15,
+                theme+" dropdown has a rounded, visible field outline");
+            dropdown.IsDropDownOpen=true;Pump();
+            var selected=(ComboBoxItem)dropdown.ItemContainerGenerator.ContainerFromIndex(dropdown.SelectedIndex);
+            var check=(System.Windows.Shapes.Path)selected.Template.FindName("check",selected);
+            Check(popup.IsOpen&&menu.CornerRadius.TopLeft==9&&menu.MinWidth==dropdown.ActualWidth&&check.Visibility==Visibility.Visible&&
+                Contrast(Painted(menu.Background),Painted(selected.Foreground))>=4.5,
+                theme+" popup matches the field width and theme, with a visible selection");
+            dropdown.IsDropDownOpen=false;Pump();
+            Check(!popup.IsOpen,theme+" dropdown closes normally");
+        }
         static void CheckLiquidGeometry()
         {
             foreach (var size in new[] { new Size(420, 490), new Size(1280, 820) })
@@ -147,18 +164,22 @@ namespace Dafeiyu.Tests
                     "the theme dropdown contains the four effects, Off and Random in order");
                 Check(Enumerable.Range(0,32).All(_=>ThemeTransitionMotion.AnimatedEffects.Contains(ThemeTransitionMotion.Resolve(ThemeTransitionMotion.RandomSelection))),
                     "Random resolves only to an animated preset");
+                var concurrency=All<ComboBox>(main).Single(b=>b.Name=="ImageGenerationConcurrency");
+                Check(concurrency.ActualWidth==motion.ActualWidth&&Grid.GetColumn(concurrency)==1&&
+                    Math.Abs(concurrency.TranslatePoint(new Point(),main).X-motion.TranslatePoint(new Point(),main).X)<.5,
+                    "image concurrency and theme effect are compact, right-aligned dropdowns");
                 var themeSound=All<CheckBox>(main).Single(b=>b.Name=="ThemeTransitionSoundEnabled");
                 var themeVolume=All<Slider>(main).Single(s=>s.Name=="ThemeTransitionSoundVolume");
-                Check(themeSound.IsChecked==false&&themeVolume.Value==30,"appearance settings expose opt-in sound and 30 percent volume");
+                Check(themeSound.IsChecked==false&&themeVolume.Value==50,"appearance settings expose opt-in sound and 50 percent volume");
                 themeSound.IsChecked=true;themeVolume.Value=41;
                 Check(store.Load().ThemeTransitionSoundEnabled&&store.Load().ThemeTransitionSoundVolume==41,"appearance controls persist both theme audio preferences");
                 var artworkOpacity=All<Slider>(main).Single(s=>s.Name=="ChatArtworkOpacity");
                 var operationVolume=All<Slider>(main).Single(s=>s.Name=="CompanionOperationSoundVolume");
-                Check(operationVolume.Template==themeVolume.Template&&operationVolume.ActualWidth==themeVolume.ActualWidth&&
+                Check(operationVolume.Value==50&&operationVolume.Template==themeVolume.Template&&operationVolume.ActualWidth==themeVolume.ActualWidth&&
                     Math.Abs(operationVolume.TranslatePoint(new Point(),main).X-themeVolume.TranslatePoint(new Point(),main).X)<.5,
                     "operation sound slider is the same width and right alignment as theme volume");
-                Check(artworkOpacity.Template==themeVolume.Template&&artworkOpacity.Width==themeVolume.Width&&artworkOpacity.Value==30,
-                    "artwork opacity uses the volume slider style and defaults to 30 percent");
+                Check(artworkOpacity.Template==themeVolume.Template&&artworkOpacity.Width==themeVolume.Width&&artworkOpacity.Value==50,
+                    "artwork opacity uses the volume slider style and defaults to 50 percent");
                 artworkOpacity.Value=48;
                 Check(All<ChatAtmosphere>(main).Single(a=>a.Name=="ChatAtmosphere").ArtworkOpacity==.48&&store.Load().ChatArtworkOpacity==48,
                     "artwork opacity updates the open chat and survives settings reload");
@@ -167,7 +188,7 @@ namespace Dafeiyu.Tests
                     "settings preview shows the same live opacity without blocking controls");
                 artworkOpacity.Value=0;
                 Check(artworkPreview.Visibility==Visibility.Collapsed,"zero opacity also hides the settings preview");
-                artworkOpacity.Value=30;
+                artworkOpacity.Value=50;
                 var titleSwitch=All<ThemeTitleSwitch>(main).Single();
                 var titleLight=All<Button>(titleSwitch).Single(b=>b.Name=="AppThemeLight");
                 var titleDark=All<Button>(titleSwitch).Single(b=>b.Name=="AppThemeDark");
@@ -182,12 +203,12 @@ namespace Dafeiyu.Tests
                 Check(Contrast(Painted(((Border)picker.Content).Background),Painted(ThemeManager.Surface))>=1.18,"dark mode picker surface visibly separates from the page");
                 var generic=Ui.Card(Ui.Field());Check(Contrast(Painted(generic.Background),Painted(((TextBox)generic.Child).Background))>=1.2,"dark input fields separate from their containing cards");
                 var agentCard=AgentUi.Card(Ui.Text("工作卡片"));Check(Contrast(Painted(agentCard.Background),Painted(ThemeManager.Surface))>=1.18,"shared work cards visibly separate from the dark page");
-                Check(All<CheckBox>(main).Where(c=>c.IsVisible).All(c=>c.Foreground==Ui.Ink),"general switches use theme text instead of default black");Capture(main,"settings-dark.png");
+                Check(All<CheckBox>(main).Where(c=>c.IsVisible).All(c=>c.Foreground==Ui.Ink),"general switches use theme text instead of default black");Capture(main,"settings-dark.png");CheckDropdownAppearance(motion,"dark");
                 var lightChoice=picker.Origin("light");var darkChoice=picker.Origin("dark");
                 Click(lightChoice);
                 Check(ink.Color.R<100&&HasOverlay(main)==SystemParameters.ClientAreaAnimation,"settings choice reveals the light palette from its preview card");
                 if(SystemParameters.ClientAreaAnimation)Check(store.Load().ThemeMode=="dark","settings selection keeps the stored mode while its snapshot is active");
-                CompleteReveal(main);Capture(main,"settings-light.png");
+                CompleteReveal(main);Capture(main,"settings-light.png");CheckDropdownAppearance(motion,"light");
                 Click(darkChoice);
                 Check(ink.Color.R>160&&HasOverlay(main)==SystemParameters.ClientAreaAnimation,"settings choice also reveals the dark palette");
                 CompleteReveal(main);

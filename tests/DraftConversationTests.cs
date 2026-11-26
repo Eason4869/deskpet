@@ -16,6 +16,9 @@ namespace Dafeiyu.Tests
         static int passed,failed;static string root;static readonly BindingFlags hidden=BindingFlags.Instance|BindingFlags.NonPublic;
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
         static extern int DwmGetWindowAttribute(IntPtr handle,int attribute,out int value,int size);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        static extern IntPtr SendMessage(IntPtr handle,uint message,IntPtr wParam,
+            [System.Runtime.InteropServices.In,System.Runtime.InteropServices.Out] int[] data);
         static void Check(bool ok,string text){if(!ok)throw new Exception(text);}
         static void Run(string name,Action action){try{action();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
         static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return(T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var x in All<T>(VisualTreeHelper.GetChild(root,i)))yield return x;}
@@ -79,6 +82,12 @@ var restored=Pet(directory);try{restored.NewActiveConversation();Pump();var inpu
                 if(DwmGetWindowAttribute(chatHandle,14,out cloakFlags,sizeof(int))==0)
                     Check((cloakFlags&1)==0,"an already visible full chat remains on screen during expansion");
                 for(int i=0;i<10&&Application.Current.Windows.OfType<Window>().Any(w=>w.Name=="QuickChatExpansionOverlay");i++)Pump();
+                var resizeLimits=new int[10];
+                SendMessage(chatHandle,0x0024,IntPtr.Zero,resizeLimits);
+                var dpi=VisualTreeHelper.GetDpi(chat);
+                Check(resizeLimits[6]>=(int)Math.Ceiling(chat.MinWidth*dpi.DpiScaleX)&&
+                    resizeLimits[7]>=(int)Math.Ceiling(chat.MinHeight*dpi.DpiScaleY),
+                    "native resize tracking enforces the full chat minimum size at the current DPI");
                 quick.Close();
                 chat.Width=780;chat.Height=620;Pump();
                 double width=chat.ActualWidth,height=chat.ActualHeight;
@@ -93,6 +102,14 @@ var restored=Pet(directory);try{restored.NewActiveConversation();Pump();var inpu
                 p.ShowChat();Pump();
                 var reopened=Chat();
                 Check(reopened.WindowState==WindowState.Maximized,"the reopened full chat restores maximized state");
+                reopened.Close();Pump();
+                p.Settings.ChatWindowWidth=400;
+                p.Settings.ChatWindowHeight=320;
+                p.Settings.ChatWindowMaximized=false;
+                p.ShowChat();Pump();
+                var clamped=Chat();
+                Check(clamped.ActualWidth>=clamped.MinWidth-1&&clamped.ActualHeight>=clamped.MinHeight-1,
+                    "restoring an old undersized window honors the minimum");
             }
             finally
             {

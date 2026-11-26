@@ -74,7 +74,17 @@ namespace Dafeiyu
             appearance.Children.Add(Ui.SettingRow(()=>TextResources.Get("chatAtmosphere.opacity"),null,artworkOpacity,alignRight:true));
             var language=LocalizedUi.Button(()=>{var choice=System.Linq.Enumerable.FirstOrDefault(UiLanguages.Choices,c=>c.Code==pet.Settings.UiLanguage);return choice==null?pet.Settings.UiLanguage:choice.NativeName;});language.Name="GeneralLanguage";language.Click+=delegate{var dialog=LanguagePickerWindow.CreateAsync(pet.Settings.UiLanguage,code=>pet.ChangeLanguageAsync(code));dialog.Owner=Window.GetWindow(this);dialog.ShowDialog();};appearance.Children.Add(Ui.SettingRow(()=>TextResources.Get("settingsLayout.language"),null,language));
             imageMotion=SettingsSurface.Toggle(()=>(TextResources.Get("quietPanel.quietPanel.toggle")),pet.Settings.ImageGenerationMotionEnabled,delegate(bool enabled){if(!refreshing){pet.Settings.ImageGenerationMotionEnabled=enabled;pet.SaveSettings();}});imageMotion.Name="ImageGenerationMotionEnabled";appearance.Children.Add(imageMotion);
-            imageConcurrency=new ComboBox{Name="ImageGenerationConcurrency",ItemsSource=new[]{1,2,3,4},SelectedItem=pet.Settings.ImageGenerationConcurrency,MinHeight=36};imageConcurrency.SelectionChanged+=delegate{if(!refreshing&&imageConcurrency.SelectedItem is int){pet.Settings.ImageGenerationConcurrency=(int)imageConcurrency.SelectedItem;pet.ImageTasks.Concurrency=pet.Settings.ImageGenerationConcurrency;pet.SaveSettings();}};LocalizedUi.Label(appearance,()=>(TextResources.Get("quietPanel.quietPanel.text.alternativeA")),imageConcurrency);SettingsSurface.Section(general,()=>TextResources.Get("settingsLayout.appearanceGroup"),appearance);
+            imageConcurrency=new ComboBox{Name="ImageGenerationConcurrency",ItemsSource=new[]{1,2,3,4},
+                SelectedItem=pet.Settings.ImageGenerationConcurrency,Width=180,MinHeight=36};
+            imageConcurrency.SelectionChanged+=delegate
+            {
+                if(refreshing||!(imageConcurrency.SelectedItem is int))return;
+                pet.Settings.ImageGenerationConcurrency=(int)imageConcurrency.SelectedItem;
+                pet.ImageTasks.Concurrency=pet.Settings.ImageGenerationConcurrency;
+                pet.SaveSettings();
+            };
+            appearance.Children.Add(Ui.SettingRow(()=>TextResources.Get("quietPanel.quietPanel.text.alternativeA"),null,imageConcurrency,alignRight:true,stackBelow:350));
+            SettingsSurface.Section(general,()=>TextResources.Get("settingsLayout.appearanceGroup"),appearance);
             var behavior=new StackPanel{Margin=new Thickness(0,8,0,0)};
             quiet=SettingsSurface.Toggle(()=>(TextResources.Get("quietPanel.quietPanel.toggle.alternativeA")),pet.Settings.QuietMode,delegate(bool enabled){if(!refreshing)pet.SetQuietMode(enabled);});quiet.Name="QuietMode";behavior.Children.Add(quiet);behavior.Children.Add(IndentedHelp(()=>(TextResources.Get("quietPanel.quietPanel.text.alternativeB"))));
             notificationSounds=SettingsSurface.Toggle(()=>TextResources.Get("notificationSounds.enabled"),pet.Settings.NotificationSoundsEnabled,delegate(bool enabled){if(!refreshing){pet.Settings.NotificationSoundsEnabled=enabled;if(!enabled)pet.StopNotificationSounds();pet.SaveSettings();}});notificationSounds.Name="NotificationSoundsEnabled";behavior.Children.Add(notificationSounds);behavior.Children.Add(IndentedHelp(()=>TextResources.Get("operationSounds.help")));

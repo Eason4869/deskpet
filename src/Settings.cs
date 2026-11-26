@@ -244,13 +244,13 @@ namespace Dafeiyu
         int? themeTransitionSoundVolume;
         [DataMember] public int ThemeTransitionSoundVolume
         {
-            get { return themeTransitionSoundVolume ?? 30; }
+            get { return themeTransitionSoundVolume ?? 50; }
             set { themeTransitionSoundVolume = Math.Max(0, Math.Min(100, value)); }
         }
         int? chatArtworkOpacity;
         [DataMember] public int ChatArtworkOpacity
         {
-            get { return chatArtworkOpacity ?? 30; }
+            get { return chatArtworkOpacity ?? 50; }
             set { chatArtworkOpacity=Math.Max(0,Math.Min(100,value)); }
         }
         int companionOperationSoundVolume;
@@ -332,7 +332,7 @@ namespace Dafeiyu
             ThemeMode="system";
             UiLanguage=UiLanguages.Default;
             OnboardingLessonId="";OnboardingCompletedLessons=new List<string>();OnboardingSkippedLessons=new List<string>();OnboardingVerifiedLessons=new List<string>();AgentSystemPrompt=DefaultAgentSystemPrompt;OnboardingState="new";OnboardingStep=0;OnboardingVersion=1;LastOnboardingSeries="";
-            SaveChatHistory=true; QuietMode=false; NotificationSoundsEnabled=true; CompanionOperationSoundVolume=30; HideOnFullscreen=true; ClickThrough=false; LockPosition=false;
+            SaveChatHistory=true; QuietMode=false; NotificationSoundsEnabled=true; CompanionOperationSoundVolume=50; HideOnFullscreen=true; ClickThrough=false; LockPosition=false;
             AgentFullAccess=true;AgentBackupFiles=true;AgentContextTokenLimit=32768;AgentDetailedProcess=false;ShowPredictedMessages=true;PlainTextEditor=false;ShowContextUsage=true;SendOnEnter=true;FollowUpBehavior="queue";
             // Full conversation defaults to work mode; quick chat is always
             // conversation-only and switches its own requests regardless.

@@ -276,14 +276,23 @@ internal sealed class SettingsWindow : Window
         operationPreviews.Margin=new Thickness(16,0,0,0);
         var operationHelp=SettingsVisual.Text(()=>TextResources.Get("operationSounds.help"),12,true);
         operationHelp.Margin=new Thickness(16,0,0,0);
-        var concurrency=new NumericUpDown{Name="ImageGenerationConcurrency",Minimum=1,Maximum=4,Increment=1,Value=s.ImageGenerationConcurrency};concurrency.ValueChanged+=(_,_)=>{if(concurrency.Value.HasValue){s.ImageGenerationConcurrency=(int)concurrency.Value.Value;owner.Save();}};
+        Func<string> concurrencyLabel=()=>TextResources.Get("settingsWindow.behavior.field.alternativeA");
+        var concurrency=new ComboBox{Name="ImageGenerationConcurrency",ItemsSource=new[]{1,2,3,4},Width=145,
+            SelectedItem=s.ImageGenerationConcurrency};
+        LocalizedUi.Automation(concurrency,concurrencyLabel);
+        concurrency.SelectionChanged+=(_,_) =>
+        {
+            if(concurrency.SelectedItem is not int value)return;
+            s.ImageGenerationConcurrency=value;
+            owner.Save();
+        };
         var shortcuts=Ui.Column();
         foreach(var entry in new (string Id,Func<string> Title)[]{("chat",()=>TextResources.Get("settingsWindow.behavior.text.alternativeE")),("show",()=>TextResources.Get("settingsWindow.behavior.text.alternativeF")),("hide",()=>TextResources.Get("settingsWindow.behavior.text.alternativeG"))})
             shortcuts.Children.Add(SettingsVisual.CheckRow(entry.Title,s.Hotkeys.GetValueOrDefault(entry.Id)=="enabled",v=>{s.Hotkeys[entry.Id]=v?"enabled":"disabled";owner.Save();owner.RegisterHotkeys();}));
         var data=LocalizedUi.Button(()=>TextResources.Get("dataManagement.title"),()=>SelectSection("storage"));data.Name="GeneralDataManagement";
         return SettingsVisual.Page(general,
             SettingsVisual.Group(()=>TextResources.Get("settingsLayout.behaviorGroup"),notificationSounds,operationHelp,SettingsVisual.SettingRow(operationVolumeLabel,operationVolume,12,true),operationPreviews),
-            SettingsVisual.Group(()=>TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"),imageMotion,LocalizedUi.Field(()=>TextResources.Get("settingsWindow.behavior.field.alternativeA"),concurrency)),
+            SettingsVisual.Group(()=>TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"),imageMotion,SettingsVisual.SettingRow(concurrencyLabel,concurrency,12,true)),
             SettingsVisual.Group(()=>TextResources.Get("settingsWindow.behavior.text.alternativeD"),shortcuts,
                 LocalizedUi.Button(()=>TextResources.Get("settingsWindow.behavior.text.alternativeH"),()=>{try{MacServices.SetLoginAtStartup(true);}catch(Exception e){owner.Error(e);}}),
                 LocalizedUi.Button(()=>TextResources.Get("settingsWindow.behavior.text.alternativeI"),()=>{try{MacServices.SetLoginAtStartup(false);}catch(Exception e){owner.Error(e);}})),
