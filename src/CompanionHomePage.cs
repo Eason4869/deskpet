@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace Dafeiyu
@@ -23,6 +22,7 @@ namespace Dafeiyu
         bool entrancePending=true;
         readonly DispatcherTimer entranceTimer=new DispatcherTimer(DispatcherPriority.Loaded){Interval=TimeSpan.FromMilliseconds(55)};
         Action playEntrance;
+        CompanionHomeEntrance entrance;
         readonly System.Windows.Threading.DispatcherTimer holidayPulse=new System.Windows.Threading.DispatcherTimer();
         internal Task PendingHoliday {get{return holidayAlbum.Pending;}}
         async void ObserveShownHome(){if(disposed)return;var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome);}
@@ -48,8 +48,8 @@ namespace Dafeiyu
             this.owner = owner; model = new RelationshipHomeModel(owner.Relationships);
             holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,async delegate{var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.Store.DirectoryPath);
             holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
-            Loaded+=delegate{holidayPulse.Start();ObserveShownHome();};Unloaded+=delegate{holidayPulse.Stop();};
-            IsVisibleChanged+=delegate{if(!IsVisible){entranceTimer.Stop();playEntrance=null;}};
+            Loaded+=delegate{holidayPulse.Start();ObserveShownHome();};Unloaded+=delegate{holidayPulse.Stop();StopEntrance();};
+            IsVisibleChanged+=delegate{if(!IsVisible)StopEntrance();};
             entranceTimer.Tick+=delegate
             {
                 entranceTimer.Stop();
@@ -99,6 +99,7 @@ namespace Dafeiyu
         void Render()
         {
             if(View==null||View.CompanionId!=owner.RelationshipCompanionId){ObserveRefresh();return;}
+            StopEntrance();
             displayedSkin=owner.Skin;displayedName=owner.Skin.DisplayName;
             int version=revision;double scroll=VerticalOffset;
             var focused=Keyboard.FocusedElement as FrameworkElement;
@@ -148,7 +149,7 @@ namespace Dafeiyu
                 var timeline=Section(()=> (TextResources.Get("relationship.home.timeline")));var cards=Section(()=> (TextResources.Get("relationship.home.cards")));cardsWrap=new WrapPanel();cards.Children.Add(cardsWrap);
                 cardsWrap.SizeChanged+=delegate(object sender,SizeChangedEventArgs args){if(!disposed&&args.WidthChanged&&updateLayout!=null)updateLayout();};
                 if(View.Snapshot.State==null){timeline.Children.Add(Label(()=>(TextResources.Get("relationship.home.empty"))));cards.Children.Add(Label(()=>(TextResources.Get("relationship.home.emptyCards"))));}
-                else foreach(var milestone in View.Snapshot.State.Milestones.AsEnumerable().Reverse())timeline.Children.Add(HomeVisual.Milestone(()=> (RelationshipContent.StageName(milestone.StageId)),()=> (RelationshipCardData.FormatDate(milestone.EarnedLocalDate))));
+                else foreach(var milestone in View.Snapshot.State.Milestones)timeline.Children.Add(HomeVisual.Milestone(()=> (RelationshipContent.StageName(milestone.StageId)),()=> (RelationshipCardData.FormatDate(milestone.EarnedLocalDate))));
                 if(View.Snapshot.State!=null)foreach(var milestone in View.Snapshot.State.Milestones){
                     HomeCardCapture capture;if(!captures.TryGetValue(milestone.StageId,out capture)||capture.Data.EarnedLocalDate!=milestone.EarnedLocalDate||capture.Data.FirstLocalDate!=View.Snapshot.State.FirstLocalDate){var data=RelationshipCardData.FromSnapshot(View.Snapshot,milestone.StageId,owner.Skin.DisplayName);capture=new HomeCardCapture(data,RelationshipCardRenderer.Render(data,portrait.Image,ThemeManager.IsDark,scenes.Get(data))){Expanded=expandedStages.Contains(milestone.StageId)};captures[milestone.StageId]=capture;}
                     var card=new RelationshipCardPreview(capture,RelationshipContent.Welcome(milestone.StageId,owner.RelationshipPack),delegate{return !disposed&&captureKey==key&&identity==capture.Data.CompanionId&&owner.RelationshipCompanionId==capture.Data.CompanionId&&version==revision;},delegate{return !disposed&&owner.RelationshipCompanionId==capture.Data.CompanionId;},delegate{if(updateLayout!=null)updateLayout();});cardsWrap.Children.Add(card);
@@ -174,16 +175,20 @@ namespace Dafeiyu
             var settingsBox=HomeVisual.Box(groups,false);body.Children.Add(settingsBox);
             if(entrancePending&&IsVisible&&SystemParameters.ClientAreaAnimation)
             {
-                var cards=new List<Action>{PrepareFloat(profileBox,0),PrepareFloat(relationBox,55)};
+                entrance=new CompanionHomeEntrance(this);
+                entrance.Float(profileBox,0);
+                entrance.Float(relationBox,RelationshipHomeMotion.CardStagger);
+                if(nodes!=null)for(int i=0;i<nodes.Children.Count;i++)entrance.Float((FrameworkElement)nodes.Children[i],RelationshipHomeMotion.RelationReady+i*.055,8);
+                if(stats!=null)for(int i=0;i<stats.Children.Count;i++)entrance.Float((FrameworkElement)stats.Children[i],RelationshipHomeMotion.RelationReady+.12+i*.08,12);
                 if(bottom!=null&&!holidaySelected)
                 {
-                    cards.Add(PrepareFloat((FrameworkElement)bottom.Children[0],115));
-                    int index=0;
-                    foreach(FrameworkElement card in cardsWrap.Children)cards.Add(PrepareFloat(card,95+Math.Min(index++,3)*25));
+                    var timeline=(StackPanel)bottom.Children[0];
+                    for(int i=0;i<cardsWrap.Children.Count;i++)entrance.Float((FrameworkElement)cardsWrap.Children[i],RelationshipHomeMotion.AlbumDelay(i));
+                    for(int i=1;i<timeline.Children.Count;i++)if(timeline.Children[i] is Grid)entrance.Milestone((FrameworkElement)timeline.Children[i],RelationshipHomeMotion.AlbumDelay(i-1));
                 }
-                cards.Add(PrepareFloat(settingsBox,140));
-                var playRing=HomeVisual.PrepareRingSweep(ring);
-                playEntrance=delegate{foreach(var play in cards)play();playRing();};
+                entrance.Float(settingsBox,.18+(cardsWrap==null?0:cardsWrap.Children.Count)*RelationshipHomeMotion.CardSeconds);
+                entrance.Ring(ring);
+                playEntrance=()=>entrance.Start();
                 entranceTimer.Stop();entranceTimer.Start();
             }
             updateLayout=delegate{
@@ -200,21 +205,10 @@ namespace Dafeiyu
                 if(Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive)settingsExp.Focus();
             }
         }
-        static Action PrepareFloat(FrameworkElement card,int delay)
+        void StopEntrance()
         {
-            var offset=new TranslateTransform(0,20);
-            card.RenderTransform=offset;
-            var slide=new DoubleAnimation(20,0,TimeSpan.FromMilliseconds(340))
-            {
-                BeginTime=TimeSpan.FromMilliseconds(delay),FillBehavior=FillBehavior.HoldEnd,
-                EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}
-            };
-            slide.Completed+=delegate{offset.Y=0;offset.BeginAnimation(TranslateTransform.YProperty,null);};
-            return delegate
-            {
-                if(SystemParameters.ClientAreaAnimation)offset.BeginAnimation(TranslateTransform.YProperty,slide);
-                else offset.Y=0;
-            };
+            entranceTimer.Stop();playEntrance=null;
+            if(entrance!=null){entrance.Dispose();entrance=null;}
         }
         void AddSetting(StackPanel parent,string name,System.Func<string> label,bool value,int kind)
         {
@@ -248,6 +242,6 @@ LocalizedUi.Automation(check,label);
             finally{saving=false;}
             if(!disposed)await RefreshAsync();
         }
-        public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();entranceTimer.Stop();playEntrance=null;holidayAlbum.Dispose();ThemeManager.Changed-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;body.Children.Clear();captures.Clear();scenes.Dispose();}
+        public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();StopEntrance();holidayAlbum.Dispose();ThemeManager.Changed-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;body.Children.Clear();captures.Clear();scenes.Dispose();}
  TextBlock Label(System.Func<string> value,double size=13,string name=null){return LocalizedUi.With(Label(value(),size,name),"Text",value);} TextBlock Text(System.Func<string> value,double size=13,string name=null){return LocalizedUi.With(Text(value(),size,name),"Text",value);}    }
 }

@@ -51,9 +51,35 @@ namespace DeskPet.Desktop;
         {
             var grid=new Grid{Width=108,Height=108,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Top};
             grid.Children.Add(new Ellipse{Width=98,Height=98,Stroke=DesktopTheme.Brush("#D5E1ED"),StrokeThickness=8});
-            if(fraction>=1)grid.Children.Add(new Ellipse{Width=98,Height=98,Stroke=Accent,StrokeThickness=8});
-            else if(fraction>0){double angle=fraction*Math.PI*2,x=54+49*Math.Sin(angle),y=54-49*Math.Cos(angle);string path=String.Format(System.Globalization.CultureInfo.InvariantCulture,"M54,5 A49,49 0 {0} 1 {1},{2}",fraction>.5?1:0,x,y);grid.Children.Add(new Path{Data=Geometry.Parse(path),Stroke=Accent,StrokeThickness=8,StrokeLineCap=PenLineCap.Round});}
+            grid.Children.Add(new RelationshipProgressArc{Progress=Math.Clamp(fraction,0,1),IsHitTestVisible=false});
             grid.Children.Add(Icon("heart",32));LocalizedUi.Automation(grid,()=>(TextResources.Get("relationship.home.relation")));return grid;
+        }
+        internal static void ScheduleRing(RelationshipHomeMotion motion,Control ring,double delay)
+        {
+            if(ring==null)return;
+            var arc=((Grid)ring).Children.OfType<RelationshipProgressArc>().Single();
+            double progress=arc.Progress;
+            motion.Add(delay,RelationshipHomeMotion.RingDuration(progress),value=>arc.Progress=progress*value);
+        }
+        sealed class RelationshipProgressArc:Control
+        {
+            double progress;
+            internal double Progress {get=>progress;set{progress=value;InvalidateVisual();}}
+            readonly Pen pen=new Pen(Accent,8,lineCap:PenLineCap.Round);
+            public override void Render(DrawingContext drawing)
+            {
+                if(progress<=0)return;
+                if(progress>=1){drawing.DrawEllipse(null,pen,new Point(54,54),49,49);return;}
+                var geometry=new StreamGeometry();
+                double angle=progress*Math.PI*2;
+                using(var path=geometry.Open())
+                {
+                    path.BeginFigure(new Point(54,5),false);
+                    path.ArcTo(new Point(54+49*Math.Sin(angle),54-49*Math.Cos(angle)),new Size(49,49),0,progress>.5,SweepDirection.Clockwise);
+                    path.EndFigure(false);
+                }
+                drawing.DrawGeometry(null,pen,geometry);
+            }
         }
         static void FitNodes(UniformGrid panel)
         {

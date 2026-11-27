@@ -21,7 +21,7 @@ internal sealed partial class ChatWindow
     Control CompanionRouteContent()
     {
         if(CurrentPage=="companion"){
-            companionPage??=new CompanionHomePage(owner);owner.RecordVisit();RefreshCompanion();return companionPage;
+            companionPage??=new CompanionHomePage(owner);companionPage.PrepareEntrance();owner.RecordVisit();RefreshCompanion();return companionPage;
         }
         if (CurrentPage == ScheduledTasksRoute)
         {

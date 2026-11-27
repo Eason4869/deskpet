@@ -29,24 +29,12 @@ namespace Dafeiyu
             grid.Children.Add(arc);
             grid.Children.Add(Icon("heart",32));LocalizedUi.Automation(grid,()=>(TextResources.Get("relationship.home.relation")));return grid;
         }
-        internal static Action PrepareRingSweep(FrameworkElement ring)
+        internal static void ScheduleRing(RelationshipHomeMotion motion,FrameworkElement ring,double delay)
         {
-            if(ring==null)return delegate{};
+            if(ring==null)return;
             var arc=((Grid)ring).Children.OfType<RelationshipProgressArc>().Single();
             double progress=arc.Progress;
-            if(progress<=0)return delegate{};
-            arc.Progress=0;
-            return delegate
-            {
-                if(!SystemParameters.ClientAreaAnimation){arc.Progress=progress;return;}
-                var sweep=new System.Windows.Media.Animation.DoubleAnimation(0,progress,TimeSpan.FromMilliseconds(620))
-                {
-                    BeginTime=TimeSpan.FromMilliseconds(90),
-                    EasingFunction=new System.Windows.Media.Animation.CubicEase{EasingMode=System.Windows.Media.Animation.EasingMode.EaseOut}
-                };
-                sweep.Completed+=delegate{arc.Progress=progress;arc.BeginAnimation(RelationshipProgressArc.ProgressProperty,null);};
-                arc.BeginAnimation(RelationshipProgressArc.ProgressProperty,sweep);
-            };
+            motion.Add(delay,RelationshipHomeMotion.RingDuration(progress),value=>arc.Progress=progress*value);
         }
         sealed class RelationshipProgressArc:FrameworkElement
         {
