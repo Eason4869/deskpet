@@ -73,7 +73,13 @@ def find_visible(caption,parent):
 
 def completion_window():
     if not completion_ready.is_file():return None
-    value=completion_ready.read_text(encoding='ascii')
+    # Inno writes the marker with SaveStringToFile, which holds it exclusively
+    # while truncating and writing; a poll inside that window must retry rather
+    # than fail the whole acceptance run with a sharing violation.
+    for _ in range(5):
+        try:value=completion_ready.read_text(encoding='ascii');break
+        except PermissionError:time.sleep(.02)
+    else:return None
     window=int(value) if value.isdigit() else 0
     if not window or not u.IsWindowVisible(window):return None
     text=ctypes.create_unicode_buffer(96)
