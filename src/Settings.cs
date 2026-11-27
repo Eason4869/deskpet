@@ -191,6 +191,9 @@ namespace Dafeiyu
         [DataMember] public int OnboardingVersion { get; set; }
         [DataMember] public string LastOnboardingSeries { get; set; }
         [DataMember] public bool SaveChatHistory { get; set; }
+        [DataMember(EmitDefaultValue=false)] public double ChatWindowWidth {get;set;}
+        [DataMember(EmitDefaultValue=false)] public double ChatWindowHeight {get;set;}
+        [DataMember(EmitDefaultValue=false)] public bool ChatWindowMaximized {get;set;}
         [DataMember] public bool AgentEnabled { get; set; }
         [DataMember] public WebSearchSettings WebSearch=new WebSearchSettings();
         [DataMember] public bool AgentCommandsEnabled {get;set;}
@@ -241,8 +244,14 @@ namespace Dafeiyu
         int? themeTransitionSoundVolume;
         [DataMember] public int ThemeTransitionSoundVolume
         {
-            get { return themeTransitionSoundVolume ?? 30; }
+            get { return themeTransitionSoundVolume ?? 50; }
             set { themeTransitionSoundVolume = Math.Max(0, Math.Min(100, value)); }
+        }
+        int? chatArtworkOpacity;
+        [DataMember] public int ChatArtworkOpacity
+        {
+            get { return chatArtworkOpacity ?? 50; }
+            set { chatArtworkOpacity=Math.Max(0,Math.Min(100,value)); }
         }
         int companionOperationSoundVolume;
         [DataMember] public int CompanionOperationSoundVolume { get { return companionOperationSoundVolume; } set { companionOperationSoundVolume=Math.Max(0,Math.Min(100,value)); } }
@@ -323,7 +332,7 @@ namespace Dafeiyu
             ThemeMode="system";
             UiLanguage=UiLanguages.Default;
             OnboardingLessonId="";OnboardingCompletedLessons=new List<string>();OnboardingSkippedLessons=new List<string>();OnboardingVerifiedLessons=new List<string>();AgentSystemPrompt=DefaultAgentSystemPrompt;OnboardingState="new";OnboardingStep=0;OnboardingVersion=1;LastOnboardingSeries="";
-            SaveChatHistory=true; QuietMode=false; NotificationSoundsEnabled=true; CompanionOperationSoundVolume=30; HideOnFullscreen=true; ClickThrough=false; LockPosition=false;
+            SaveChatHistory=true; QuietMode=false; NotificationSoundsEnabled=true; CompanionOperationSoundVolume=50; HideOnFullscreen=true; ClickThrough=false; LockPosition=false;
             AgentFullAccess=true;AgentBackupFiles=true;AgentContextTokenLimit=32768;AgentDetailedProcess=false;ShowPredictedMessages=true;PlainTextEditor=false;ShowContextUsage=true;SendOnEnter=true;FollowUpBehavior="queue";
             // Full conversation defaults to work mode; quick chat is always
             // conversation-only and switches its own requests regardless.
@@ -505,6 +514,7 @@ namespace Dafeiyu
             return new PetSettings { WebSearch=(WebSearch??new WebSearchSettings()).Copy(),ImageDescriptionModel=ImageDescriptionModel==null?null:ImageDescriptionModel.Copy(),ImageDescriptionOverride=ImageDescriptionOverride==null?null:ImageDescriptionOverride.Copy(),DesktopObservationEnabled=DesktopObservationEnabled,DesktopObservationCaptureScope=DesktopObservationCaptureScope,DesktopObservationConsentVersion=DesktopObservationConsentVersion,DesktopObservationConsentDestination=DesktopObservationConsentDestination,DesktopObservationExcludedApps=new List<string>(DesktopObservationExcludedApps??new List<string>()),ThemeMode=ThemeMode,ThemeTransitionEffect=ThemeTransitionEffect,CompanionTransitionEffect=CompanionTransitionEffect,UiLanguage=UiLanguage,ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentBackgroundJobTimeoutSeconds=AgentBackgroundJobTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),GitHubCliAccount=GitHubCliAccount,ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,NotificationSoundsEnabled=NotificationSoundsEnabled,CompanionOperationSoundVolume=CompanionOperationSoundVolume,ThemeTransitionSoundEnabled=ThemeTransitionSoundEnabled,ThemeTransitionSoundVolume=ThemeTransitionSoundVolume,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),LastCompanionUpgradeVersion=LastCompanionUpgradeVersion,PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
                 ImageGenerationConcurrency=ImageGenerationConcurrency,ImageGenerationMotionEnabled=ImageGenerationMotionEnabled,ImageGalleryLayout=ImageGalleryLayout,ImageProviders=images,ActiveImageProviderId=ActiveImageProviderId,AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,GreetingAutoReadEnabled=GreetingAutoReadEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,GreetingIntervalMinutes=GreetingIntervalMinutes,GreetingJitterMinutes=GreetingJitterMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
+                ChatArtworkOpacity=ChatArtworkOpacity,ChatWindowWidth=ChatWindowWidth,ChatWindowHeight=ChatWindowHeight,ChatWindowMaximized=ChatWindowMaximized,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,
                 PersonaOverrides=new Dictionary<string,string>(PersonaOverrides),RepositoryUrl=RepositoryUrl,UpdateUseProxy=UpdateUseProxy,UpdateProxyAddress=UpdateProxyAddress,UpdateUseMirror=UpdateUseMirror,UpdateMirrorAddress=UpdateMirrorAddress,UpdateChannel=UpdateChannel,AutoUpdate=AutoUpdate,LastUpdateCheckUtcTicks=LastUpdateCheckUtcTicks,Text=Text.Copy(),Transcription=Transcription.Copy(),Speech=Speech.Copy() };
         }
@@ -680,6 +690,7 @@ namespace Dafeiyu
             target.QuietMode=source.QuietMode;target.NotificationSoundsEnabled=source.NotificationSoundsEnabled;target.CompanionOperationSoundVolume=source.CompanionOperationSoundVolume;target.HideOnFullscreen=source.HideOnFullscreen;
             target.ThemeTransitionSoundEnabled=source.ThemeTransitionSoundEnabled;
             target.ThemeTransitionSoundVolume=source.ThemeTransitionSoundVolume;
+            target.ChatArtworkOpacity=source.ChatArtworkOpacity;
             target.ThemeTransitionEffect=source.ThemeTransitionEffect;
             target.CompanionTransitionEffect=source.CompanionTransitionEffect;
             target.ClickThrough=source.ClickThrough;target.LockPosition=source.LockPosition;

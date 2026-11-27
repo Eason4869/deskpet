@@ -66,7 +66,9 @@ namespace Dafeiyu
         void SelectGoalMode()
         {
             if (!CanUseComposerWorkModes() || session.IsBusy || queue.IsRunning) return;
-            if (ComposerWorkMode == "goal") ShowGoal();
+            var options=pet.ConversationGoalOptions(session);
+            if (options!=null&&options.GoalPaused) ((ChatWindow)host).OpenWorkspacePlanGoal(false);
+            else if (ComposerWorkMode == "goal") ShowGoal();
             else ChangeComposerWorkMode("goal");
         }
 

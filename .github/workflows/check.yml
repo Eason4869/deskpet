@@ -1,7 +1,7 @@
 name: Windows checks
 on:
   push:
-    branches: [main, dev, codex/macos-0.6.0]
+    branches: [main, dev, codex/macos-0.6.0, codex/release-1.0.8]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -160,11 +160,11 @@ jobs:
           if ($LASTEXITCODE) { throw 'Pillow installation failed' }
           python tests/BundledEbaoAuthoringTests.py
           if ($LASTEXITCODE) { throw 'Bundled authoring checks failed' }
-          ./Build.ps1 -Target WpfOfficialCompanionTests -TestArguments '--operation-sounds-ui'
+          ./Build.ps1 -Target WpfOfficialCompanionTests -OutputDirectory work/operation -TestArguments '--operation-sounds-ui'
           if ($LASTEXITCODE) { throw 'Operation sound UI acceptance failed' }
-          ./Build.ps1 -Target WpfOfficialCompanionTests -TestArguments '--installation-status'
+          ./Build.ps1 -Target WpfOfficialCompanionTests -OutputDirectory work/status -TestArguments '--installation-status'
           if ($LASTEXITCODE) { throw 'Installation status acceptance failed' }
-          ./Build.ps1 -Target WpfOfficialCompanionTests -TestArguments '--bundled-e'
+          ./Build.ps1 -Target WpfOfficialCompanionTests -OutputDirectory work/bundle -TestArguments '--bundled-e'
           if ($LASTEXITCODE) { throw 'Bundled Ebao acceptance failed' }
       - name: Compile application
         shell: powershell

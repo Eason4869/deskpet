@@ -110,7 +110,6 @@ namespace Dafeiyu
         long BeginCompanionSelection(SkinDefinition target)
         {
             if(officialSelection!=null)officialSelection.Cancel();
-            if(chat!=null&&chat.CompanionReveal!=null)chat.CompanionReveal.Cancel();
             officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;renderedSelection=null;
             bool hadPending=!String.IsNullOrEmpty(Settings.PendingOfficialCompanionId);Settings.PendingOfficialCompanionId="";
             if(hadPending)SaveSettings();return officialRequest;
@@ -165,10 +164,12 @@ namespace Dafeiyu
                     }
                     if(!OwnsOfficial(token)||cancel.IsCancellationRequested)return false;
                     SelectionStage(token,ready,origin,"prepared",cached);
+                    if(!OwnsOfficial(token)||cancel.IsCancellationRequested)return false;
                     if(!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding,origin==CompanionSelectionOrigin.StartupRestore)){SelectionStage(token,ready,origin,"reselect-required");return false;}
                     bool changed=Skin.PickerKey!=ready.PickerKey;
                     if(changed&&chat!=null&&origin!=CompanionSelectionOrigin.StartupRestore&&origin!=CompanionSelectionOrigin.Onboarding)
                         reveal=chat.PrepareCompanionReveal(token,Skin.PickerKey,ready.PickerKey);
+                    if(!OwnsOfficial(token)||cancel.IsCancellationRequested)return false;
                     if(!ActivateSkin(ready))return false;
                     WpfPreparedCompanion.Activate(ready);Catalog.PreserveActive(ready);MergeOfficialHoliday(ready);RefreshHoliday();UpdateFrame();
                     if(reveal!=null)

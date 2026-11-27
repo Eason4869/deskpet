@@ -17,7 +17,7 @@ namespace Dafeiyu
         internal const string CliProtocol = "github-cli";
         const int MaximumResponseBytes=2*1024*1024,MaximumTextChars=120000;
         readonly Uri apiRoot; readonly HttpClient http;
-        readonly string apiToken, expectedLogin;
+        readonly string apiToken, expectedLogin, proxyAddress;
         readonly Func<HttpMethod, string, string, CancellationToken, Task<string>> apiTransport;
         string repository;
         bool disposed;
@@ -32,20 +32,22 @@ namespace Dafeiyu
             }
         }
         internal GitHubClient(Uri root,HttpMessageHandler handler,string repository,string token,
-            Func<HttpMethod, string, string, CancellationToken, Task<string>> apiTransport = null, string expectedLogin = null)
+            Func<HttpMethod, string, string, CancellationToken, Task<string>> apiTransport = null, string expectedLogin = null,
+            string proxyAddress = null)
         {
             apiRoot=root??new Uri(PublicApi);this.repository=repository??"";this.apiToken=token??"";
             this.apiTransport = apiTransport;
             this.expectedLogin = expectedLogin ?? "";
+            this.proxyAddress = handler == null ? proxyAddress : null;
             http=new HttpClient(handler??new HttpClientHandler{UseProxy=false,AllowAutoRedirect=false}){Timeout=Timeout.InfiniteTimeSpan};
         }
-        internal GitHubClient(string repository,ConnectionSettings settings):this(new Uri(String.IsNullOrWhiteSpace(settings==null?null:settings.BaseUrl)?"https://api.github.com/":settings.BaseUrl),null,repository,settings==null?null:settings.ApiKey)
+        internal GitHubClient(string repository,ConnectionSettings settings):this(new Uri(String.IsNullOrWhiteSpace(settings==null?null:settings.BaseUrl)?"https://api.github.com/":settings.BaseUrl),null,repository,settings==null?null:settings.ApiKey,proxyAddress:ConfiguredProxyAddress(settings))
         {
         }
 
-        internal static GitHubClient ForApp(string repository, string apiToken, HttpMessageHandler handler = null)
+        internal static GitHubClient ForApp(string repository, string apiToken, HttpMessageHandler handler = null, string proxyAddress = null)
         {
-            return new GitHubClient(new Uri(PublicApi), handler, ApplicationRepository(repository), apiToken);
+            return new GitHubClient(new Uri(PublicApi), handler, ApplicationRepository(repository), apiToken, proxyAddress: proxyAddress);
         }
 
         internal static GitHubClient WithApiTransport(string repository, string expectedLogin,
@@ -55,9 +57,10 @@ namespace Dafeiyu
             return new GitHubClient(new Uri(PublicApi), null, ApplicationRepository(repository), null, transport, expectedLogin);
         }
 
-        internal static GitHubClient ForCli(string repository, string expectedLogin, GitHubCliTransport cli)
+        internal static GitHubClient ForCli(string repository, string expectedLogin, GitHubCliTransport cli, string proxyAddress = null)
         {
-            var client = WithApiTransport(repository, expectedLogin, cli.SendAsync);
+            var client = WithApiTransport(repository, expectedLogin,
+                (method, path, body, token) => cli.SendAsync(method, path, body, token, proxyAddress));
             client.CliExecutable = cli.ExecutablePath;
             return client;
         }
@@ -73,12 +76,17 @@ namespace Dafeiyu
             return String.Equals((endpoint ?? "").TrimEnd('/'), PublicApi.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
         }
 
+        internal static string ConfiguredProxyAddress(ConnectionSettings connection)
+        {
+            return connection != null && connection.UseProxy ? ProxyConfiguration.Normalize(connection.ProxyAddress) : null;
+        }
+
         internal static GitHubClient ForConnection(string repository, PetSettings settings)
         {
             if (UsesCli(settings))
             {
                 var cli = GitHubCliTransport.Find();
-                if (cli != null) return ForCli(repository, settings.GitHubCliAccount, cli);
+                if (cli != null) return ForCli(repository, settings.GitHubCliAccount, cli, ConfiguredProxyAddress(settings.GitHub));
                 return ForApp(repository, null);
             }
             return new GitHubClient(repository, settings == null ? null : settings.GitHub);
@@ -242,13 +250,14 @@ namespace Dafeiyu
                 if (beforeEffect != null) beforeEffect();
                 return await apiTransport(method, path, body, token).ConfigureAwait(false);
             }
+            using(var proxy = String.IsNullOrEmpty(proxyAddress) ? null : ProxyConfiguration.CreateHttpClient(proxyAddress, false))
             using(var request=new HttpRequestMessage(method,new Uri(apiRoot,path.TrimStart('/'))))
             {
                 if(!String.IsNullOrEmpty(apiToken))request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",apiToken);
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));request.Headers.Add("X-GitHub-Api-Version","2022-11-28");request.Headers.UserAgent.ParseAdd("DeskPet");
                 if(body!=null)request.Content=new StringContent(body,Encoding.UTF8,"application/json");
                 if (beforeEffect != null) beforeEffect();
-                using(var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false))
+                using(var response=await (proxy ?? http).SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false))
                 {
                     if(!response.IsSuccessStatusCode)throw new ApiException(TextResources.Format("gitHubClient.sendJsonAsync.template",(int)response.StatusCode));
                     using (var cancelBody = token.Register(response.Dispose))

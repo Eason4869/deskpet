@@ -32,12 +32,25 @@ namespace Dafeiyu
         readonly object gate;readonly Dictionary<string,List<QueuedMessage>> queues;
         readonly HashSet<string> paused=new HashSet<string>();bool running,steering,disposed,loadFailed;QueuedMessage inFlight;
         readonly IDisposable maintenanceRegistration;readonly Func<bool> persistenceAdmitted,ownerAllowed;
-        Task runTask=Task.FromResult(0);public string Notice {get;private set;}int pauseRevision;
+        readonly Func<ConversationWorkOptions> goalOptions;
+        Task runTask=Task.FromResult(0);
+        string notice;
+        public string Notice
+        {
+            get{lock(gate)return GoalBlocked(FirstPending)?BlockedGoalNotice():notice;}
+            private set{notice=value;}
+        }
+        int pauseRevision;
         public int PauseRevision {get{lock(gate)return pauseRevision;}}
         public Task FlushAsync(){lock(gate)return runTask;}
         public event Action Changed;
         public ConversationQueue(ConversationSession session,Func<PetSettings> settings,Func<string> name,string path,Func<bool> persistenceAdmitted=null,Func<bool> ownerAllowed=null)
+            : this(session,settings,name,path,persistenceAdmitted,ownerAllowed,null) {}
+
+        internal ConversationQueue(ConversationSession session,Func<PetSettings> settings,Func<string> name,string path,Func<bool> persistenceAdmitted,
+            Func<bool> ownerAllowed,Func<ConversationWorkOptions> goalOptions)
         {
+            this.goalOptions=goalOptions;
             this.session=session;this.persistenceAdmitted=persistenceAdmitted??(()=>true);this.ownerAllowed=ownerAllowed??(()=>true);using(session.EnterRequestActivity()){gate=session.SynchronizationRoot;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
             queues=new Dictionary<string,List<QueuedMessage>>();
             if(File.Exists(path))try
@@ -53,9 +66,17 @@ namespace Dafeiyu
             session.StateChanged+=SessionChanged;session.HistoryChanged+=SessionChanged;maintenanceRegistration=session.Maintenance.Register(FlushAsync,()=>HasPending||IsRunning,this);}
         }
         List<QueuedMessage> Current{get{List<QueuedMessage> list;string id=session.PersonaId;if(!queues.TryGetValue(id,out list))queues[id]=list=new List<QueuedMessage>();return list;}}
+        QueuedMessage FirstPending
+        {
+            get
+            {
+                List<QueuedMessage> items;
+                return queues.TryGetValue(session.PersonaId,out items)?items.FirstOrDefault():null;
+            }
+        }
         public IList<QueuedMessage> Items{get{lock(gate)return Current.Select(m=>m.Copy()).ToList().AsReadOnly();}}
         public bool IsRunning{get{lock(gate)return running || steering;}}
-        public bool IsPaused{get{lock(gate)return paused.Contains(session.PersonaId);}}
+        public bool IsPaused{get{lock(gate)return paused.Contains(session.PersonaId)||GoalBlocked(FirstPending);}}
         public bool HasPending{get{lock(gate)return loadFailed || queues.Any(p=>p.Value.Count>0);}}
         internal static bool HasPersistedPendingStrict(string path)
         {
@@ -90,16 +111,38 @@ namespace Dafeiyu
                 FileContentService.Track(session.AttachmentDataRoot,message.Attachments,false);
         }
         void Announce(){if(!disposed && Changed!=null)Changed();}
-        QueuedMessage CreateEntry(string text,List<ChatAttachment> files,bool conversationOnly,PetSettings snapshot)
+        QueuedMessage CreateEntry(string text,List<ChatAttachment> files,bool conversationOnly)
         {
             var entry=new QueuedMessage{Id=Guid.NewGuid().ToString("N"),RelationshipCompanionId=session.CaptureRelationshipCompanion()??"",Text=text,
                 Attachments=files,ConversationOnly=conversationOnly};
 #if !PORTABLE
-            string workMode=snapshot.AgentEnabled&&!conversationOnly?(snapshot.AgentPlanMode?"plan":String.IsNullOrWhiteSpace(snapshot.AgentGoal)?"off":"goal"):"off";
-            entry.WorkOptions=new ConversationWorkOptions(workMode,workMode=="goal"?snapshot.AgentGoal:null);
+            entry.WorkOptions=SnapshotWorkOptions(settings(),conversationOnly);
 #endif
             return entry;
         }
+
+        ConversationWorkOptions SnapshotWorkOptions(PetSettings snapshot,bool conversationOnly)
+        {
+            string mode=snapshot.AgentEnabled&&!conversationOnly
+                ? (snapshot.AgentPlanMode?"plan":String.IsNullOrWhiteSpace(snapshot.AgentGoal)?"off":"goal")
+                : "off";
+            var active=goalOptions==null?null:goalOptions();
+            return new ConversationWorkOptions(mode,mode=="goal"?snapshot.AgentGoal:null,mode=="goal"&&active!=null?active.GoalRevision:null);
+        }
+
+        bool GoalBlocked(QueuedMessage entry)
+        {
+            if(entry==null||entry.WorkOptions==null||entry.WorkOptions.Mode!="goal"||goalOptions==null)return false;
+            var current=goalOptions();
+            return current==null||current.GoalPaused||
+                current.GoalRevision!=entry.WorkOptions.GoalRevision||current.Goal!=entry.WorkOptions.Goal;
+        }
+
+        void RequireCurrentGoal(QueuedMessage entry)
+        {
+            if(GoalBlocked(entry))throw new InvalidOperationException(BlockedGoalNotice());
+        }
+        static string BlockedGoalNotice(){return TextResources.Get("workspaceGoal.staleQueued");}
 
         PetSettings RequestSettings(QueuedMessage entry)
         {
@@ -114,11 +157,42 @@ namespace Dafeiyu
         {using(session.EnterRequestActivity()){
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text=TextResources.Get("conversationQueue.enqueue.text");
             text=Validate(text);var snapshot=settings();ApiClient.ValidateConnection(snapshot.Text,ApiClient.ChatPath(snapshot.Text));
-            lock(gate){Writable();if(Current.Count>=20)throw new InvalidOperationException(TextResources.Get("conversationQueue.enqueue.text.alternativeA"));bool fresh=Current.Count==0 && !running && !session.IsBusy;var entry=CreateEntry(text,files,conversationOnly,snapshot);Current.Add(entry);try{Save();}catch{Current.Remove(entry);throw;}if(fresh)paused.Remove(session.PersonaId);Notice="";}
+            lock(gate){Writable();if(Current.Count>=20)throw new InvalidOperationException(TextResources.Get("conversationQueue.enqueue.text.alternativeA"));bool fresh=Current.Count==0 && !running && !session.IsBusy;var entry=CreateEntry(text,files,conversationOnly);Current.Add(entry);try{Save();}catch{Current.Remove(entry);throw;}if(fresh)paused.Remove(session.PersonaId);Notice="";}
             Announce();Kick();
         }}
         public void Edit(string id,string text)
-        {using(session.EnterRequestActivity()){text=Validate(text);lock(gate){Writable();var entry=Current.SingleOrDefault(m=>m.Id==id);if(entry==null)throw new InvalidOperationException(TextResources.Get("conversationQueue.edit.text"));string previous=entry.Text;int revision=entry.Revision;entry.Text=text;if(entry.IsGuidance)entry.Revision++;try{Save();}catch{entry.Text=previous;entry.Revision=revision;throw;}}Announce();}}
+        {
+            using(session.EnterRequestActivity())
+            {
+                text=Validate(text);
+                lock(gate)
+                {
+                    Writable();
+                    var entry=Current.SingleOrDefault(m=>m.Id==id);
+                    if(entry==null)throw new InvalidOperationException(TextResources.Get("conversationQueue.edit.text"));
+                    string previous=entry.Text;
+                    int revision=entry.Revision;
+                    var before=GoalBlocked(entry)?entry.Copy():null;
+                    entry.Text=text;
+                    if(entry.IsGuidance)entry.Revision++;
+                    if(before!=null)
+                    {
+                        entry.WorkOptions=SnapshotWorkOptions(settings(),entry.ConversationOnly);
+                        entry.IsGuidance=false;
+                        entry.Workspace=null;
+                        entry.Context=null;
+                    }
+                    try{Save();}
+                    catch
+                    {
+                        if(before==null){entry.Text=previous;entry.Revision=revision;}
+                        else Current[Current.IndexOf(entry)]=before;
+                        throw;
+                    }
+                }
+                Announce();
+            }
+        }
         public void Remove(string id)
         {using(session.EnterRequestActivity()){lock(gate){Writable();var entry=Current.SingleOrDefault(m=>m.Id==id);if(entry==null)return;int index=Current.IndexOf(entry);Current.Remove(entry);try{Save();}catch{Current.Insert(index,entry);throw;}}Announce();}}
         // Resolve stable IDs under the same lock as dequeue. A stale drag must
@@ -146,7 +220,8 @@ namespace Dafeiyu
         public Task SteerAsync(string text,string queuedId=null,IList<ChatAttachment> attachments=null,bool conversationOnly=false)
         {using(session.EnterRequestActivity()){
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text=TextResources.Get("conversationQueue.steerAsync.text");text=Validate(text);var cfg=settings();ApiClient.ValidateConnection(cfg.Text,ApiClient.ChatPath(cfg.Text));QueuedMessage receipt;string persona;
-            lock(gate){Writable();var entry=queuedId==null?CreateEntry(text,files,conversationOnly,cfg):Current.SingleOrDefault(m=>m.Id==queuedId);if(entry==null)throw new InvalidOperationException(TextResources.Get("conversationQueue.steerAsync.text.alternativeA"));if(queuedId==null && Current.Count>=20)throw new InvalidOperationException(TextResources.Get("conversationQueue.steerAsync.text.alternativeB"));
+            lock(gate){Writable();var entry=queuedId==null?CreateEntry(text,files,conversationOnly):Current.SingleOrDefault(m=>m.Id==queuedId);if(entry==null)throw new InvalidOperationException(TextResources.Get("conversationQueue.steerAsync.text.alternativeA"));if(queuedId==null && Current.Count>=20)throw new InvalidOperationException(TextResources.Get("conversationQueue.steerAsync.text.alternativeB"));
+                RequireCurrentGoal(entry);
                 int index=Current.IndexOf(entry);bool previous=entry.IsGuidance;string project=entry.Workspace;entry.IsGuidance=true;entry.Workspace=session.ActiveAgentWorkspace??(cfg.AgentEnabled?cfg.AgentWorkspace:null);
                 if(index>=0)Current.RemoveAt(index);int position=Current.TakeWhile(m=>m.IsGuidance).Count();Current.Insert(position,entry);
                 try{Save();}catch{Current.Remove(entry);entry.IsGuidance=previous;entry.Workspace=project;if(index>=0)Current.Insert(index,entry);throw;}
@@ -154,7 +229,7 @@ namespace Dafeiyu
             }session.RegisterGuidance(persona,receipt.Id,receipt.Text,receipt.Attachments);Announce();Kick();return Task.FromResult(0);
         }}
         IList<AgentGuidance> ReadGuidance(string persona,string workspace)
-        {lock(gate){List<QueuedMessage> list;if(disposed || !queues.TryGetValue(persona,out list))return new List<AgentGuidance>();return list.Where(m=>m.IsGuidance && SameProject(m.Workspace,workspace)).Select(m=>new AgentGuidance{Id=m.Id,Text=m.Text,Revision=m.Revision,Attachments=ChatAttachment.Snapshot(m.Attachments)}).ToList();}}
+        {lock(gate){List<QueuedMessage> list;if(disposed || !queues.TryGetValue(persona,out list))return new List<AgentGuidance>();return list.Where(m=>m.IsGuidance && !GoalBlocked(m) && SameProject(m.Workspace,workspace)).Select(m=>new AgentGuidance{Id=m.Id,Text=m.Text,Revision=m.Revision,Attachments=ChatAttachment.Snapshot(m.Attachments)}).ToList();}}
         void AckGuidance(string persona,IList<AgentGuidance> accepted)
         {lock(gate){List<QueuedMessage> list;if(disposed || !queues.TryGetValue(persona,out list))return;var previous=list.ToList();list.RemoveAll(m=>accepted.Any(g=>g.Id==m.Id && g.Revision==m.Revision));try{Save();}catch{list.Clear();list.AddRange(previous);throw;}}Announce();}
         static bool SameProject(string a,string b){return !String.IsNullOrEmpty(a) && !String.IsNullOrEmpty(b) && String.Equals(Path.GetFullPath(a).TrimEnd('\\','/'),Path.GetFullPath(b).TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase);}
@@ -166,8 +241,9 @@ namespace Dafeiyu
             lock(gate)
             {
                 Writable();if(steering)throw new InvalidOperationException(TextResources.Get("conversationQueue.interruptAsync.text.alternativeA"));persona=session.PersonaId;
-                entry=queuedId==null?CreateEntry(text,files,conversationOnly,snapshot):Current.SingleOrDefault(m=>m.Id==queuedId);
+                entry=queuedId==null?CreateEntry(text,files,conversationOnly):Current.SingleOrDefault(m=>m.Id==queuedId);
                 if(entry==null)throw new InvalidOperationException(TextResources.Get("conversationQueue.interruptAsync.text.alternativeB"));if(queuedId==null && Current.Count>=20)throw new InvalidOperationException(TextResources.Get("conversationQueue.interruptAsync.text.alternativeC"));
+                RequireCurrentGoal(entry);
                 // Persist the new instruction before stopping a request or clearing its draft.
                 if(queuedId==null){Current.Add(entry);try{Save();}catch{Current.Remove(entry);throw;}}
                 activeText=inFlight==null?null:inFlight.Text;preceding=inFlight==null || inFlight.Context==null?new List<ChatMessage>():inFlight.Context.Select(m=>m.Copy()).ToList();revision=pauseRevision;steering=true;paused.Add(persona);wait=runTask;
@@ -200,7 +276,7 @@ namespace Dafeiyu
         void SessionChanged(){Announce();Kick();}
         void Kick()
         {
-            lock(gate){if(disposed || !ownerAllowed() || running || steering || session.IsBusy || paused.Contains(session.PersonaId) || Current.Count==0)return;IDisposable admission;try{admission=session.EnterRequestActivity();}catch(InvalidOperationException){return;}running=true;runTask=RunAsync(session.PersonaId,admission);}
+            lock(gate){if(disposed || !ownerAllowed() || running || steering || session.IsBusy || paused.Contains(session.PersonaId) || FirstPending==null || GoalBlocked(FirstPending))return;IDisposable admission;try{admission=session.EnterRequestActivity();}catch(InvalidOperationException){return;}running=true;runTask=RunAsync(session.PersonaId,admission);}
         }
         async Task RunAsync(string persona,IDisposable admission)
         {
@@ -219,6 +295,7 @@ namespace Dafeiyu
                         if(disposed || !ownerAllowed() || steering || paused.Contains(persona) || session.PersonaId!=persona || Current.Count==0 || session.IsBusy)return;
                         if(!String.IsNullOrEmpty(session.HistoryWarning) || !String.IsNullOrEmpty(session.AgentTaskWarning)){paused.Add(persona);Notice=TextResources.Get("conversationQueue.runAsync.notice");return;}
                         entry=Current[0];var current=session.CurrentAgentTask;
+                        if(GoalBlocked(entry))return;
                         if(entry.IsGuidance && current!=null && SameProject(entry.Workspace,current.Workspace) && (current.Guidance??new List<AgentGuidance>()).Any(g=>g.Id==entry.Id && g.Revision==entry.Revision)){
                             if(current.Status!="complete"){paused.Add(persona);Notice=TextResources.Get("conversationQueue.runAsync.notice.alternativeA");return;}alreadyCompleted=true;
                         }
@@ -226,11 +303,14 @@ namespace Dafeiyu
                     }
                     Announce();
                     if(alreadyCompleted)continue;bool agentStarted=false,imagePreprocessing=false;
-                    try{if(!ownerAllowed())throw new InvalidOperationException(TextResources.Get("desktopObservation.switchCompanion"));var cfg=RequestSettings(entry);if(entry.IsGuidance && !String.IsNullOrEmpty(entry.Workspace) && (!cfg.AgentEnabled || !SameProject(entry.Workspace,cfg.AgentWorkspace)))throw new ApiException(TextResources.Get("conversationQueue.runAsync.text"));AgentTaskState resume=null;if(entry.IsGuidance && cfg.AgentEnabled && SameProject(entry.Workspace,cfg.AgentWorkspace)){var current=session.CurrentAgentTask;if(current!=null && SameProject(current.Workspace,cfg.AgentWorkspace)){resume=current;if(resume.Guidance==null)resume.Guidance=new List<AgentGuidance>();if(!resume.Guidance.Any(g=>g.Id==entry.Id && g.Revision==entry.Revision))resume.Guidance.Add(new AgentGuidance{Id=entry.Id,Text=entry.Text,Revision=entry.Revision,Attachments=ChatAttachment.Snapshot(entry.Attachments)});if(!AgentTaskStore.FitsCheckpoint(resume))throw new ApiException(TextResources.Get("conversationQueue.runAsync.text.alternativeA"));}}await session.SendTextAsync(entry.Text,cfg,name(),entry.Context,entry.Attachments,resume,kernelInputId:entry.Id,relationshipCompanionId:entry.RelationshipCompanionId??"",guidanceId:entry.IsGuidance?entry.Id:null,onAgentStarted:()=>agentStarted=true,onImagePreprocessing:value=>imagePreprocessing=value);}
-                    catch(OperationCanceledException){lock(gate){if(imagePreprocessing){queues[persona].Insert(0,entry);try{Save();}catch(IOException){Notice=TextResources.Get("conversationQueue.runAsync.notice.alternativeD");}catch(UnauthorizedAccessException){Notice=TextResources.Get("conversationQueue.runAsync.notice.alternativeE");}}paused.Add(persona);}return;}
+                    try{if(!ownerAllowed())throw new InvalidOperationException(TextResources.Get("desktopObservation.switchCompanion"));var cfg=RequestSettings(entry);if(entry.IsGuidance && !String.IsNullOrEmpty(entry.Workspace) && (!cfg.AgentEnabled || !SameProject(entry.Workspace,cfg.AgentWorkspace)))throw new ApiException(TextResources.Get("conversationQueue.runAsync.text"));AgentTaskState resume=null;if(entry.IsGuidance && cfg.AgentEnabled && SameProject(entry.Workspace,cfg.AgentWorkspace)){var current=session.CurrentAgentTask;if(current!=null && SameProject(current.Workspace,cfg.AgentWorkspace) && session.CanResumeAgentTask(current)){resume=current;if(resume.Guidance==null)resume.Guidance=new List<AgentGuidance>();if(!resume.Guidance.Any(g=>g.Id==entry.Id && g.Revision==entry.Revision))resume.Guidance.Add(new AgentGuidance{Id=entry.Id,Text=entry.Text,Revision=entry.Revision,Attachments=ChatAttachment.Snapshot(entry.Attachments)});if(!AgentTaskStore.FitsCheckpoint(resume))throw new ApiException(TextResources.Get("conversationQueue.runAsync.text.alternativeA"));}}
+                        await session.SendQueuedTextAsync(entry.Text,cfg,name(),entry.Context,entry.Attachments,resume,entry.Id,
+                            entry.IsGuidance?entry.Id:null,()=>agentStarted=true,entry.RelationshipCompanionId??"",
+                            value=>imagePreprocessing=value,()=>RequireCurrentGoal(entry));}
+                    catch(OperationCanceledException){lock(gate){if(imagePreprocessing){queues[persona].Insert(0,entry);try{Save();}catch(IOException){Notice=TextResources.Get("conversationQueue.runAsync.notice.alternativeD");}catch(UnauthorizedAccessException){Notice=TextResources.Get("conversationQueue.runAsync.notice.alternativeE");}}if(!GoalBlocked(entry))paused.Add(persona);}return;}
                     catch(Exception e)
                     {
-                        lock(gate){if(!agentStarted)queues[persona].Insert(0,entry);pauseRevision++;paused.Add(persona);Notice=e is ApiException || e is InvalidOperationException?e.Message:TextResources.Get("conversationQueue.runAsync.invalidOperationExceptionEMessage");if(agentStarted)Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeC");try{Save();}catch(IOException){Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeD");}catch(UnauthorizedAccessException){Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeE");}}return;
+                        lock(gate){if(!agentStarted)queues[persona].Insert(0,entry);if(!GoalBlocked(entry)){pauseRevision++;paused.Add(persona);Notice=e is ApiException || e is InvalidOperationException?e.Message:TextResources.Get("conversationQueue.runAsync.invalidOperationExceptionEMessage");if(agentStarted)Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeC");}try{Save();}catch(IOException){Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeD");}catch(UnauthorizedAccessException){Notice+=TextResources.Get("conversationQueue.runAsync.notice.alternativeE");}}return;
                     }
                     finally
                     {

@@ -115,7 +115,12 @@ namespace Dafeiyu
             if(args==null)return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeB"));
             if(name=="exec_command")NormalizeTerminalArguments(args);
             string resource=name!=null&&name.StartsWith("github_",StringComparison.Ordinal)&&github!=null?github.Repository+" :: "+AgentPermissionRuntime.ResourceForTool(name,args):null;
-            if(IsGitHubAutomationTool(name))resource=GitHubAutomationResource(name,args);
+            if(IsGitHubPushTool(name) && GitHubAutomationAvailable(name))
+            {
+                string pushError=PrepareGitHubPush(token,out resource);
+                if(pushError!=null)return Task.FromResult(pushError);
+            }
+            else if(IsGitHubAutomationTool(name))resource=GitHubAutomationResource(name,args);
             if(name=="git_status"||name=="git_diff"||name=="git_log")try{resource=AgentGitTools.FindRoot(Resolve(GetString(args,"path",".")),Root,RestrictToRoot,token);}catch(UnauthorizedAccessException){return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeC"));}catch(ArgumentException ex){return Task.FromResult(TextResources.Format("agentWorkspace.executeAsync.taskFromResult",ex.Message));}catch(IOException){return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeD"));}
             var invocation=new AgentToolInvocation(name,args,new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,ProjectId=kernelSessionModel==null?Root:kernelSessionModel.ProjectId,AgentId=kernelProfile==null?"":kernelProfile.Id,TaskId=kernelTaskId,CallId=callId},resource??dynamicTools.Where(t=>t.Name==name).Select(t=>t.ApprovalResource).FirstOrDefault());
             return executionGuard.RunAsync(invocation,()=>ExecuteRecordedAsync(invocation,token));

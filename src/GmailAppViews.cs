@@ -10,25 +10,35 @@ namespace Dafeiyu
     internal sealed class GmailConnectionRow : Border, IDisposable
     {
         readonly PetWindow pet;
-        readonly TextBlock status = Ui.Text("", 12, Ui.Muted);
-        readonly Button connect, disconnect, browse;
-        readonly CancellationTokenSource lifetime = new CancellationTokenSource();
-        bool busy, disposed;
+        readonly TextBlock status = Ui.Text("", 12, Ui.Muted), dialogStatus = Ui.Text("", 12, Ui.Muted);
+        readonly TextBlock feedback = Ui.Text("", 12, Ui.Muted);
+        readonly StackPanel details = new StackPanel();
+        readonly Button manage, connect, disconnect, browse;
+        AppManagementWindow management;
+        CancellationTokenSource pending;
+        bool disposed;
 
         internal GmailConnectionRow(PetWindow pet)
         {
             this.pet = pet;
             Name = "GmailAppRow";
-            BorderBrush = Ui.Line;
-            BorderThickness = new Thickness(1);
-            CornerRadius = new CornerRadius(13);
-            Margin = new Thickness(0, 0, 0, 10);
-            Padding = new Thickness(16);
-            var body = new StackPanel();
-            body.Children.Add(AppCardHeader.Gmail());
-            status.Margin = new Thickness(0, 5, 0, 10);
-            body.Children.Add(status);
-            var actions = new WrapPanel();
+            status.Name = "GmailAppConnectionStatus";
+            Child = AppManagementWindow.CreateCard("Gmail", AppCardHeader.Gmail(), status, out manage);
+            manage.Click += delegate { OpenManagement(); };
+
+            var connectionSection = AppManagementWindow.AddSection(details, () => TextResources.Get("apps.management.connection"));
+            dialogStatus.Name = "GmailAppManagementStatus";
+            connectionSection.Children.Add(dialogStatus);
+            var web = AppManagementWindow.WebLink(() => TextResources.Get("apps.gmail.management.web"),
+                "OpenGmailWeb", "https://mail.google.com/", true);
+            browse = AppButton(() => TextResources.Get("apps.gmail.view"), "GmailView", () =>
+            {
+                if (management != null) management.DialogResult = true;
+            });
+            AppManagementWindow.AddActions(connectionSection, web, browse);
+
+            var authorization = AppManagementWindow.AddSection(details, () => TextResources.Get("apps.management.authorization"));
+            authorization.Children.Add(LocalizedUi.Text(() => TextResources.Get("apps.gmail.management.permissions"), 12, Ui.Muted));
             connect = AppButton(() => TextResources.Get("apps.connect"), "GmailConnect", async () =>
             {
                 await ManageAsync(async token => { await pet.GmailApp.ConnectAsync(token); return null; });
@@ -41,49 +51,73 @@ namespace Dafeiyu
                     return outcome.Revoked ? TextResources.Get("apps.gmail.revoked") : TextResources.Get("apps.gmail.disconnectedLocal");
                 });
             });
-            browse = AppButton(() => TextResources.Get("apps.gmail.view"), "GmailView", () => pet.ShowGmail(Window.GetWindow(this), null, ""));
-            actions.Children.Add(connect);
-            actions.Children.Add(disconnect);
-            actions.Children.Add(browse);
-            body.Children.Add(actions);
-            Child = body;
+            var googleAccount = AppManagementWindow.WebLink(() => TextResources.Get("apps.gmail.management.googleAccount"),
+                "ManageGoogleAccountAccess", "https://myaccount.google.com/connections");
+            AppManagementWindow.AddActions(authorization, connect, disconnect, googleAccount);
+            feedback.Name = "GmailAppOperationStatus";
+            feedback.Visibility = Visibility.Collapsed;
+            Refresh();
+        }
+
+        void OpenManagement()
+        {
+            if (disposed || management != null) return;
+            Refresh();
+            var owner = Window.GetWindow(this);
+            var header = AppCardHeader.Gmail(() => TextResources.Get("apps.gmail.management.description"));
+            management = new AppManagementWindow(owner, "Gmail", header, details, feedback, 465);
+            bool view;
+            try { view = management.ShowDialog() == true; }
+            finally
+            {
+                management = null;
+                if (pending != null) pending.Cancel();
+                if (!disposed && IsVisible) manage.Focus();
+            }
+            if (view && !disposed) pet.ShowGmail(owner, null, "");
         }
 
         internal void Refresh()
         {
-            if (disposed || busy) return;
+            if (disposed || pending != null) return;
             var current = pet.GmailApp.GetStatus();
             status.Text = current.ErrorMessage;
             if (String.IsNullOrEmpty(status.Text))
                 status.Text = current.IsConnected ? current.EmailAddress : current.IsConfigured
                     ? TextResources.Get("apps.disconnected") : TextResources.Get("apps.gmail.noOfficialClient");
+            dialogStatus.Text = status.Text;
             connect.Visibility = current.IsConnected ? Visibility.Collapsed : Visibility.Visible;
             connect.IsEnabled = current.IsConfigured;
             disconnect.Visibility = current.HasLocalCredentials ? Visibility.Visible : Visibility.Collapsed;
             browse.Visibility = current.IsConnected ? Visibility.Visible : Visibility.Collapsed;
+            disconnect.IsEnabled = browse.IsEnabled = true;
         }
 
         async Task ManageAsync(Func<CancellationToken, Task<string>> action)
         {
-            if (busy || disposed) return;
-            busy = true;
-            connect.IsEnabled = disconnect.IsEnabled = browse.IsEnabled = false;
-            string outcome = null;
-            try
+            if (pending != null || disposed) return;
+            using (var cancel = new CancellationTokenSource())
             {
-                outcome = await action(lifetime.Token);
-            }
-            catch (OperationCanceledException) { }
-            catch (GmailAppException error) { outcome = error.Message; }
-            catch (Exception) { outcome = TextResources.Get("apps.failed"); }
-            finally
-            {
-                busy = false;
-                if (!disposed)
+                pending = cancel;
+                feedback.Visibility = Visibility.Collapsed;
+                connect.IsEnabled = disconnect.IsEnabled = browse.IsEnabled = false;
+                string outcome = null;
+                try
                 {
-                    disconnect.IsEnabled = browse.IsEnabled = true;
-                    Refresh();
-                    if (!String.IsNullOrEmpty(outcome)) status.Text = outcome;
+                    outcome = await action(cancel.Token);
+                }
+                catch (OperationCanceledException) { }
+                catch (GmailAppException error) { outcome = error.Message; }
+                catch (Exception) { outcome = TextResources.Get("apps.failed"); }
+                finally
+                {
+                    pending = null;
+                    if (!disposed)
+                    {
+                        Refresh();
+                        feedback.Text = outcome;
+                        feedback.Visibility = String.IsNullOrEmpty(outcome) ? Visibility.Collapsed : Visibility.Visible;
+                    }
                 }
             }
         }
@@ -100,8 +134,8 @@ namespace Dafeiyu
         {
             if (disposed) return;
             disposed = true;
-            lifetime.Cancel();
-            lifetime.Dispose();
+            if (pending != null) pending.Cancel();
+            if (management != null) management.Close();
         }
     }
 

@@ -61,9 +61,9 @@ namespace Dafeiyu
         {
             if(disposed)return;if(!Dispatcher.CheckAccess()){Changed();return;}
             var task=session.CurrentAgentTask;if(task==null){Visibility=Visibility.Collapsed;signature="";return;}Visibility=Visibility.Visible;
-            bool busy=session.IsBusy;
+            bool busy=session.IsBusy,canContinue=session.CanResumeAgentTask(task);
             LocalizedUi.Set(heading,"Text",()=>TextResources.Format("agentTaskPanel.refresh.taskPlanCount",AgentTaskProgressText.Status(task),task.Plan.Count(p=>p.Status=="complete"),task.Plan.Count,task.Changes.Count));
-            string next=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=8*1024*1024}.Serialize(task)+"|"+busy+"|"+pet.Settings.AgentEnabled+"|"+session.AgentTaskWarning;
+            string next=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=8*1024*1024}.Serialize(task)+"|"+busy+"|"+pet.Settings.AgentEnabled+"|"+canContinue+"|"+session.AgentTaskWarning;
             if(next==signature)return;signature=next;body.Children.Clear();
             var goal=Ui.Text(task.Goal,12);goal.Margin=new Thickness(0,3,0,7);body.Children.Add(goal);
             var requests=LocalizedUi.Text(()=>AgentTaskProgressText.RequestCount(task),11,Ui.Muted);
@@ -90,7 +90,12 @@ namespace Dafeiyu
                 executionActions.Children.Add(acknowledge);
             }
             var resume=Small(()=>TextResources.Get("agentTaskPanel.refresh.small.alternativeE"),"ContinueAgentTask");
-            resume.IsEnabled=!busy && pet.Settings.AgentEnabled && task.Status!="running" && task.Status!="needs_reconciliation";
+            resume.IsEnabled=canContinue && !busy && pet.Settings.AgentEnabled && task.Status!="running" && task.Status!="needs_reconciliation";
+            if(!canContinue)
+            {
+                ToolTipService.SetShowOnDisabled(resume,true);
+                LocalizedUi.Set(resume,"ToolTip",ConversationSession.GoalTaskUnavailableNotice);
+            }
             resume.Click+=async delegate{bool resumeQueue=!queue.IsPaused;queue.Hold();try{await session.ResumeAgentTaskAsync(TaskSettings,pet.Skin.Name);}catch(Exception e){Error(e);}finally{if(resumeQueue)queue.Resume();}};
             executionActions.Children.Add(resume);body.Children.Add(executionActions);
             string context=task.ContextStatus=="compacting"?TextResources.Get("agentTaskPanel.refresh.contextCompactionsTaskContextCompactions.alternativeA"):task.ContextStatus=="limited"?TextResources.Get("agentTaskPanel.refresh.contextCompactionsTaskContextCompactions.alternativeB"):task.ContextCompactions>0?TextResources.Format("agentTaskPanel.refresh.contextCompactionsTaskContextCompactions",task.ContextCompactions):TextResources.Get("agentTaskPanel.refresh.contextCompactionsTaskContextCompactions.alternativeC");

@@ -11,6 +11,7 @@ namespace Dafeiyu
     public sealed class ChatAtmosphere : Grid
     {
         readonly Image artwork;
+        readonly bool settingsPreview;
         SkinDefinition currentSkin;
         double artworkOpacity;
         double previewWidth,previewHeight;
@@ -22,18 +23,24 @@ namespace Dafeiyu
             history.Background=Brushes.Transparent;Children.Add(history);
         }
 
-        ChatAtmosphere()
+        ChatAtmosphere(bool settingsPreview=false)
         {
-            Name="ChatAtmosphere";ClipToBounds=true;
+            this.settingsPreview=settingsPreview;
+            Name=settingsPreview?"SettingsArtworkPreview":"ChatAtmosphere";ClipToBounds=true;
             var fade=new LinearGradientBrush{StartPoint=new Point(.08,0),EndPoint=new Point(.88,.9)};
             fade.GradientStops.Add(new GradientStop(Colors.Transparent,0));
             fade.GradientStops.Add(new GradientStop(Color.FromArgb(64,255,255,255),.32));
             fade.GradientStops.Add(new GradientStop(Color.FromArgb(184,255,255,255),.65));
             fade.GradientStops.Add(new GradientStop(Colors.White,1));fade.Freeze();
-            artwork=new Image{Name="ChatAtmosphereArtwork",Stretch=Stretch.Uniform,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,20,2),IsHitTestVisible=false,Focusable=false,OpacityMask=fade,Visibility=Visibility.Collapsed};
+            artwork=new Image{Name=settingsPreview?"SettingsCompanionArtwork":"ChatAtmosphereArtwork",Stretch=Stretch.Uniform,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,20,2),IsHitTestVisible=false,Focusable=false,OpacityMask=fade,Visibility=Visibility.Collapsed};
             RenderOptions.SetBitmapScalingMode(artwork,BitmapScalingMode.HighQuality);
             Children.Add(artwork);
             SizeChanged+=delegate{RefreshArtwork();};
+        }
+
+        internal static ChatAtmosphere SettingsPreview()
+        {
+            return new ChatAtmosphere(true){IsHitTestVisible=false,Margin=new Thickness(0,0,8,12)};
         }
 
         public static ChatAtmosphere AttachSurface(Grid surface,int row,int rowSpan)
@@ -45,7 +52,7 @@ namespace Dafeiyu
             SetRow(result,row);SetRowSpan(result,rowSpan);Panel.SetZIndex(result,-1);surface.Children.Insert(0,result);return result;
         }
 
-        // The reusable layer starts disabled; ChatWindow applies the chosen 20% level.
+        // The reusable layer starts disabled; ChatWindow chooses the surface opacity.
         public double ArtworkOpacity
         {
             get{return artworkOpacity;}
@@ -89,16 +96,18 @@ namespace Dafeiyu
         void RefreshArtwork()
         {
             double width=ActualWidth,height=ActualHeight;
-            bool show=artwork.Source!=null&&artworkOpacity>0&&width>=440&&height>=160;
+            bool show=artwork.Source!=null&&artworkOpacity>0&&width>=(settingsPreview?120:440)&&height>=160;
             artwork.Visibility=show?Visibility.Visible:Visibility.Collapsed;
             if(!show)return;
             // Keep the established sprite scale, but size its box to the visible pixels.
             // Aligning the full preview canvas leaves its transparent right/bottom
             // padding between the character and the container's bottom-right corner.
             var bitmap=(BitmapSource)artwork.Source;
-            double scale=Math.Min(Math.Min(450,width*.56)/previewWidth,Math.Min(648,height*.92)/previewHeight);
+            double scale=settingsPreview
+                ?Math.Min(Math.Min(186,width*.27)/bitmap.PixelWidth,Math.Min(246,height*.40)/bitmap.PixelHeight)
+                :Math.Min(Math.Min(450,width*.56)/previewWidth,Math.Min(648,height*.92)/previewHeight);
             artwork.Width=bitmap.PixelWidth*scale;artwork.Height=bitmap.PixelHeight*scale;
-            double compact=Math.Min(1,.30+.70*Math.Max(0,width-440)/180);
+            double compact=settingsPreview?1:Math.Min(1,.30+.70*Math.Max(0,width-440)/180);
             artwork.Opacity=artworkOpacity*compact;
         }
 

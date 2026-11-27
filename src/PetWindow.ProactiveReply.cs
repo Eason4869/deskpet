@@ -117,8 +117,9 @@ namespace Dafeiyu
         }
         void ExpandProactiveReply(ReplyBinding binding)
         {
+            var expansion=QuickChatExpansion.Capture(binding.Quick);
             if(binding.Full==null){var window=new ChatWindow(this,binding.Workspace);binding.Full=window;if(binding.Quick!=null){window.ReplacePendingAttachments(binding.Quick.SnapshotPendingAttachments());binding.Quick.ReplacePendingAttachments(new ChatAttachment[0]);}window.Closing+=delegate{if(binding.Quick!=null)binding.Quick.ReplacePendingAttachments(window.SnapshotPendingAttachments(binding.Workspace.Session));};window.Closed+=delegate{if(ReferenceEquals(binding.Full,window))binding.Full=null;if(binding.Quick!=null){var oldQuick=binding.Quick;binding.Quick=null;oldQuick.Close();}CloseProactiveIfUnowned(binding);};}
-            if(binding.Quick!=null)binding.Quick.Hide();if(!binding.Full.IsVisible)binding.Full.Show();binding.Full.Activate();
+            if(binding.Quick!=null&&expansion==null)binding.Quick.Hide();binding.Full.WindowMotion.ShowExpanded(expansion);
         }
         async void CloseProactiveIfUnowned(ReplyBinding binding)
         {
@@ -129,7 +130,7 @@ namespace Dafeiyu
         static void ClearEventCopy(ProactiveEvent item){if(item!=null && item.Png!=null)Array.Clear(item.Png,0,item.Png.Length);}
         bool ProactiveEventExists(string id,string companion){var item=observationEvents.TryGet(id);try{return item!=null && (companion==null || item.CompanionId==companion);}finally{ClearEventCopy(item);}}
         bool HasLastProactiveEvent(){return ProactiveEventExists(LastProactiveEvent(),Skin.Id);}
-        bool IsProactiveWorkspace(ConversationWorkspace workspace){return proactiveReplies.Values.Any(b=>ReferenceEquals(b.Workspace,workspace));}
+        internal bool IsProactiveWorkspace(ConversationWorkspace workspace){return workspace!=null&&proactiveReplies.Values.Any(b=>ReferenceEquals(b.Workspace,workspace));}
         bool IsProactiveWindow(ChatWindow window){return proactiveReplies.Values.Any(b=>ReferenceEquals(b.Full,window));}
         bool ProactiveWindowsVisible(){return proactiveReplies.Values.Any(b=>WindowInUse(b.Quick)||WindowInUse(b.Full));}
     }

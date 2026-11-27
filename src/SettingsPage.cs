@@ -14,6 +14,7 @@ namespace Dafeiyu
         private readonly PetWindow pet;
         private readonly TextBlock name,notice,sizeLabel;
         private readonly Image avatar;
+        private readonly ChatAtmosphere artwork;
         private readonly ComboBox skins,companionEffect;
         private readonly HolidayOutfitPanel holidayOutfits;
         private readonly ColumnDefinition wardrobeColumn,wardrobeGap;
@@ -54,7 +55,8 @@ namespace Dafeiyu
             header.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(74) }); header.ColumnDefinitions.Add(new ColumnDefinition());
             avatar=new Image { Source=SkinCatalog.GetAvatar(pet.Skin),Width=54,Height=54,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,54,54),10.8,10.8) };
             RenderOptions.SetBitmapScalingMode(avatar,BitmapScalingMode.HighQuality);
-            var avatarCard=new Border { Child=avatar,CornerRadius=new CornerRadius(24),Background=Ui.Pale,Padding=new Thickness(2),Margin=new Thickness(0,0,14,0) };
+            var avatarCard=new Border { Child=avatar,Width=60,Height=60,VerticalAlignment=VerticalAlignment.Center,
+                CornerRadius=new CornerRadius(18),Background=Ui.Pale,Padding=new Thickness(2),Margin=new Thickness(0,0,14,0) };
             header.Children.Add(avatarCard);
             var introduction=new StackPanel { VerticalAlignment=VerticalAlignment.Center };
             var eyebrow=LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text")),12,Ui.Muted); eyebrow.Margin=new Thickness(0,0,0,3); introduction.Children.Add(eyebrow);
@@ -176,6 +178,9 @@ namespace Dafeiyu
             var guideButton=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeT")));guideButton.Name="OpenOnboarding";guideButton.HorizontalAlignment=HorizontalAlignment.Stretch;guideButton.MinWidth=0;guideButton.FontSize=12;guideButton.Margin=new Thickness(0,0,0,10);Grid.SetColumn(guideButton,2);guideButton.Click+=delegate {if(GuideRequested!=null)GuideRequested();};LocalizedUi.Automation(guideButton,()=>(TextResources.Get("settingsPage.settingsPage.automationAutomationPropertiesSetName.alternativeA")));LocalizedUi.Set(guideButton,"ToolTip",()=>(TextResources.Get("settingsPage.settingsPage.guideButtonToolTip")));footerActions.Children.Add(guideButton);
             var versionLabel=LocalizedUi.InlineText(()=>(TextResources.Format("settingsPage.settingsPage.inlineText",ReleaseInfo.DisplayVersion)),11,Ui.Muted);sidebarFooter.Children.Add(versionLabel);Grid.SetRow(sidebarFooter,2);sidebar.Children.Add(sidebarFooter);
             shell.Children.Add(new Border{Child=sidebar,Background=Ui.Brush("#F8F9FB"),BorderBrush=Ui.Brush("#E9ECF0"),BorderThickness=new Thickness(0,0,1,0)});Grid.SetColumn(content,1);shell.Children.Add(content);Content=shell;
+            artwork=ChatAtmosphere.SettingsPreview();
+            Grid.SetColumn(artwork,1);shell.Children.Add(artwork);
+            pet.ChatArtworkOpacityChanged+=RefreshArtworkOpacity;
             var footerText=new FrameworkElementFactory(typeof(TextBlock));footerText.SetValue(TextBlock.TextWrappingProperty,TextWrapping.Wrap);footerText.SetValue(TextBlock.TextAlignmentProperty,TextAlignment.Center);footerText.SetBinding(TextBlock.TextProperty,new System.Windows.Data.Binding());var footerLabelTemplate=new DataTemplate{VisualTree=footerText};
             bool? compactNavigation=null;Action updateNavigation=delegate{bool compact=ActualWidth>0&&ActualWidth<700;if(compactNavigation==compact)return;compactNavigation=compact;sidebarColumn.Width=new GridLength(compact?64:224);sidebarHeader.Visibility=compact?Visibility.Collapsed:Visibility.Visible;versionLabel.Visibility=compact?Visibility.Collapsed:Visibility.Visible;sidebarFooter.Margin=compact?new Thickness(10,14,10,20):new Thickness(14,14,14,20);navigation.Margin=compact?new Thickness(6,18,6,0):new Thickness(10,0,10,0);foreach(ListBoxItem item in navigation.Items){item.ContentTemplate=NavigationTemplate(compact);item.Padding=compact?new Thickness(10):new Thickness(10,8,10,8);if(compact)item.Visibility=Visibility.Visible;}if(compact)categorySearch.Text="";guideButton.Content=compact?(object)ShellIcons.Image("book",Ui.PageInk,16):TextResources.Get("settingsPage.settingsPage.guideButtonContentCompact");guideButton.Padding=compact?new Thickness(8):new Thickness(6,7,6,7);footerActions.ColumnDefinitions[1].Width=new GridLength(compact?0:8);footerActions.ColumnDefinitions[2].Width=compact?new GridLength(0):new GridLength(1,GridUnitType.Star);footerActions.RowDefinitions[1].Height=compact?GridLength.Auto:new GridLength(0);Grid.SetColumn(guideButton,compact?0:2);Grid.SetRow(guideButton,compact?1:0);content.Margin=compact?new Thickness(0):new Thickness(16,18,16,8);aboutNavigation.ContentTemplate=guideButton.ContentTemplate=compact?null:footerLabelTemplate;aboutNavigation.Content=compact?(object)ShellIcons.Image("about",Ui.PageInk,16):TextResources.Get("settingsLayout.aboutTitle");LocalizedUi.Automation(aboutNavigation,()=>TextResources.Get("settingsLayout.aboutTitle"));};SizeChanged+=delegate{updateNavigation();};Loaded+=delegate{updateNavigation();};
             navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=CategoryAt(navigation.SelectedIndex);if(index<0)return;ActivateCategory(index);if(changingRoute)return;if(ActivateSearchCategory(index))return;featureAnchor=null;NotifyNavigation();};navigation.SelectedIndex=0;
@@ -273,7 +278,8 @@ namespace Dafeiyu
         {refreshing=true;skins.ItemsSource=null;skins.ItemsSource=pet.Catalog.Skins;skins.SelectedItem=pet.Skin;refreshing=false;RefreshState();}
         static ComboBoxItem FindParentItem(DependencyObject source)
         {while(source!=null){var item=source as ComboBoxItem;if(item!=null)return item;source=source is Visual?VisualTreeHelper.GetParent(source):LogicalTreeHelper.GetParent(source);}return null;}
-        private void RefreshAvatar() { displayedSkin=pet.Skin;LocalizedUi.Set(name,"Text",()=>(pet.Skin.DisplayName)); avatar.Source=SkinCatalog.GetAvatar(pet.Skin);if(persona!=null)persona.RefreshPersona();if(connections!=null)connections.RefreshPersonaVoices(); }
+        private void RefreshAvatar() { displayedSkin=pet.Skin;LocalizedUi.Set(name,"Text",()=>(pet.Skin.DisplayName)); avatar.Source=SkinCatalog.GetAvatar(pet.Skin);artwork.SetSkin(pet.Skin);if(persona!=null)persona.RefreshPersona();if(connections!=null)connections.RefreshPersonaVoices(); }
+        void RefreshArtworkOpacity(){artwork.ArtworkOpacity=pet.Settings.ChatArtworkOpacity/100d;}
         public void RefreshTextProviders(){if(connections!=null)connections.RefreshTextProviders();}
         void RefreshRestoredPreferences()
         {
@@ -281,6 +287,7 @@ namespace Dafeiyu
         }
         public void RefreshState()
         {
+            RefreshArtworkOpacity();
             if(holidayOutfits!=null)holidayOutfits.RefreshState();
             RefreshHolidayLayout();
             if(!ReferenceEquals(displayedSkin,pet.Skin))RefreshAvatar();
@@ -352,7 +359,7 @@ namespace Dafeiyu
         }
         public void Dispose()
         {
-            if(disposed)return;disposed=true;pet.Holidays.Changed-=HolidayWardrobeChanged;holidayOutfits.Dispose();if(toolsSettings!=null)toolsSettings.Dispose();if(connections!=null)connections.DisposeImageGeneration();if(about!=null)about.Dispose();
+            if(disposed)return;disposed=true;pet.ChatArtworkOpacityChanged-=RefreshArtworkOpacity;pet.Holidays.Changed-=HolidayWardrobeChanged;holidayOutfits.Dispose();if(toolsSettings!=null)toolsSettings.Dispose();if(connections!=null)connections.DisposeImageGeneration();if(about!=null)about.Dispose();
         }
         public bool IsOnAboutPage {get{return SelectedNavigationIndex==4;}}
         public bool ValidateGuideNetwork(out string error){EnsureCategory(4);return about.ValidateNetwork(out error);}

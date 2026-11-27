@@ -2,6 +2,56 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [1.0.8](https://github.com/Eason4869/deskpet/releases/tag/v1.0.8) · Production release
+
+### Transitions and windows
+
+- Flow, Ripple, Refraction, and Zipper reverse from the current frame when you switch back mid-transition. Avatar Ripple and Zipper Entrance continue from the current frame when you choose another companion. Theme reversals also work with Follow System.
+- Theme and companion transitions keep playing while you scroll, switch conversations, edit or send messages, or resize the window. Revealed areas reflect your actions immediately.
+- Quick Chat on Windows has a continuous rounded outline and pointer, with a clearer border in dark mode. It expands into Full Chat; windows briefly fade in and out when opened or closed separately.
+- Full Chat on Windows remembers its size and maximized state. Its minimum size is 520 × 560 logical pixels, and older saved sizes below that limit are corrected on reopening.
+- Update notes open on top of other windows and can be moved by dragging the header.
+
+### Companion Home and settings
+
+- Companion Home cards rise into view in sequence on Windows and macOS, taking about 0.35 seconds each. Once the relationship card settles, its ring draws clockwise to the current progress at 306° per second.
+- Relationship stages appear from left to right. Points earned today, active days together, and days since meeting follow with staggered entrances. Journey entries grow downward in time with the keepsake cards and run from oldest to newest.
+- Companion Home shows its final state immediately when reduced motion is enabled. Leaving or rebuilding the page clears animations so controls cannot remain hidden.
+- Windows appearance settings include an artwork opacity slider, with a live preview in the lower-right corner of Chat and Settings. Artwork opacity, theme transition volume, and operation sound volume default to 50%; saved values carry over.
+- Dropdowns match the original light and dark palettes and rounded corners. Short choices and volume or opacity sliders use labels on the left and controls on the right. The companion avatar in Settings has a rounded-square backdrop.
+- The Windows usage heatmap reveals cells from bottom left to top right, and analysis bars grow upward to their values.
+
+### Work and connections
+
+- The Windows Work agent can use `git_push` with the project's GitHub `origin`. Its approval prompt shows the branch and commit. GitHub CLI, fine-grained PATs, and an optional HTTP proxy are supported.
+- The Windows Workspace pane can pause, resume, edit, and delete a goal, with pause state saved per conversation. Queued requests and checkpoints cannot resume a goal invalidated by an edit or deletion.
+- Windows GitHub and Gmail cards have a right-aligned Manage button. Their rounded dialogs adapt to light and dark themes and show connection status, authorization details, and account links. Gmail web sign-in is available independently.
+- Fixed stale requests overriding a newer companion choice, along with transitions being interrupted or skipped by automatic scrolling or settings saves.
+
+## 1.0.8-dev.3 · Development preview
+
+- Full Chat on Windows has a minimum size of 520 × 560 logical pixels. Previously saved sizes below that limit are corrected when reopening.
+- Dropdowns match the light and dark palettes and rounded corners. Short choices such as image generation concurrency and the operation sound slider line up with the theme transition controls.
+- Companion artwork opacity, theme transition volume, and operation sound volume default to 50%. Saved values carry over.
+
+## 1.0.8-dev.2 · Development preview
+
+- Flow, Ripple, Refraction, and Zipper can reverse smoothly from the current frame when you switch back mid-transition. Selecting the active theme keeps the animation going. Follow System also supports reversals.
+- Avatar Ripple and Zipper Entrance continue from the current frame when you select another companion. An animation already under way keeps playing while the next companion loads.
+- Theme and companion animations keep playing as you scroll, switch conversations, edit or send messages, or resize the window. Revealed areas update immediately.
+- The Windows quick chat bubble now has one continuous outline around its rounded corners and pointer, with a more visible border in dark mode.
+- Quick Chat on Windows expands from its screen position into Full Chat. Chat windows briefly fade in and out when opened or closed on their own. Full Chat remembers its size and maximized state.
+- Adjust companion artwork opacity in Windows appearance settings. It defaults to 30%, with a live preview in the lower-right corner of Settings and Chat. The companion avatar in Settings has a rounded-square backdrop.
+- Companion Home cards rise into place on Windows, and the relationship ring draws clockwise to the current progress.
+- The Windows usage heatmap reveals cells from bottom left to top right, and analysis bars grow up from the baseline.
+
+## 1.0.8-dev.1 · Development preview
+
+- The Windows Work agent can use `git_push` to push to the project's GitHub `origin`. The approval prompt shows the branch and commit. GitHub CLI, fine-grained PATs, and an optional HTTP proxy are supported.
+- The Workspace pane on Windows can pause, resume, edit, and delete a goal. Pause state is saved per conversation. Queued requests and checkpoints cannot resume a goal invalidated by an edit or deletion.
+- The GitHub and Gmail cards on Windows have a right-aligned Manage button. Their rounded dialogs adapt to light and dark themes and provide connection status, sign-in options, and account management. Gmail web sign-in is available independently of in-app OAuth configuration.
+- Fixed stale requests overriding a newer companion selection and transitions being cut short or skipped when the chat scrolls automatically or settings are being saved.
+
 ## [1.0.7](https://github.com/Eason4869/deskpet/releases/tag/v1.0.7) · Production release
 
 ### Appearance and settings

@@ -119,11 +119,13 @@ internal static class SettingsLazyChecks
                     double Right(Control control)=>control.TranslatePoint(new Point(control.Bounds.Width,0),window)!.Value.X;
                     var language=Named<Button>(window,"SettingsLanguage");
                     var effect=Named<ComboBox>(window,"ThemeTransitionEffect");
+                    var concurrency=Named<ComboBox>(window,"ImageGenerationConcurrency");
                     var volume=Named<Slider>(window,"ThemeTransitionSoundVolume");
                     var picker=Named<ThemeModePicker>(window,"ThemeModePicker");
                     var themeSound=Named<CheckBox>(window,"ThemeTransitionSoundEnabled");
                     var imageMotion=Named<CheckBox>(window,"ImageGenerationMotionEnabled");
-                    Check(Math.Abs(Right(effect)-Right(language))<1&&Math.Abs(Right(volume)-Right(language))<1,
+                    Check(Math.Abs(Right(effect)-Right(language))<1&&Math.Abs(Right(volume)-Right(language))<1&&
+                        Math.Abs(Right(concurrency)-Right(effect))<1&&concurrency.Bounds.Width==effect.Bounds.Width,
                         "language, animation and volume controls share a right edge "+theme+" "+width);
                     Check(picker.Bounds.Width<=291&&Math.Abs(Right(picker)-Right(language))<1,"theme frame fits its cards at the trailing edge "+theme+" "+width);
                     var track=volume.GetVisualDescendants().OfType<Track>().Single();
@@ -132,6 +134,13 @@ internal static class SettingsLazyChecks
                     Check(thumb.Bounds.Width==16&&((ISolidColorBrush)thumb.Background!).Color==expectedColor,
                         "volume thumb uses the current palette and round sizing "+theme+" "+width);
                     if(width==960){
+                        var popup=effect.GetVisualDescendants().OfType<Popup>().Single(p=>p.Name=="PART_Popup");
+                        effect.IsDropDownOpen=true;Dispatcher.UIThread.RunJobs();
+                        Check(popup.IsOpen&&popup.Child is Border menu&&menu.CornerRadius.TopLeft==10&&
+                            menu.Background==DesktopTheme.Surface&&menu.BorderBrush==DesktopTheme.CardBorder,
+                            "dropdown uses the rounded theme menu "+theme);
+                        effect.IsDropDownOpen=false;Dispatcher.UIThread.RunJobs();
+                        Check(!popup.IsOpen,"dropdown dismisses normally "+theme);
                         var previousVolume=volume.Value;volume.Value=53;
                         thumb.RaiseEvent(new VectorEventArgs{RoutedEvent=Thumb.DragStartedEvent});Dispatcher.UIThread.RunJobs();
                         var tip=ToolTip.GetTip(thumb) as ToolTip;

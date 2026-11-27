@@ -47,11 +47,126 @@ namespace Dafeiyu
             if(tooltipStyle==null)tooltipStyle=(Style)XamlReader.Parse("<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='ToolTip'><Setter Property='Background' Value='#202329'/><Setter Property='Foreground' Value='White'/><Setter Property='BorderBrush' Value='Transparent'/><Setter Property='BorderThickness' Value='1'/><Setter Property='Padding' Value='9,6'/><Setter Property='FontSize' Value='12'/><Setter Property='HasDropShadow' Value='True'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='ToolTip'><Border Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='8' Padding='{TemplateBinding Padding}'><ContentPresenter/></Border></ControlTemplate></Setter.Value></Setter></Style>");
             window.Resources[typeof(ToolTip)]=tooltipStyle;if(Application.Current!=null)Application.Current.Resources[typeof(ToolTip)]=tooltipStyle;ToolTipService.SetInitialShowDelay(window,600);ToolTipService.SetShowDuration(window,3500);ToolTipService.SetBetweenShowDelay(window,250);            if(comboStyle==null)
             {
-                comboStyle=(Style)ThemeManager.Parse("<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ComboBox'><Setter Property='FocusVisualStyle' Value='{x:Null}'/><Setter Property='Background' Value='White'/><Setter Property='BorderBrush' Value='#DCE5F4'/><Setter Property='Foreground' Value='#203754'/><Setter Property='ItemContainerStyle'><Setter.Value><Style TargetType='ComboBoxItem'><Setter Property='FocusVisualStyle' Value='{x:Null}'/><Setter Property='Padding' Value='9,5'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='ComboBoxItem'><Border x:Name='item' Background='Transparent' CornerRadius='7' Padding='{TemplateBinding Padding}'><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property='IsHighlighted' Value='True'><Setter TargetName='item' Property='Background' Value='#EFEFEF'/></Trigger><Trigger Property='IsSelected' Value='True'><Setter TargetName='item' Property='Background' Value='#EAEAEA'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style></Setter.Value></Setter><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='ComboBox'><Grid><ToggleButton Focusable='False' ClickMode='Press' IsChecked='{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}'><ToggleButton.Template><ControlTemplate TargetType='ToggleButton'><Border Background='{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}' BorderBrush='{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}' BorderThickness='1' CornerRadius='9'><Path Data='M0,0 L4,4 L8,0' Stroke='#72839B' StrokeThickness='1.3' HorizontalAlignment='Right' VerticalAlignment='Center' Margin='0,0,14,0'/></Border></ControlTemplate></ToggleButton.Template></ToggleButton><ContentPresenter x:Name='selection' Content='{TemplateBinding SelectionBoxItem}' ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}' Margin='12,7,36,7' VerticalAlignment='Center' IsHitTestVisible='False'/><TextBox x:Name='PART_EditableTextBox' Style='{x:Null}' Visibility='Hidden' IsReadOnly='{TemplateBinding IsReadOnly}' Foreground='{TemplateBinding Foreground}' Background='Transparent' BorderThickness='0' Padding='0' Margin='12,7,36,7' VerticalContentAlignment='Center' HorizontalContentAlignment='Left'/><Popup x:Name='PART_Popup' Placement='Bottom' IsOpen='{TemplateBinding IsDropDownOpen}' AllowsTransparency='True' Focusable='False' PopupAnimation='Slide'><Border Background='White' BorderBrush='#DCE5F4' BorderThickness='1' CornerRadius='9' MinWidth='{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}' Padding='4'><ScrollViewer MaxHeight='290' CanContentScroll='True'><ItemsPresenter KeyboardNavigation.DirectionalNavigation='Contained'/></ScrollViewer></Border></Popup></Grid><ControlTemplate.Triggers><Trigger Property='IsKeyboardFocusWithin' Value='True'><Setter Property='Background' Value='#F1F1F1'/><Setter Property='BorderBrush' Value='#DADDE1'/></Trigger><Trigger Property='IsEditable' Value='True'><Setter TargetName='selection' Property='Visibility' Value='Hidden'/><Setter TargetName='PART_EditableTextBox' Property='Visibility' Value='Visible'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.5'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>");
+                comboStyle=CreateComboStyle();
                 navigationStyle=(Style)ThemeManager.Parse("<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ListBoxItem'><Setter Property='FocusVisualStyle' Value='{x:Null}'/><Setter Property='Foreground' Value='#203754'/><Setter Property='Background' Value='Transparent'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='ListBoxItem'><Border x:Name='surface' Background='{TemplateBinding Background}' CornerRadius='9' Padding='{TemplateBinding Padding}'><ContentPresenter VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsKeyboardFocusWithin' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger><Trigger Property='IsSelected' Value='True'><Setter Property='Background' Value='#EAEAEA'/><Setter Property='Foreground' Value='#203754'/></Trigger><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>");
             }
             if(passwordStyle==null)passwordStyle=(Style)ThemeManager.Parse("<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='PasswordBox'><Setter Property='FocusVisualStyle' Value='{x:Null}'/><Setter Property='Foreground' Value='#203754'/><Setter Property='BorderThickness' Value='1'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='PasswordBox'><Border x:Name='surface' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='9'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}'/></Border><ControlTemplate.Triggers><Trigger Property='IsKeyboardFocusWithin' Value='True'><Setter TargetName='surface' Property='Background' Value='#F3F3F3'/><Setter TargetName='surface' Property='BorderBrush' Value='#DADDE1'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.5'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>");
             window.Resources[typeof(TextBox)]=new Style(typeof(TextBox)){Setters={new Setter(Control.BackgroundProperty,ThemeManager.FieldSurface)}};window.Resources[typeof(ComboBox)]=new Style(typeof(ComboBox),comboStyle){Setters={new Setter(Control.BackgroundProperty,ThemeManager.FieldSurface)}};window.Resources[typeof(PasswordBox)]=new Style(typeof(PasswordBox),passwordStyle){Setters={new Setter(Control.BackgroundProperty,ThemeManager.FieldSurface)}};
+        }
+        private static Style CreateComboStyle()
+        {
+            ThemeManager.Brush("#DCE5F4","#52637C");
+            ThemeManager.Brush("#203754","#FFFFFF");
+            return (Style)ThemeManager.Parse(@"
+<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+       xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ComboBox'>
+    <Setter Property='FocusVisualStyle' Value='{x:Null}'/>
+    <Setter Property='Foreground' Value='#203754'/>
+    <Setter Property='BorderBrush' Value='{DynamicResource DeskPet.Color.DCE5F4.#52637C}'/>
+    <Setter Property='ItemContainerStyle'>
+        <Setter.Value>
+            <Style TargetType='ComboBoxItem'>
+                <Setter Property='FocusVisualStyle' Value='{x:Null}'/>
+                <Setter Property='Foreground' Value='#203754'/>
+                <Setter Property='Padding' Value='10,6'/>
+                <Setter Property='Template'>
+                    <Setter.Value>
+                        <ControlTemplate TargetType='ComboBoxItem'>
+                            <Border x:Name='item' Background='Transparent' CornerRadius='6' Padding='{TemplateBinding Padding}'>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width='*'/>
+                                        <ColumnDefinition Width='18'/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter VerticalAlignment='Center'/>
+                                    <Path x:Name='check' Grid.Column='1' Data='M0,4 L3,7 L9,0' Stroke='#456DE6'
+                                          StrokeThickness='1.4' StrokeStartLineCap='Round' StrokeEndLineCap='Round'
+                                          Visibility='Hidden' HorizontalAlignment='Right' VerticalAlignment='Center'/>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property='IsSelected' Value='True'>
+                                    <Setter TargetName='item' Property='Background' Value='#EDF3FF'/>
+                                    <Setter TargetName='check' Property='Visibility' Value='Visible'/>
+                                </Trigger>
+                                <Trigger Property='IsHighlighted' Value='True'>
+                                    <Setter TargetName='item' Property='Background' Value='#EFEFEF'/>
+                                </Trigger>
+                                <Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Setter.Value>
+    </Setter>
+    <Setter Property='Template'>
+        <Setter.Value>
+            <ControlTemplate TargetType='ComboBox'>
+                <Grid>
+                    <Border x:Name='surface' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}'
+                            BorderThickness='1' CornerRadius='9'>
+                        <Path x:Name='chevron' Data='M0,0 L4,4 L8,0' Stroke='#72839B' StrokeThickness='1.3'
+                              IsHitTestVisible='False' HorizontalAlignment='Right' VerticalAlignment='Center'
+                              Margin='0,0,14,0' RenderTransformOrigin='0.5,0.5'/>
+                    </Border>
+                    <ToggleButton Focusable='False' ClickMode='Press'
+                                  IsChecked='{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}'>
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType='ToggleButton'><Border Background='Transparent'/></ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+                    <ContentPresenter x:Name='selection' Content='{TemplateBinding SelectionBoxItem}'
+                                      ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}' ContentStringFormat='{TemplateBinding SelectionBoxItemStringFormat}'
+                                      Margin='12,7,32,7' VerticalAlignment='Center' IsHitTestVisible='False'/>
+                    <TextBox x:Name='PART_EditableTextBox' Style='{x:Null}' Visibility='Hidden' IsReadOnly='{TemplateBinding IsReadOnly}'
+                             Foreground='{TemplateBinding Foreground}' Background='Transparent'
+                             CaretBrush='{DynamicResource DeskPet.Color.203754.#FFFFFF}' Margin='12,7,32,7' VerticalContentAlignment='Center'>
+                        <TextBox.Template>
+                            <ControlTemplate TargetType='TextBox'>
+                                <Border Background='{TemplateBinding Background}'>
+                                    <ScrollViewer x:Name='PART_ContentHost'/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                    <Popup x:Name='PART_Popup' Placement='Bottom' IsOpen='{TemplateBinding IsDropDownOpen}'
+                           AllowsTransparency='True' Focusable='False' PlacementTarget='{Binding RelativeSource={RelativeSource TemplatedParent}}'
+                           VerticalOffset='4'>
+                        <Border x:Name='menu' Background='White' BorderBrush='{DynamicResource DeskPet.Color.DCE5F4.#52637C}'
+                                BorderThickness='1' CornerRadius='9' MinWidth='{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}'
+                                Padding='4'>
+                            <ScrollViewer MaxHeight='{TemplateBinding MaxDropDownHeight}' CanContentScroll='True'
+                                          HorizontalScrollBarVisibility='Disabled' VerticalScrollBarVisibility='Auto'>
+                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation='Contained'/>
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Grid>
+                <ControlTemplate.Triggers>
+                    <Trigger Property='IsMouseOver' Value='True'>
+                        <Setter TargetName='surface' Property='Background' Value='#F2F7FF'/>
+                    </Trigger>
+                    <Trigger Property='IsKeyboardFocusWithin' Value='True'>
+                        <Setter TargetName='surface' Property='BorderBrush' Value='#456DE6'/>
+                    </Trigger>
+                    <Trigger Property='IsDropDownOpen' Value='True'>
+                        <Setter TargetName='surface' Property='BorderBrush' Value='#456DE6'/>
+                        <Setter TargetName='chevron' Property='RenderTransform'>
+                            <Setter.Value><ScaleTransform ScaleY='-1'/></Setter.Value>
+                        </Setter>
+                    </Trigger>
+                    <Trigger Property='IsEditable' Value='True'>
+                        <Setter TargetName='selection' Property='Visibility' Value='Hidden'/>
+                        <Setter TargetName='PART_EditableTextBox' Property='Visibility' Value='Visible'/>
+                    </Trigger>
+                    <Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.5'/></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+    <Setter Property='MaxDropDownHeight' Value='290'/>
+</Style>");
         }
         public static Button Button(string text, bool primary = false)
         {
@@ -123,7 +238,7 @@ namespace Dafeiyu
             var style=(Style)ThemeManager.Parse(@"<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='CheckBox'>
   <Setter Property='FocusVisualStyle' Value='{x:Null}'/>
   <Setter Property='Template'><Setter.Value><ControlTemplate TargetType='CheckBox'>
-    <Border x:Name='highlight' CornerRadius='7' Background='Transparent' Padding='3'>"+body+@"</Border>
+    <Border x:Name='highlight' CornerRadius='7' Background='Transparent' Padding='"+(trailing?"0,3,0,3":"3")+@"'>"+body+@"</Border>
     <ControlTemplate.Triggers>
       <Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='highlight' Property='Background' Value='#EFEFEF'/></Trigger>
       <Trigger Property='IsMouseOver' Value='True'><Setter TargetName='highlight' Property='Background' Value='#EFEFEF'/></Trigger>

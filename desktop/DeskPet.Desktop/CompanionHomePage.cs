@@ -19,6 +19,12 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     readonly RelationshipHomeModel model;
         readonly HolidayKeepsakeAlbumView holidayAlbum;
         bool holidaySelected;
+        bool entrancePending=true;
+        CompanionHomeEntrance? entrance;
+        readonly Avalonia.Threading.DispatcherTimer entranceTimer=new(){Interval=TimeSpan.FromMilliseconds(55)};
+        internal void PrepareEntrance(){entrancePending=true;}
+        void StopEntrance(){entranceTimer.Stop();entrance?.Dispose();entrance=null;}
+
         readonly Avalonia.Threading.DispatcherTimer holidayPulse=new Avalonia.Threading.DispatcherTimer();
         internal Task PendingHoliday {get{return holidayAlbum.Pending;}}
         async void ObserveShownHome(){if(disposed)return;var top=TopLevel.GetTopLevel(this) as Window;await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome);}
@@ -44,7 +50,9 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
         this.owner=owner;model=new RelationshipHomeModel(owner.Relationships);
             holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,async delegate{var top=TopLevel.GetTopLevel(this) as Window;await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.DataDirectory);
             holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
-            AttachedToVisualTree+=delegate{holidayPulse.Start();ObserveShownHome();};DetachedFromVisualTree+=delegate{holidayPulse.Stop();};
+            AttachedToVisualTree+=delegate{holidayPulse.Start();ObserveShownHome();if(entrance!=null&&entrancePending)entranceTimer.Start();};DetachedFromVisualTree+=delegate{holidayPulse.Stop();StopEntrance();};
+            PropertyChanged+=(_,e)=>{if(e.Property==IsVisibleProperty&&!IsVisible)StopEntrance();};
+            entranceTimer.Tick+=delegate{entranceTimer.Stop();if(disposed||!IsEffectivelyVisible||entrance==null)return;entrancePending=false;entrance.Start();};
 Name="CompanionHomePage";
         VerticalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled;
         Background=DesktopTheme.Surface;body.Margin=new Thickness(28,24,28,28);body.MaxWidth=1080;body.HorizontalAlignment=HorizontalAlignment.Stretch;Content=body;
@@ -78,6 +86,7 @@ Name="CompanionHomePage";
         void Render()
         {
             if(View==null||View.CompanionId!=owner.RelationshipCompanionId){SavedChanged();return;}
+            StopEntrance();
             displayedSkin=owner.Skin;displayedName=owner.Skin.DisplayName;displayedSource=owner.Skin.SourceKey;
             int version=revision;double scroll=Offset.Y;
             var focused=TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
@@ -106,11 +115,11 @@ Name="CompanionHomePage";
             var relation=Section(()=> (TextResources.Get("relationship.home.relation")));relation.Margin=new Thickness(0);
             var profileBox=HomeVisual.Box(profileContent,true);profileBox.Name="CompanionProfileCard";var relationBox=HomeVisual.Box(relation,false);relationBox.Name="CompanionRelationshipCard";relationBox.Background=new SolidColorBrush(DesktopTheme.IsDark?Color.FromRgb(43,53,69):Color.FromRgb(244,247,252));
             var top=new Grid{Margin=new Thickness(0,20,0,0)};top.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(55,GridUnitType.Star)});top.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(45,GridUnitType.Star)});top.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});top.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});top.Children.Add(profileBox);top.Children.Add(relationBox);body.Children.Add(top);
-            UniformGrid? nodes=null;Grid? progressRow=null;StackPanel? stats=null;Grid? bottom=null;WrapPanel? cardsWrap=null;
+            UniformGrid? nodes=null;Grid? progressRow=null;StackPanel? stats=null;Grid? bottom=null;WrapPanel? cardsWrap=null;Control? ring=null;
             if(View!.Snapshot!=null){
                 var p=View.Progress;var words=new StackPanel{Margin=new Thickness(18,0,0,0),VerticalAlignment=VerticalAlignment.Center};
                 var stage=Text(()=> (RelationshipContent.StageName(p.StageId)),26,"CompanionRelationshipStage");stage.FontWeight=FontWeight.SemiBold;words.Children.Add(stage);words.Children.Add(Text(()=> (p.ScoreText),28,"CompanionRelationshipScore"));var next=Text(()=> (p.NextText));next.Foreground=DesktopTheme.Brush("#7A7E86");words.Children.Add(next);
-                progressRow=new Grid{Margin=new Thickness(0,14,0,16)};progressRow.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(112)});progressRow.ColumnDefinitions.Add(new ColumnDefinition());progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.Children.Add(HomeVisual.Ring(p.Fraction));Grid.SetColumn(words,1);progressRow.Children.Add(words);relation.Children.Add(progressRow);
+                progressRow=new Grid{Margin=new Thickness(0,14,0,16)};progressRow.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(112)});progressRow.ColumnDefinitions.Add(new ColumnDefinition());progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});ring=HomeVisual.Ring(p.Fraction);progressRow.Children.Add(ring);Grid.SetColumn(words,1);progressRow.Children.Add(words);relation.Children.Add(progressRow);
                 nodes=HomeVisual.Nodes(p);relation.Children.Add(nodes);var relationScope=Label(()=>(TextResources.Get("relationship.home.globalScope")),12);relationScope.Foreground=DesktopTheme.Brush("#7A7E86");relation.Children.Add(relationScope);
                 int statusIndex=0;foreach(string explanation in View.StatusTexts){int statusPosition=statusIndex++;var state=Text(()=>View.StatusTexts.ElementAtOrDefault(statusPosition)??"",13,statusPosition==0?"RelationshipGrowthStatus":null);state.Margin=new Thickness(0,14,0,0);state.Foreground=DesktopTheme.Brush("#7A7E86");relation.Children.Add(state);}
                 stats=new StackPanel{Margin=new Thickness(0,12,0,0)};stats.Children.Add(HomeVisual.Stat("heart",()=> (TextResources.Get("relationship.home.todayLabel")),()=> (View.TodayPoints+" / 20"),"CompanionTodayGrowth"));stats.Children.Add(HomeVisual.Stat("sun",()=> (TextResources.Get("relationship.home.activeDaysLabel")),()=> (TextResources.Format("relationship.home.daysValue",View.ActiveDays)),"CompanionActiveDays"));stats.Children.Add(HomeVisual.Stat("calendar",()=> (TextResources.Get("relationship.home.acquaintanceDaysLabel")),()=> (TextResources.Format("relationship.home.daysValue",View.AcquaintanceDays)),"CompanionAcquaintanceDays"));relation.Children.Add(stats);
@@ -126,7 +135,7 @@ Name="CompanionHomePage";
 
                 var timeline=Section(()=> (TextResources.Get("relationship.home.timeline")));var cards=Section(()=> (TextResources.Get("relationship.home.cards")));cardsWrap=new WrapPanel();cards.Children.Add(cardsWrap);
                 if(View.Snapshot.State==null){timeline.Children.Add(Label(()=>(TextResources.Get("relationship.home.empty"))));cards.Children.Add(Label(()=>(TextResources.Get("relationship.home.emptyCards"))));}
-                else foreach(var milestone in View.Snapshot.State.Milestones.AsEnumerable().Reverse())timeline.Children.Add(HomeVisual.Milestone(()=> (RelationshipContent.StageName(milestone.StageId)),()=> (RelationshipCardData.FormatDate(milestone.EarnedLocalDate))));
+                else foreach(var milestone in View.Snapshot.State.Milestones)timeline.Children.Add(HomeVisual.Milestone(()=> (RelationshipContent.StageName(milestone.StageId)),()=> (RelationshipCardData.FormatDate(milestone.EarnedLocalDate))));
                 if(View.Snapshot.State!=null)foreach(var milestone in View.Snapshot.State.Milestones){
                     HomeCardCapture? capture;if(!captures.TryGetValue(milestone.StageId,out capture)||capture.Data.EarnedLocalDate!=milestone.EarnedLocalDate||capture.Data.FirstLocalDate!=View.Snapshot.State.FirstLocalDate){capture?.Dispose();var data=RelationshipCardData.FromSnapshot(View.Snapshot,milestone.StageId,owner.Skin.DisplayName);capture=new HomeCardCapture(data,RelationshipCardRenderer.Render(data,portrait!,DesktopTheme.IsDark,scenes.Get(data))){Expanded=expandedStages.Contains(milestone.StageId)};captures[milestone.StageId]=capture;}
                     var card=new RelationshipCardPreview(capture,RelationshipContent.Welcome(milestone.StageId,owner.RelationshipPack),delegate{return !disposed&&captureKey==key&&identity==capture.Data.CompanionId&&owner.RelationshipCompanionId==capture.Data.CompanionId&&version==revision;},delegate{return !disposed&&owner.RelationshipCompanionId==capture.Data.CompanionId;},delegate{if(updateLayout!=null)updateLayout();});cardsWrap.Children.Add(card);
@@ -148,7 +157,23 @@ Name="CompanionHomePage";
             var scope=Label(()=>(TextResources.Get("relationship.home.globalScope")),13);scope.Foreground=DesktopTheme.Brush("#7A7E86");scope.Margin=new Thickness(0,8,0,12);settings.Children.Add(scope);
             AddSetting(settings,"RelationshipGrowthEnabled",()=> (TextResources.Get("relationship.home.growth")),current!=null&&current.GrowthEnabled,0);AddSetting(settings,"RelationshipFeedbackEnabled",()=> (TextResources.Get("relationship.home.feedback")),current!=null&&current.FeedbackEnabled,1);AddSetting(settings,"RelationshipAiContextEnabled",()=> (TextResources.Get("relationship.home.aiContext")),current!=null&&current.AiContextEnabled,2);settings.IsEnabled=current!=null&&!View.ReadFailed&&!saving;
             var settingsExp=new Expander{HorizontalContentAlignment=HorizontalAlignment.Stretch,Name="CompanionRelationshipSettings",Header=HomeVisual.Header("settings",()=> (TextResources.Get("relationship.home.settings"))),Foreground=DesktopTheme.Brush("#282A2F"),IsExpanded=settingsOpen,Content=settings};settingsExp.PropertyChanged+=(_,e)=>{if(e.Property==Expander.IsExpandedProperty)settingsOpen=settingsExp.IsExpanded;};
-            HomeVisual.Disclosure(rules);HomeVisual.Disclosure(settingsExp);var groups=new StackPanel();groups.Children.Add(rules);groups.Children.Add(new Border{Height=1,Background=DesktopTheme.Brush("#E9EAED"),Margin=new Thickness(0,10,0,10)});groups.Children.Add(settingsExp);body.Children.Add(HomeVisual.Box(groups,false));
+            HomeVisual.Disclosure(rules);HomeVisual.Disclosure(settingsExp);var groups=new StackPanel();groups.Children.Add(rules);groups.Children.Add(new Border{Height=1,Background=DesktopTheme.Brush("#E9EAED"),Margin=new Thickness(0,10,0,10)});groups.Children.Add(settingsExp);var settingsBox=HomeVisual.Box(groups,false);body.Children.Add(settingsBox);
+            if(entrancePending&&!DeskPet.Platform.Mac.MacServices.PrefersReducedMotion)
+            {
+                entrance=new CompanionHomeEntrance(this);
+                entrance.Float(profileBox,0);entrance.Float(relationBox,RelationshipHomeMotion.CardStagger);
+                if(nodes!=null)for(int i=0;i<nodes.Children.Count;i++)entrance.Float(nodes.Children[i],RelationshipHomeMotion.RelationReady+i*.055,8);
+                if(stats!=null)for(int i=0;i<stats.Children.Count;i++)entrance.Float(stats.Children[i],RelationshipHomeMotion.RelationReady+.12+i*.08,12);
+                if(bottom!=null&&!holidaySelected)
+                {
+                    var timeline=(StackPanel)bottom.Children[0];
+                    for(int i=0;i<cardsWrap!.Children.Count;i++)entrance.Float(cardsWrap.Children[i],RelationshipHomeMotion.AlbumDelay(i));
+                    for(int i=1;i<timeline.Children.Count;i++)if(timeline.Children[i] is Grid)entrance.Milestone(timeline.Children[i],RelationshipHomeMotion.AlbumDelay(i-1));
+                }
+                entrance.Float(settingsBox,.18+(cardsWrap?.Children.Count??0)*RelationshipHomeMotion.CardSeconds);
+                if(ring!=null)entrance.Ring(ring);
+                entranceTimer.Start();
+            }
             updateLayout=delegate{
                 double viewport=Viewport.Width>0?Viewport.Width:Bounds.Width;double width=Math.Min(1080,Math.Max(0,viewport-(Bounds.Width<600?32:56)));bool wide=width>=760;body.Margin=new Thickness(Bounds.Width<600?16:28,24,Bounds.Width<600?16:28,28);
                 Grid.SetColumn(relationBox,wide?1:0);Grid.SetRow(relationBox,wide?0:1);Grid.SetColumnSpan(profileBox,wide?1:2);Grid.SetColumnSpan(relationBox,wide?1:2);relationBox.Margin=new Thickness(wide?22:0,wide?0:16,0,0);
@@ -187,6 +212,6 @@ Name="CompanionHomePage";
         finally{saving=false;}
         if(!disposed)await RefreshAsync();
     }
-    public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();holidayAlbum.Dispose();if(Application.Current!=null)Application.Current.ActualThemeVariantChanged-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;owner.Changed-=IdentityChanged;foreach(var capture in captures.Values)capture.Dispose();captures.Clear();body.Children.Clear();scenes.Dispose();portrait?.Dispose();avatarSource?.Dispose();assets.Dispose();}
+    public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();StopEntrance();holidayAlbum.Dispose();if(Application.Current!=null)Application.Current.ActualThemeVariantChanged-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;owner.Changed-=IdentityChanged;foreach(var capture in captures.Values)capture.Dispose();captures.Clear();body.Children.Clear();scenes.Dispose();portrait?.Dispose();avatarSource?.Dispose();assets.Dispose();}
 static TextBlock Text(System.Func<string> value,double size=14,string? name=null){return LocalizedUi.With(Text(value(),size,name),"Text",value);}
         static TextBlock Label(System.Func<string> value,double size=14,string? name=null){return LocalizedUi.With(Label(value(),size,name),"Text",value);}}

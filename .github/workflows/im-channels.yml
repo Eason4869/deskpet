@@ -20,7 +20,7 @@ on:
       - '.github/workflows/im-channels.yml'
       - '.github/workflows/bundled-ebao.yml'
   push:
-    branches: [dev]
+    branches: [dev, codex/release-1.0.8]
   workflow_dispatch:
 permissions:
   contents: read

@@ -11,7 +11,11 @@ namespace Dafeiyu
     public sealed class QuickChatWindow : Window
     {
         internal void OpenBrowserLink(Uri uri){pet.OpenChatBrowserLink(uri);}
-        readonly PetWindow pet;readonly ConversationSession session;readonly ConversationQueue queue;readonly MarkdownEditor input;MarkdownView reply;readonly StackPanel messages=new StackPanel();readonly System.Collections.Generic.Dictionary<string,ChatMessageView> rendered=new System.Collections.Generic.Dictionary<string,ChatMessageView>();readonly ScrollViewer scroll;readonly TextBlock status;readonly Button record;readonly ConversationComposer composer;readonly Polygon tail;readonly Image avatar;
+        readonly PetWindow pet;readonly ConversationSession session;readonly ConversationQueue queue;readonly MarkdownEditor input;MarkdownView reply;readonly StackPanel messages=new StackPanel();readonly System.Collections.Generic.Dictionary<string,ChatMessageView> rendered=new System.Collections.Generic.Dictionary<string,ChatMessageView>();readonly ScrollViewer scroll;readonly TextBlock status;readonly Button record;readonly ConversationComposer composer;readonly Image avatar;
+        const double TailHeight=14;
+        readonly Grid root=new Grid();
+        readonly Path outline;
+        double tailCenter=double.NaN,paintedTailCenter=double.NaN;
         bool closed;string renderedPersona;readonly MessageUpdatePump messagePump;
         readonly Button close;readonly Button taskDetails;GuideFocusScope guideScope;
         readonly AgentQuestionSurface questionSurface;
@@ -19,11 +23,15 @@ namespace Dafeiyu
         public QuickChatWindow(PetWindow companion,ConversationWorkspace workspace=null,Action expandReply=null)
         {
             pet=companion;session=workspace==null?pet.Conversation:workspace.Session;queue=workspace==null?pet.InputQueue:workspace.Queue;Icon=Ui.ApplicationIcon();Width=400;Height=Math.Min(470,Math.Max(300,SystemParameters.WorkArea.Height-24));AllowsTransparency=true;WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;Topmost=pet.Settings.Topmost;Background=Brushes.Transparent;FontFamily=new FontFamily("Microsoft YaHei UI");FontSize=12;Foreground=Ui.Ink;SlimScrollBars.Install(this);UseLayoutRounding=true;
-            var root=new Grid();root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(14)});
+            var motion=new ChatWindowMotion(this);
+            root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(TailHeight)});
+            outline=new Path{Name="QuickChatOutline",Fill=ThemeManager.Surface,Stroke=ThemeManager.CardBorder,StrokeThickness=1};
+            var chrome=new Canvas();chrome.Children.Add(outline);Grid.SetRowSpan(chrome,2);root.Children.Add(chrome);
+            root.SizeChanged+=delegate{DrawOutline();};
             var panel=new Grid{Margin=new Thickness(18,14,18,4)};
             panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});panel.RowDefinitions.Add(new RowDefinition());panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var header=new DockPanel();
-            close=UiIcons.Button("close",()=>(TextResources.Get("quickChatWindow.quickChatWindow.uiIcons")));close.Name="CloseQuickChat";close.Margin=new Thickness(0);close.Click+=delegate {Close();};DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);
+            close=UiIcons.Button("close",()=>(TextResources.Get("quickChatWindow.quickChatWindow.uiIcons")));close.Name="CloseQuickChat";close.Margin=new Thickness(0);close.Click+=delegate {motion.Close();};DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);
             var expand=UiIcons.Button("expand",()=>(TextResources.Get("quickChatWindow.quickChatWindow.uiIcons.alternativeA")));expand.Name="ExpandChat";expand.Click+=delegate {if(expandReply!=null)expandReply();else pet.ShowChat();};DockPanel.SetDock(expand,Dock.Right);header.Children.Add(expand);
             avatar=new Image{Source=SkinCatalog.GetAvatar(pet.Skin),Width=34,Height=34,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,34,34),6.8,6.8),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,10,0)};avatar.Name="QuickAvatar";RenderOptions.SetBitmapScalingMode(avatar,BitmapScalingMode.HighQuality);DockPanel.SetDock(avatar,Dock.Left);header.Children.Add(avatar);
             taskDetails=LocalizedUi.Button(()=>(TextResources.Get("quickChatWindow.quickChatWindow.text")));taskDetails.Name="QuickAgentTask";taskDetails.FontSize=11;taskDetails.MinHeight=24;taskDetails.Click+=delegate{pet.ShowChat();};DockPanel.SetDock(taskDetails,Dock.Right);header.Children.Add(taskDetails);
@@ -32,11 +40,11 @@ namespace Dafeiyu
             header.Children.Add(identity);panel.Children.Add(header);
             scroll=Ui.Scroll(messages);scroll.Name="QuickHistoryScroll";scroll.Margin=new Thickness(0,12,0,8);Grid.SetRow(scroll,1);panel.Children.Add(scroll);questionSurface=new AgentQuestionSurface(pet.QuestionController,r=>AgentQuestionSurface.Matches(session,r));
             status=Ui.Text("",11,Ui.Muted);status.Name="QuickStatus";
-            input=new MarkdownEditor();input.Name="QuickMessageInput";input.MaxLength=8000;input.PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape){if(composer!=null && composer.DismissPrediction()){e.Handled=true;return;}e.Handled=true;Close();}};
+            input=new MarkdownEditor();input.Name="QuickMessageInput";input.MaxLength=8000;input.PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape){if(composer!=null && composer.DismissPrediction()){e.Handled=true;return;}e.Handled=true;motion.Close();}};
             record=UiIcons.Button("mic",()=>(TextResources.Get("quickChatWindow.quickChatWindow.uiIcons.alternativeB")));record.Name="VoiceRecord";
             composer=new ConversationComposer(pet,this,input,record,status,true,true,session,queue);composer.MountQuestionSurface(questionSurface);Grid.SetRow(composer,2);panel.Children.Add(composer);
             if(workspace!=null){composer.PrepareSubmission=delegate{return pet.PrepareConversationSubmission(workspace);};composer.Submitted=delegate{pet.FinishConversationSubmission(workspace);};}
-            root.Children.Add(new Border{Child=panel,CornerRadius=new CornerRadius(20),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface});tail=new Polygon{Fill=ThemeManager.Surface,Stroke=Ui.Line,StrokeThickness=1,Points=new PointCollection(new[]{new Point(168,0),new Point(180,13),new Point(192,0)})};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
+            root.Children.Add(new Border{Child=panel,Padding=new Thickness(1)});Content=root;
             messagePump=new MessageUpdatePump(session,Message);session.MessageAdded+=Message;session.HistoryChanged+=HistoryChanged;session.StateChanged+=RefreshState;session.AgentTaskChanged+=RefreshState;pet.Live.StateChanged+=RefreshState;pet.Live.PartialTranscript+=Partial;Loaded+=delegate {FollowPet();FocusInput();};IsVisibleChanged+=delegate {if(IsVisible)RefreshState();};Closed+=delegate {closed=true;questionSurface.Dispose();pet.CancelQuestionsWithoutHost(this);composer.Detach();messagePump.Dispose();session.MessageAdded-=Message;session.HistoryChanged-=HistoryChanged;session.StateChanged-=RefreshState;session.AgentTaskChanged-=RefreshState;pet.Live.StateChanged-=RefreshState;pet.Live.PartialTranscript-=Partial;};RefreshPersona();RefreshState();
         }
         internal System.Collections.Generic.List<ChatAttachment> SnapshotPendingAttachments(){return composer.SnapshotPendingAttachments();}
@@ -48,7 +56,46 @@ namespace Dafeiyu
             if(active){UpdateLayout();guideScope=new GuideFocusScope((UIElement)Content,close,reply,avatar);}
         }
         public void FocusInput(){if(input.IsVisible)input.Focus();}
-        public void FollowPet(){if(!closed)BubblePlacement.Follow(this,pet,tail);}
+        public void FollowPet()
+        {
+            if(closed)return;
+            var center=BubblePlacement.FollowPet(this,pet);
+            if(!center.HasValue)return;
+            tailCenter=center.Value;
+            if(double.IsNaN(paintedTailCenter)||Math.Abs(tailCenter-paintedTailCenter)>=.01)DrawOutline();
+        }
+        void DrawOutline()
+        {
+            const double inset=.5, radius=20, tailHalfWidth=12;
+            double width=root.ActualWidth,height=root.ActualHeight;
+            if(width<2*(radius+tailHalfWidth+2)||height<TailHeight+2*radius+1)return;
+            double right=width-inset,bottom=height-TailHeight-inset;
+            double clearance=inset+radius+tailHalfWidth+2;
+            double center=Math.Max(clearance,Math.Min(width-clearance,double.IsNaN(tailCenter)?width/2:tailCenter));
+            var geometry=new StreamGeometry();
+            using(var path=geometry.Open())
+            {
+                var corner=new Size(radius,radius);
+                path.BeginFigure(new Point(inset+radius,inset),true,true);
+                path.LineTo(new Point(right-radius,inset),true,false);
+                path.ArcTo(new Point(right,inset+radius),corner,0,false,SweepDirection.Clockwise,true,false);
+                path.LineTo(new Point(right,bottom-radius),true,false);
+                path.ArcTo(new Point(right-radius,bottom),corner,0,false,SweepDirection.Clockwise,true,false);
+                path.LineTo(new Point(center+tailHalfWidth+2,bottom),true,false);
+                path.QuadraticBezierTo(new Point(center+tailHalfWidth,bottom),new Point(center+tailHalfWidth-1,bottom+1),true,false);
+                path.LineTo(new Point(center+1.5,height-2),true,false);
+                path.QuadraticBezierTo(new Point(center,height+.25),new Point(center-1.5,height-2),true,false);
+                path.LineTo(new Point(center-tailHalfWidth+1,bottom+1),true,false);
+                path.QuadraticBezierTo(new Point(center-tailHalfWidth,bottom),new Point(center-tailHalfWidth-2,bottom),true,false);
+                path.LineTo(new Point(inset+radius,bottom),true,false);
+                path.ArcTo(new Point(inset,bottom-radius),corner,0,false,SweepDirection.Clockwise,true,false);
+                path.LineTo(new Point(inset,inset+radius),true,false);
+                path.ArcTo(new Point(inset+radius,inset),corner,0,false,SweepDirection.Clockwise,true,false);
+            }
+            geometry.Freeze();
+            outline.Data=geometry;
+            paintedTailCenter=tailCenter;
+        }
         public void RefreshPersona(){if(composer!=null)composer.RefreshModels();avatar.Source=SkinCatalog.GetAvatar(pet.Skin);LocalizedUi.Set(avatar,"ToolTip",()=>(pet.Skin.DisplayName));if(!(Content is LiveCallView))LocalizedUi.Set(this,"Title",()=>(TextResources.Format("quickChatWindow.refreshPersona.petSkinName",pet.Skin.DisplayName)));if(renderedPersona!=pet.Skin.Id){renderedPersona=pet.Skin.Id;ReloadHistory();}RefreshState();}
         void ReloadHistory()
         {

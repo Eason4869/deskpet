@@ -284,8 +284,7 @@ namespace Dafeiyu
         string ReadOrigin(CancellationToken token)
         {
             string[] remotes = Read(token, "remote").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            if (remotes.Length == 0) return "";
-            if (remotes.Length != 1 || remotes[0] != "origin") throw Problem("incompatiblePush");
+            if (!remotes.Contains("origin", StringComparer.Ordinal)) return "";
 
             string raw = Read(token, "config", "--includes", "--null", "--get-all", "remote.origin.url");
             if (!raw.EndsWith("\0", StringComparison.Ordinal) || raw.Count(character => character == '\0') != 1)

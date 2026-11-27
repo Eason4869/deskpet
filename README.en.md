@@ -2,18 +2,19 @@
 
 # DeskPet · 桌面伙伴
 
-A desktop companion for everyday interactions, conversations, and project work.
+A desktop companion for everyday interactions, conversations, and project work. Version 1.0.8 brings reversible, continuous transitions, a livelier Companion Home, and better workspace goals and GitHub pushing.
 
 [Download the stable release](https://github.com/Eason4869/deskpet/releases/latest) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Report an issue](https://github.com/Eason4869/deskpet/issues)
 
-## Highlights in 1.0.7
+## Highlights
 
-![Avatar ripple and zipper transitions in the Windows chat window](previews/release-1.0.7/companion-transition.gif)
+![Flow transition between light and dark in the Windows chat window](previews/release-1.0.8-dev.3/theme-switch.gif)
 
 | Feature | Where to use it |
 | --- | --- |
 | **Companion transitions** | Pick a companion from the main chat window's avatar menu. Once ready, an avatar ripple or a zipper reveal opens the new chat view. The partner settings offer Off, Avatar ripple, Zipper reveal, and Random. |
-| **Light and dark themes** | Select the sun or moon for a direct switch, or the monitor to follow the system. Appearance offers Flow, Ripple, Refraction, Zipper, and Random. Theme sounds have their own switch and volume. |
+| **Light and dark themes** | Select the sun or moon for a direct switch, or the monitor to follow the system. Appearance offers Flow, Ripple, Refraction, Zipper, and Random. Switch back mid-animation to reverse it, or keep working while it plays. Theme sounds have their own switch and volume. |
+| **Companion Home** | Cards rise into view, the relationship ring draws clockwise, and journey entries appear from oldest to newest. Reduced motion shows the final state immediately. |
 | **Scheduled tasks** | Start from one of six illustrated templates, describe what to do and when in chat, or fill out a form. |
 | **Windows workspace** | Reopen a side chat from its conversation's work summary. Connect to GitHub through CLI device authorization or a PAT to create repos, commit, push, and open pull requests. |
 
@@ -43,20 +44,25 @@ Text models use OpenAI Chat Completions or Anthropic-compatible protocols. Reque
 
 Each companion has its own personal chats, personality, voice preferences, and relationship history. Work projects and prompts are shared. Each official companion has a default look and ten seasonal outfits. You can import your own packs. [Daily interactions](docs/daily-use.md) · [Companion packs](docs/character-packs.md) · [Seasonal outfits](docs/holiday-outfits.md) · [Relationships and keepsakes](docs/companion-relationship/user-guide.md)
 
+Windows settings let you adjust artwork opacity with a live preview in the lower-right corner. New configurations default to 50% for artwork opacity, theme transition volume, and operation sound volume.
+
 Volume and companion-size sliders show their values as you drag and adapt to the active theme. Guga's desktop width and height are each 10% smaller at the selected companion size.
 
 ## Chat and project work
 
 - **Chat and drafts.** Find, pin, archive, or move conversations between projects. The composer supports Markdown and image or file attachments. By default, **Enter** sends and **Shift + Enter** adds a line.
 - **Work summary.** Windows shows Git changes, plans, goals, subagents, and sources. Closing a side-chat tab stops its pending requests. Reopen it from the owning conversation to recover the title, messages, and draft.
+- **Workspace goals.** Pause, resume, edit, or delete a goal in the Windows Workspace pane. Its state is saved per conversation.
 - **Workspace tools.** The Windows workspace supports file previews, a browser, a PowerShell terminal, and change inspection. Each conversation keeps its own tool layout in the current window. [Workflows, permissions, and sandboxing](docs/agent-workflows.md)
 - **Local scheduled tasks.** Create tasks on Windows and macOS. Both drafts and saved tasks can return to the template gallery.
 
+Quick Chat on Windows expands into Full Chat, which remembers its size and maximized state and has a minimum size of 520 × 560 logical pixels. Dark Quick Chat has a clearer, continuous border.
+
 ### GitHub access for the work agent
 
-On Windows, open **Plugins → GitHub → Manage connection**. DeskPet can use an existing GitHub CLI login or open GitHub device authorization. After approval, select **Connect with GitHub CLI**. A fine-grained PAT is also supported.
+On Windows, open **Plugins → GitHub → Manage**. DeskPet can use an existing GitHub CLI login or open GitHub device authorization. After approval, select **Connect with GitHub CLI**. A fine-grained PAT is also supported.
 
-With workspace approval, the agent can create repositories, link a remote, commit selected files, push a branch, and open a pull request. Repositories start private. A selected-file commit preserves other staged changes.
+With workspace approval, the agent can create repositories, link a remote, commit selected files, push the current branch with `git_push`, and open a pull request. Repositories start private. A selected-file commit preserves other staged changes.
 
 ## Other features
 

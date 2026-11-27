@@ -36,7 +36,7 @@ internal static class DesktopAppearance
         var styles = new Styles();
         Add(styles, s => s.Is<Control>(), new Setter(Control.FocusAdornerProperty, null));
         Add(styles, s => s.Is<Button>(), new Setter(TemplatedControl.CornerRadiusProperty, Radius), new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(0)));
-        Add(styles, s => s.Is<ComboBox>(), new Setter(TemplatedControl.CornerRadiusProperty, Radius), new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(0)));
+        InstallDropDowns(app, styles);
         Add(styles, s => s.OfType<ContextMenu>(), new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(10)), new Setter(TemplatedControl.PaddingProperty, new Thickness(4)), new Setter(TemplatedControl.BackgroundProperty, DesktopTheme.Surface));
         Add(styles, s => s.Is<MenuItem>(), new Setter(TemplatedControl.CornerRadiusProperty, Radius), new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 6)));
         Add(styles, s => s.Is<ScrollBar>(), new Setter(ScrollBar.AllowAutoHideProperty, false), new Setter(TemplatedControl.BackgroundProperty, Brushes.Transparent), new Setter(TemplatedControl.BorderBrushProperty, Brushes.Transparent));
@@ -51,12 +51,6 @@ internal static class DesktopAppearance
                 new Setter(ContentPresenter.BackgroundProperty, Hover), new Setter(ContentPresenter.BorderBrushProperty, Brushes.Transparent), new Setter(ContentPresenter.CornerRadiusProperty, Radius), new Setter(ContentPresenter.ForegroundProperty, new TemplateBinding(TemplatedControl.ForegroundProperty)));
             Add(styles, s => s.Is<Button>().Class("theme-choice").Class(state).Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"),
                 new Setter(ContentPresenter.BorderBrushProperty, new TemplateBinding(TemplatedControl.BorderBrushProperty)), new Setter(ContentPresenter.CornerRadiusProperty, new CornerRadius(10)));
-            Add(styles, s => s.Is<ComboBox>().Class(state).Template().OfType<Border>().Name("Background"),
-                new Setter(Border.BackgroundProperty, Hover), new Setter(Border.BorderBrushProperty, Brushes.Transparent), new Setter(Border.CornerRadiusProperty, Radius));
-            Add(styles, s => s.Is<ComboBox>().Class(state).Template().OfType<Border>().Name("HighlightBackground"),
-                new Setter(Border.BackgroundProperty, Hover), new Setter(Border.BorderBrushProperty, Brushes.Transparent), new Setter(Border.CornerRadiusProperty, Radius));
-            Add(styles, s => s.Is<ComboBox>().Class(state).Template().OfType<ContentControl>().Name("ContentPresenter"), new Setter(TemplatedControl.ForegroundProperty, new TemplateBinding(TemplatedControl.ForegroundProperty)));
-            Add(styles, s => s.Is<ComboBoxItem>().Class(state).Template().OfType<ContentPresenter>(), new Setter(ContentPresenter.BackgroundProperty, Hover), new Setter(ContentPresenter.BorderBrushProperty, Brushes.Transparent), new Setter(ContentPresenter.CornerRadiusProperty, Radius));
             Add(styles, s => s.Is<CheckBox>().Class(state).Template().OfType<Border>().Name("PART_Border"), new Setter(Border.BackgroundProperty, Hover), new Setter(Border.BorderBrushProperty, Brushes.Transparent), new Setter(Border.CornerRadiusProperty, Radius));
             Add(styles, s => s.Is<RadioButton>().Class(state).Template().OfType<Border>().Name("PART_Border"), new Setter(Border.BackgroundProperty, Hover), new Setter(Border.BorderBrushProperty, Brushes.Transparent), new Setter(Border.CornerRadiusProperty, Radius));
             Add(styles, s => s.Is<ToggleSwitch>().Class(state).Template().OfType<Border>().Name("OuterBorder"), new Setter(Border.BackgroundProperty, Hover), new Setter(Border.BorderBrushProperty, Brushes.Transparent));
@@ -66,6 +60,48 @@ internal static class DesktopAppearance
         }
         Add(styles, s => s.Is<MenuItem>().Class(":selected").Template().OfType<Border>().Name("PART_LayoutRoot"), new Setter(Border.BackgroundProperty, Hover), new Setter(Border.BorderBrushProperty, Brushes.Transparent), new Setter(Border.CornerRadiusProperty, Radius));
         app.Styles.Add(styles);
+    }
+    private static void InstallDropDowns(Application app, Styles styles)
+    {
+        var field = DesktopTheme.Brush("#FFFFFF", "#161E2B");
+        var ink = DesktopTheme.Brush("#203754");
+        var accent = DesktopTheme.Brush("#456DE6", "#83AAFF");
+        var selected = DesktopTheme.Brush("#EDF3FF", "#263B58");
+        app.Resources["ComboBoxDropDownBackground"] = DesktopTheme.Surface;
+        app.Resources["ComboBoxDropDownBorderBrush"] = DesktopTheme.CardBorder;
+        app.Resources["ComboBoxDropdownBorderThickness"] = new Thickness(1);
+        app.Resources["ComboBoxDropdownBorderPadding"] = new Thickness(4);
+        app.Resources["ComboBoxDropdownContentMargin"] = new Thickness(0);
+        app.Resources["ComboBoxDropDownGlyphForeground"] = DesktopTheme.Brush("#72839B");
+        app.Resources["ComboBoxItemThemePadding"] = new Thickness(10, 6);
+        Add(styles, s => s.Is<ComboBox>(), new Setter(TemplatedControl.BackgroundProperty, field),
+            new Setter(TemplatedControl.BorderBrushProperty, DesktopTheme.CardBorder),
+            new Setter(TemplatedControl.ForegroundProperty, ink),
+            new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(9)),
+            new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
+            new Setter(ComboBox.MaxDropDownHeightProperty, 290d));
+        Add(styles, s => s.Is<ComboBox>().Template().OfType<Popup>().Name("PART_Popup"),
+            new Setter(Popup.VerticalOffsetProperty, 4d));
+        Add(styles, s => s.Is<ComboBox>().Class(":pointerover").Template().OfType<Border>().Name("Background"),
+            new Setter(Border.BackgroundProperty, Hover), new Setter(Border.BorderBrushProperty, DesktopTheme.CardBorder));
+        foreach (var state in new[] { ":focus-within", ":dropdownopen", ":pressed" })
+        {
+            Add(styles, s => s.Is<ComboBox>().Class(state).Template().OfType<Border>().Name("Background"),
+                new Setter(Border.BorderBrushProperty, accent), new Setter(Border.BackgroundProperty, field));
+            Add(styles, s => s.Is<ComboBox>().Class(state).Template().OfType<Border>().Name("HighlightBackground"),
+                new Setter(Border.BorderBrushProperty, accent), new Setter(Border.BackgroundProperty, field));
+        }
+        Add(styles, s => s.Is<ComboBox>().Class(":dropdownopen").Template().OfType<PathIcon>().Name("DropDownGlyph"),
+            new Setter(Visual.RenderTransformProperty, new ScaleTransform(1, -1)));
+        Add(styles, s => s.Is<ComboBoxItem>(), new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(6)),
+            new Setter(TemplatedControl.ForegroundProperty, ink));
+        foreach (var state in new[] { ":pointerover", ":focus-visible", ":pressed" })
+            Add(styles, s => s.Is<ComboBoxItem>().Class(state).Template().OfType<ContentPresenter>(),
+                new Setter(ContentPresenter.BackgroundProperty, Hover), new Setter(ContentPresenter.ForegroundProperty, ink),
+                new Setter(ContentPresenter.BorderBrushProperty, Brushes.Transparent));
+        Add(styles, s => s.Is<ComboBoxItem>().Class(":selected").Template().OfType<ContentPresenter>(),
+            new Setter(ContentPresenter.BackgroundProperty, selected), new Setter(ContentPresenter.ForegroundProperty, ink),
+            new Setter(ContentPresenter.BorderBrushProperty, Brushes.Transparent));
     }
     private static void Add(Styles styles, Func<Selector?, Selector> selector, params Setter[] setters)
     {

@@ -25,7 +25,8 @@ namespace Dafeiyu.Tests
         [STAThread] public static int Main(string[] args)
         {
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};
-            var content=new Border{Background=Ui.Blue};
+            var scroll=new ScrollViewer{Content=new Border{Height=1400},VerticalScrollBarVisibility=ScrollBarVisibility.Hidden};
+            var content=new Border{Background=Ui.Blue,Child=scroll};
             var host=new Grid();
             host.Children.Add(content);
             var window=new Window{Content=host,Width=620,Height=410,ShowInTaskbar=false};
@@ -36,7 +37,7 @@ namespace Dafeiyu.Tests
             {
                 window.Show();Pump();
                 using(var reveal=new CompanionWindowReveal(window,host,content,()=>eligible,()=>key,()=>effect,
-                    ()=>new Point(27,294),()=>155,()=>{},()=>reduced,()=>elapsed))
+                    ()=>new Point(27,294),()=>155,_=>null,()=>reduced,()=>elapsed))
                 {
                     Func<FrameworkElement> overlay=()=>host.Children.OfType<FrameworkElement>().SingleOrDefault(x=>x.Name=="CompanionWindowOverlay");
                     reveal.Prepare(1,key,key);
@@ -67,15 +68,34 @@ namespace Dafeiyu.Tests
                     elapsed=TimeSpan.Zero;
                     effect="zipper";
                     reveal.Prepare(7,key,"other");
+                    content.Background=Brushes.Goldenrod;
                     key="other";reveal.MarkCommitted(7,key);
                     reveal.AbortPending(7);
                     reveal.OnContentRefreshed();Pump();
                     Check(overlay()!=null,"a successful role change begins the animation after refresh");
+                    scroll.ScrollToVerticalOffset(120);Pump();
+                    Check(scroll.VerticalOffset>0,"the fixture applied a programmatic scroll");
+                    Check(overlay()!=null,"a programmatic viewport update does not cancel the role reveal");
                     window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(window),0,Key.Tab)
                         {RoutedEvent=Keyboard.PreviewKeyDownEvent});
-                    Check(overlay()==null,"input interrupts the animation and releases the overlay");
+                    Check(overlay()!=null,"keyboard input leaves the role animation running");
+                    elapsed+=TimeSpan.FromMilliseconds(345);
+                    typeof(CompanionWindowReveal).GetMethod("Frame",BindingFlags.NonPublic|BindingFlags.Instance)
+                        .Invoke(reveal,new object[]{null,EventArgs.Empty});
+                    var previous=overlay();
+                    var partial=Pixels(host);
+                    reveal.Prepare(8,key,"latest");
+                    Check(overlay()!=null&&overlay()!=previous,"a new role replaces the overlay with the visible composition");
+                    host.UpdateLayout();
+                    Check(partial.SequenceEqual(Pixels(host)),"the next role inherits the same native frame, including zipper hardware");
+                    key="latest";reveal.MarkCommitted(8,key);
+                    reveal.OnContentRefreshed();Pump();
+                    Check(overlay()!=null,"the latest role starts its own reveal");
+                    eligible=false;
+                    window.Width+=40;Pump();
+                    Check(overlay()!=null,"navigation and resize leave a playing reveal active");
                     reveal.Cancel();
-                    Check(overlay()==null&&key=="other","cleanup is repeatable and leaves the committed role");
+                    Check(overlay()==null&&key=="latest","cleanup is repeatable and leaves the committed role");
                 }
                 window.Close();
                 CheckMainWindow(app,args.Contains("--capture"));
@@ -84,6 +104,15 @@ namespace Dafeiyu.Tests
             }
             catch(Exception ex){Console.Error.WriteLine(ex);return 1;}
             finally{if(window.IsVisible)window.Close();app.Shutdown();}
+        }
+
+        static byte[] Pixels(FrameworkElement element)
+        {
+            var bitmap=LiquidThemeReveal.Capture(element);
+            int stride=bitmap.PixelWidth*4;
+            var pixels=new byte[stride*bitmap.PixelHeight];
+            bitmap.CopyPixels(pixels,stride,0);
+            return pixels;
         }
 
         static bool HasOverlay(DependencyObject root)
@@ -117,6 +146,17 @@ namespace Dafeiyu.Tests
                         .SetValue(chat.CompanionReveal,new Func<bool>(()=>chat.CurrentPage=="home"));
                 var original=pet.Skin;
                 var next=pet.Catalog.Skins.First(s=>s.BuiltinCharacterId=="marfu"&&!s.IsPlaceholder);
+                Action<CompanionSelectionUpdate> cancelPrepared=update=>{
+                    if(update.Stage=="prepared")pet.CancelCompanionSelection(update.Request);
+                };
+                pet.CompanionSelectionChanged+=cancelPrepared;
+                var cancelled=pet.RequestSkinAsync(next,CompanionSelectionOrigin.MainWindow,chat);
+                var cancellationWait=Stopwatch.StartNew();
+                while(!cancelled.IsCompleted&&cancellationWait.Elapsed<TimeSpan.FromSeconds(10)){Pump();Thread.Sleep(2);}
+                pet.CompanionSelectionChanged-=cancelPrepared;
+                Check(cancelled.IsCompleted&&!cancelled.GetAwaiter().GetResult()&&pet.Skin.PickerKey==original.PickerKey&&
+                    cfg.SelectedCompanionKey==original.PickerKey&&!HasOverlay(chat),
+                    "a cancellation at preparation completion cannot publish the new role or animation");
                 bool committed=false,covered=false;
                 pet.CompanionSelectionChanged+=update=>{
                     if(update.Stage!="committed")return;

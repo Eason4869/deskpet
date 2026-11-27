@@ -24,6 +24,7 @@ namespace Dafeiyu
     {
         [DataMember]public int Version=1;
         [DataMember(EmitDefaultValue=false)]public string RelationshipCompanionId,RelationshipEventId;
+        [DataMember(EmitDefaultValue=false)]internal string ConversationGoal,ConversationGoalRevision;
         [DataMember]public bool RelationshipSucceeded;
         [DataMember]public string Id=Guid.NewGuid().ToString("N"),PersonaId="",Workspace="",Goal="",Status="running",Notice="";
         [DataMember]public List<AgentGuidance> Guidance=new List<AgentGuidance>();

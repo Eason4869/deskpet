@@ -93,6 +93,7 @@ namespace Dafeiyu
                 gmailApp=new GmailConnectionRow(pet);
                 list.Children.Add(gmailApp);
             }
+            gitHubApp.Refresh();
             gmailApp.Refresh();
             appsScroll.Visibility=Visibility.Visible;
             StyleTabs();

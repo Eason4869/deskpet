@@ -67,4 +67,54 @@ namespace Dafeiyu
             return TextResources.Get("themeTransition.motion.flow");
         }
     }
+
+    // Retarget from the last painted position, even when the click arrives between frames.
+    internal sealed class ThemeRevealTimeline
+    {
+        double from, to, slope, velocity, milliseconds;
+        bool redirected;
+
+        internal double Progress { get; private set; }
+        internal TimeSpan Duration { get { return TimeSpan.FromMilliseconds(milliseconds); } }
+
+        internal void Start(TimeSpan duration)
+        {
+            from = Progress = 0;
+            to = 1;
+            milliseconds = duration.TotalMilliseconds;
+            velocity = 1 / milliseconds;
+            redirected = false;
+        }
+
+        internal void Retarget(bool reverse)
+        {
+            from = Progress;
+            to = reverse ? 0 : 1;
+            milliseconds = Math.Round(180 + 120 * Math.Abs(to - from));
+            // A modest continuation of the old velocity softens the direction change.
+            // Keep its overshoot inside the mask's valid range.
+            slope = Math.Max(-Math.Min(.16, 3 * from),
+                Math.Min(Math.Min(.16, 3 * (1 - from)), velocity * milliseconds));
+            redirected = true;
+        }
+
+        internal bool Advance(TimeSpan elapsed)
+        {
+            if (elapsed.TotalMilliseconds >= milliseconds)
+            {
+                Progress = to;
+                velocity = 0;
+                return false;
+            }
+            double t = elapsed.TotalMilliseconds / milliseconds;
+            double distance = to - from;
+            if (redirected)
+            {
+                Progress = from + distance * t * t * (3 - 2 * t) + slope * t * (1 - t) * (1 - t);
+                velocity = (distance * (6 * t - 6 * t * t) + slope * (1 - t) * (1 - 3 * t)) / milliseconds;
+            }
+            else Progress = t;
+            return true;
+        }
+    }
 }

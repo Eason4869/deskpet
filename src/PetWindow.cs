@@ -703,7 +703,7 @@ namespace Dafeiyu
             string warning="";
             if(hotkeys!=null){hotkeys.Dispose();hotkeys=new HotkeyRegistry(handle);foreach(var pair in Settings.Hotkeys.Where(p=>ShortcutCatalog.All.Any(d=>d.Global&&d.Id==p.Key))){string error;if(!hotkeys.TryBind(pair.Key,pair.Value,out error))warning=error;}}
             HotkeyWarning=warning;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;UpdateVoiceVolume(Settings.Volume);
-            ApplySettingsCore(false);if(chat!=null)chat.RefreshAppearance();return warning;
+            ApplySettingsCore(false);RefreshChatArtworkOpacity();if(chat!=null)chat.RefreshAppearance();return warning;
         }
         void ApplySettingsCore(bool persist)
         {
@@ -797,18 +797,31 @@ namespace Dafeiyu
         }
         internal string ConversationGoal(ConversationSession session)
         {
+            var options=ConversationGoalOptions(session);
+            return options==null?"":options.Goal;
+        }
+        internal ConversationWorkOptions ConversationGoalOptions(ConversationSession session)
+        {
             var workspace=ConversationModeWorkspace(session);
-            var options=workspace==null||!workspace.SupportsWorkOptions?null:workspace.Definition.WorkOptions;
-            return options==null?"":options.Goal??"";
+            return workspace==null||!workspace.SupportsWorkOptions?null:workspace.Definition.WorkOptions;
         }
         internal void SetConversationPlanMode(ConversationSession session,bool enabled){SetConversationWorkMode(session,enabled?"plan":"");}
         internal Action SetConversationWorkMode(ConversationSession session,string mode)
         {
-            return UpdateConversationWorkOptions(session,previous=>new ConversationWorkOptions(mode??"",previous==null?null:previous.Goal));
+            return UpdateConversationWorkOptions(session,previous=>(previous??new ConversationWorkOptions(null,null)).WithMode(mode??""));
         }
         internal void SetConversationGoal(ConversationSession session,string goal)
         {
-            UpdateConversationWorkOptions(session,previous=>new ConversationWorkOptions(previous==null?null:previous.Mode,goal));
+            UpdateConversationWorkOptions(session,previous=>(previous??new ConversationWorkOptions(null,null)).WithGoal(goal));
+        }
+        internal async System.Threading.Tasks.Task ChangeWorkspaceGoalAsync(ConversationSession session,ConversationWorkOptions expected,ConversationWorkOptions next)
+        {
+            if(expected==null||String.IsNullOrEmpty(expected.Goal))return;
+            var workspace=ConversationModeWorkspace(session);
+            if(workspace==null)return;
+            if(UpdateConversationWorkOptions(session,previous=>ReferenceEquals(previous,expected)?next:null)==null)return;
+            if(next.GoalPaused||next.Goal!=expected.Goal)await session.StopGoalAsync();
+            workspace.Queue.OwnerChanged();
         }
         readonly object conversationWorkOptionsGate=new object();
         Action UpdateConversationWorkOptions(ConversationSession session,Func<ConversationWorkOptions,ConversationWorkOptions> change)
@@ -816,18 +829,19 @@ namespace Dafeiyu
             var workspace=ConversationModeWorkspace(session);
             if(workspace==null||!workspace.SupportsWorkOptions)return null;
             ConversationWorkOptions previous,options;
-            using(session.EnterRequestActivity())lock(conversationWorkOptionsGate)
+            using(session.EnterRequestActivity())lock(session.SynchronizationRoot)lock(conversationWorkOptionsGate)
             {
                 previous=workspace.Definition.WorkOptions;
                 options=change(previous);
-                if(previous!=null&&previous.Mode==options.Mode&&previous.Goal==options.Goal)return null;
+                if(options==null||previous!=null&&previous.Mode==options.Mode&&previous.Goal==options.Goal&&
+                    previous.GoalRevision==options.GoalRevision&&previous.GoalPaused==options.GoalPaused)return null;
                 SaveWorkspaceWorkOptions(workspace,options);
             }
             RefreshChatAppearance();
             return delegate
             {
                 if(workspace.IsDisposed||!ReferenceEquals(ConversationModeWorkspace(session),workspace))return;
-                using(session.EnterRequestActivity())lock(conversationWorkOptionsGate)
+                using(session.EnterRequestActivity())lock(session.SynchronizationRoot)lock(conversationWorkOptionsGate)
                 {
                     if(!ReferenceEquals(workspace.Definition.WorkOptions,options))return;
                     SaveWorkspaceWorkOptions(workspace,previous);
@@ -1009,7 +1023,9 @@ namespace Dafeiyu
             guide=new OnboardingWindow(this,preferences,window);guide.Closed+=delegate {DismissGreeting();guide=null;};guide.Show();
         }
         int conversationNavigationRevision;
-        public async void OpenProjectConversation(ProjectDefinition project,ConversationDefinition conversation)
+        public void OpenProjectConversation(ProjectDefinition project,ConversationDefinition conversation)
+        {OpenProjectConversationCore(project,conversation,null);}
+        async void OpenProjectConversationCore(ProjectDefinition project,ConversationDefinition conversation,QuickChatExpansion expansion)
         {
             if(closing || IsUpdating || ReturnToGuide())return;
             if(!ProjectCatalogStore.VisibleForPet(conversation,Skin.Id))return;if(project.Id==ProjectCatalogStore.UnassignedProjectId||project.Id==ProjectCatalogStore.QuickProjectId)project=ProjectCatalogStore.FindProject(Projects,project.Id,Settings);if(!String.IsNullOrEmpty(conversation.Mode)){Settings.AgentEnabled=conversation.Mode=="work";SaveSettings();}
@@ -1019,7 +1035,7 @@ namespace Dafeiyu
             if(navigation!=conversationNavigationRevision||closing)return;
             project=workspace.Project;conversation=workspace.Definition;
             if(!ProjectCatalogStore.VisibleForPet(conversation,Skin.Id))return;
-            WatchConversationTitle(project,conversation,workspace);if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();
+            WatchConversationTitle(project,conversation,workspace);if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);chat.WindowMotion.ShowExpanded(expansion);
         }
         async Task CloseConversationWorkspacesAsync()
         {
@@ -1095,7 +1111,28 @@ namespace Dafeiyu
         internal void OpenChatBrowserLink(Uri uri){ShowChat();if(chat!=null&&chat.IsVisible)chat.OpenBrowserLink(uri);}
         internal void OpenChatProjectFacts(AgentTaskState task){ShowChat();if(chat!=null&&chat.IsVisible)chat.OpenProjectFacts(task);}
         public void ShowChat()
-        {if(closing || IsUpdating || ReturnToGuide())return;conversationNavigationRevision++;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quickWorkspace!=null && quick!=null && quick.IsVisible){var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);var definition=project==null?null:quickWorkspace.Definition;quick.Hide();if(definition!=null){OpenProjectConversation(project,definition);return;}}if(quick!=null)quick.Hide();DismissGreeting();if(chat!=null){chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();return;}if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));chat.Closed+=delegate {chat=null;var ignored=CloseConversationWorkspacesAsync();};}chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
+        {
+            if(closing||IsUpdating||ReturnToGuide())return;
+            conversationNavigationRevision++;RecordPetInteraction();
+            if(call!=null){call.Activate();return;}
+            var expansion=QuickChatExpansion.Capture(quick);
+            if(quickWorkspace!=null&&quick!=null&&quick.IsVisible)
+            {
+                var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);
+                if(expansion==null)quick.Hide();
+                if(project!=null){OpenProjectConversationCore(project,quickWorkspace.Definition,expansion);return;}
+            }
+            if(quick!=null&&expansion==null)quick.Hide();
+            DismissGreeting();
+            if(chat==null)
+            {
+                chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible&&!IsProactiveWindow(w)))??
+                    new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));
+                chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};
+            }
+            chat.ShowHomePage();
+            chat.WindowMotion.ShowExpanded(expansion);
+        }
         bool IsConversationVisible(string id){return (chat!=null&&chat.IsVisible&&chat.ConversationId==id)||(quick!=null&&quick.IsVisible&&quickWorkspace!=null&&quickWorkspace.Id==id);}
         void NotifyProjectsChanged(){var changed=ProjectsChanged;if(changed!=null)changed();}
         async Task ReleaseQuickWorkspaceAsync(ConversationWorkspace workspace)
@@ -1218,6 +1255,21 @@ namespace Dafeiyu
             }));
         }
         public void RefreshChatAppearance(){CancelPendingGreeting();if(chat!=null)chat.RefreshAppearance();if(quick!=null)quick.RefreshPersona();if(preferences!=null)preferences.RefreshTextProviders();}
+        internal void SetChatArtworkOpacity(int opacity)
+        {
+            if(Settings.ChatArtworkOpacity==opacity)return;
+            Settings.ChatArtworkOpacity=opacity;
+            RefreshChatArtworkOpacity();
+            SaveSettings();
+        }
+        internal event Action ChatArtworkOpacityChanged;
+        internal void RefreshChatArtworkOpacity()
+        {
+            var changed=ChatArtworkOpacityChanged;
+            if(changed!=null)changed();
+            if(Application.Current==null)return;
+            foreach(var window in Application.Current.Windows.OfType<ChatWindow>())window.RefreshArtworkOpacity();
+        }
         public void ReloadConversation(){DismissGreeting();if(chat!=null)chat.ReloadHistory();if(quick!=null)quick.RefreshPersona();}
         private void ConversationMemoryChanged()
         {if(closing)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(ConversationMemoryChanged));return;}DismissGreeting();}

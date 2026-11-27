@@ -45,8 +45,9 @@ namespace Dafeiyu
             bool work = WorkEntry;
             bool ownsTask = task != null && session.History.Messages.Any(message => message.AgentTaskId == task.Id);
             var plan = work ? WorkspacePlanGoalPane.Plan(ownsTask ? task : null, session.LatestGeneratedPlan) : null;
-            string goal = work ? pet.ConversationGoal(session) : "";
-            foreach (var page in contentPages) page.Show(page.IsPlan ? plan : WorkspacePlanGoalPane.Goal(goal));
+            var goalOptions = work ? pet.ConversationGoalOptions(session) : null;
+            string goal = goalOptions==null ? "" : goalOptions.Goal;
+            foreach (var page in contentPages) page.Show(page.IsPlan ? plan : WorkspacePlanGoalPane.Goal(goalOptions));
             if (overviews.Count == 0) return;
             ReadWorkSummaryRepository();
             if (summarySources == null) summarySources = WorkSummarySource.FromHistory(session.History.Messages);

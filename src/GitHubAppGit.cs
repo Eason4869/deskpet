@@ -41,10 +41,14 @@ namespace Dafeiyu
 
         internal delegate CommandResult RunCommand(string directory, string[] arguments, bool isolated, CancellationToken token);
         readonly RunCommand run;
+        readonly bool useConnectedAccount;
 
-        internal GitHubAppGit(RunCommand run = null, GitHubPushAuthentication authentication = null)
+        internal GitHubAppGit(RunCommand run = null, GitHubPushAuthentication authentication = null, string proxyAddress = null)
         {
-            this.run = run ?? ((directory, arguments, isolated, token) => RunWindows(directory, arguments, isolated, token, authentication));
+            useConnectedAccount = authentication != null &&
+                (!String.IsNullOrEmpty(authentication.CliExecutable) || !String.IsNullOrEmpty(authentication.Token));
+            Uri proxy = String.IsNullOrEmpty(proxyAddress) ? null : ProxyConfiguration.Endpoint(proxyAddress);
+            this.run = run ?? ((directory, arguments, isolated, token) => RunWindows(directory, arguments, isolated, token, authentication, proxy));
         }
 
         internal Snapshot Inspect(string directory, string repository, GitHubWorkspaceAction action, CancellationToken token)
@@ -132,9 +136,10 @@ namespace Dafeiyu
                 var alternate = Path.Combine(scratch, "objects", "info", "alternates");
                 File.WriteAllText(alternate, objects.Replace('\\', '/') + "\n", new UTF8Encoding(false));
                 if (File.Exists(shallow)) File.Copy(shallow, Path.Combine(scratch, "shallow"));
+                string remote = useConnectedAccount ? "https://github.com/" + confirmed.Repository + ".git" : confirmed.Remote;
                 if (beforePush != null) beforePush();
                 var result = Execute(scratch, true, token, "push", "--no-verify", "--no-follow-tags", "--no-signed", "--",
-                    confirmed.Remote, confirmed.Revision + ":refs/heads/" + confirmed.Branch);
+                    remote, confirmed.Revision + ":refs/heads/" + confirmed.Branch);
                 if (result.ExitCode != 0) throw Problem("pushFailed");
             }
             finally
@@ -207,11 +212,11 @@ namespace Dafeiyu
 
         internal static CommandResult RunProjectGit(string directory, string[] arguments, CancellationToken token)
         {
-            return RunWindows(directory, arguments, false, token, null, true);
+            return RunWindows(directory, arguments, false, token, null, null, true);
         }
 
         static CommandResult RunWindows(string directory, string[] arguments, bool isolated, CancellationToken token,
-            GitHubPushAuthentication authentication, bool projectConfigOnly = false)
+            GitHubPushAuthentication authentication, Uri proxy = null, bool projectConfigOnly = false)
         {
             var options = new List<string> { "--no-pager", "-c", "core.hooksPath=NUL", "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-c", "core.longpaths=true",
                 "-c", "color.ui=false", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "-c", "submodule.recurse=false", "-c", "push.recurseSubmodules=no",
@@ -228,9 +233,10 @@ namespace Dafeiyu
             {
                 options.AddRange(new[] { "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "-c", "http.followRedirects=false",
                     "-c", "credential.interactive=false" });
-                bool authenticatePush = authentication != null && arguments.Length >= 6 && arguments[0] == "push" &&
+                bool httpsPush = arguments.Length >= 6 && arguments[0] == "push" &&
                     arguments[5].StartsWith("https://github.com/", StringComparison.OrdinalIgnoreCase);
-                if (authenticatePush) authentication.Configure(options, environment);
+                if (httpsPush && proxy != null) options.AddRange(new[] { "-c", "http.https://github.com/.proxy=" + proxy.AbsoluteUri });
+                if (httpsPush && authentication != null) authentication.Configure(options, environment);
                 else options.AddRange(new[] { "-c", "credential.helper=manager" });
                 environment["GIT_CONFIG_NOSYSTEM"] = "1";
                 environment["GIT_CONFIG_GLOBAL"] = "NUL";

@@ -23,10 +23,41 @@ namespace Dafeiyu
         internal static FrameworkElement Ring(double fraction)
         {
             var grid=new Grid{Width=108,Height=108,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Top};
-            grid.Children.Add(new Ellipse{Width=98,Height=98,Stroke=ThemeManager.Brush("#D5E1ED"),StrokeThickness=8});
-            if(fraction>=1)grid.Children.Add(new Ellipse{Width=98,Height=98,Stroke=Accent,StrokeThickness=8});
-            else if(fraction>0){double angle=fraction*Math.PI*2,x=54+49*Math.Sin(angle),y=54-49*Math.Cos(angle);string path=String.Format(System.Globalization.CultureInfo.InvariantCulture,"M54,5 A49,49 0 {0} 1 {1},{2}",fraction>.5?1:0,x,y);grid.Children.Add(new Path{Data=Geometry.Parse(path),Stroke=Accent,StrokeThickness=8,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round});}
+            grid.Children.Add(new Ellipse{Width=106,Height=106,Stroke=ThemeManager.Brush("#D5E1ED"),StrokeThickness=8});
+            double progress=Math.Max(0,Math.Min(1,fraction));
+            var arc=new RelationshipProgressArc{Progress=progress,IsHitTestVisible=false};
+            grid.Children.Add(arc);
             grid.Children.Add(Icon("heart",32));LocalizedUi.Automation(grid,()=>(TextResources.Get("relationship.home.relation")));return grid;
+        }
+        internal static void ScheduleRing(RelationshipHomeMotion motion,FrameworkElement ring,double delay)
+        {
+            if(ring==null)return;
+            var arc=((Grid)ring).Children.OfType<RelationshipProgressArc>().Single();
+            double progress=arc.Progress;
+            motion.Add(delay,RelationshipHomeMotion.RingDuration(progress),value=>arc.Progress=progress*value);
+        }
+        sealed class RelationshipProgressArc:FrameworkElement
+        {
+            internal static readonly DependencyProperty ProgressProperty=DependencyProperty.Register("Progress",typeof(double),
+                typeof(RelationshipProgressArc),new FrameworkPropertyMetadata(0d,FrameworkPropertyMetadataOptions.AffectsRender));
+            internal double Progress {get{return (double)GetValue(ProgressProperty);}set{SetValue(ProgressProperty,value);}}
+            readonly Pen pen=new Pen(Accent,8){StartLineCap=PenLineCap.Round,EndLineCap=PenLineCap.Round};
+
+            protected override void OnRender(DrawingContext drawing)
+            {
+                double progress=Progress;
+                if(progress<=0)return;
+                if(progress>=1){drawing.DrawEllipse(null,pen,new Point(54,54),49,49);return;}
+                var arc=new StreamGeometry();
+                double angle=progress*Math.PI*2;
+                using(var path=arc.Open())
+                {
+                    path.BeginFigure(new Point(54,5),false,false);
+                    path.ArcTo(new Point(54+49*Math.Sin(angle),54-49*Math.Cos(angle)),new Size(49,49),0,
+                        progress>.5,SweepDirection.Clockwise,true,false);
+                }
+                drawing.DrawGeometry(null,pen,arc);
+            }
         }
         static void FitNodes(UniformGrid panel)
         {

@@ -14,6 +14,11 @@ namespace Dafeiyu.Tests
     public static class DraftConversationTests
     {
         static int passed,failed;static string root;static readonly BindingFlags hidden=BindingFlags.Instance|BindingFlags.NonPublic;
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        static extern int DwmGetWindowAttribute(IntPtr handle,int attribute,out int value,int size);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        static extern IntPtr SendMessage(IntPtr handle,uint message,IntPtr wParam,
+            [System.Runtime.InteropServices.In,System.Runtime.InteropServices.Out] int[] data);
         static void Check(bool ok,string text){if(!ok)throw new Exception(text);}
         static void Run(string name,Action action){try{action();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
         static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return(T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var x in All<T>(VisualTreeHelper.GetChild(root,i)))yield return x;}
@@ -31,7 +36,88 @@ var restored=Pet(directory);try{restored.NewActiveConversation();Pump();var inpu
         static void QuickFailure(){var p=Pet();try{p.ShowQuickChat();Pump();int before=Count(p);p.Settings.Text.BaseUrl="invalid-url";var quick=Application.Current.Windows.OfType<QuickChatWindow>().Single();var input=All<MarkdownEditor>(quick).Single(t=>t.Name=="QuickMessageInput");input.Text="keep quick draft";All<Button>(quick).Single(b=>b.Name=="SendQuickMessage").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(Count(p)==before&&input.Text=="keep quick draft","failed quick submit added a catalog row or lost input");}finally{foreach(var w in Application.Current.Windows.OfType<QuickChatWindow>().ToArray())w.Close();p.Close();Pump();}}
         static void SwitchingDrafts(){var p=Pet();try{var owner=ProjectCatalogStore.UnassignedProject(p.Projects,p.Settings);var a=ProjectCatalogStore.CreateConversation(p.Projects,owner.Id,"A");var b=ProjectCatalogStore.CreateConversation(p.Projects,owner.Id,"B");foreach(var c in new[]{a,b}){c.Mode="chat";c.PetId=p.Skin.Id;}p.NewActiveConversation();Pump();var chat=Chat();var input=All<MarkdownEditor>(chat).Single(t=>t.Name=="MessageInput");string pending=chat.ConversationId;input.Text="new draft 中文\nsecond line";p.OpenProjectConversation(owner,a);Pump();input.Text="A unsent 中文";p.OpenProjectConversation(owner,b);Pump();Check(input.Text=="","A input leaked into B");input.Text="B unsent";p.OpenProjectConversation(owner,a);Pump();Check(input.Text=="A unsent 中文","A draft was not restored");p.OpenProjectConversation(owner,b);Pump();Check(input.Text=="B unsent","B draft was not restored");int before=Count(p);p.NewActiveConversation();Pump();Check(chat.ConversationId==pending&&input.Text=="new draft 中文\nsecond line","new conversation button discarded the pending draft");Check(Count(p)==before,"returning to pending draft created a catalog row");p.NewActiveConversation();Pump();Check(chat.ConversationId==pending,"repeated new action allocates another pending workspace");All<Button>(chat).Single(x=>x.Name=="SendMessage").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));for(int i=0;i<15;i++)Pump();Check(Count(p)==before+1&&input.Text=="","sending draft did not register once and clear input");p.NewActiveConversation();Pump();Check(chat.ConversationId!=pending&&input.Text=="","after sending, new conversation reuses stale text");p.OpenProjectConversation(owner,a);Pump();Check(input.Text=="A unsent 中文","sending another draft cleared A input");}finally{foreach(var w in Application.Current.Windows.OfType<ChatWindow>().ToArray())w.Close();p.Close();Pump();}}
         static void PendingDraft(){var p=Pet();try{int count=Count(p);p.NewActiveConversation();Pump();Check(Count(p)==count,"new conversation was saved before sending");var chat=Chat();Check(!All<Button>(chat).Any(b=>b.Name=="ConversationProjectPicker"),"ordinary chat exposed project selection");chat.Close();Pump();Check(Count(p)==count,"closing empty draft created a saved chat");}finally{p.Close();Pump();}}
-        static void QuickExpansion(){var p=Pet();try{p.ShowQuickChat();Pump();var quick=Application.Current.Windows.OfType<QuickChatWindow>().Single();var quickInput=All<MarkdownEditor>(quick).Single(t=>t.Name=="QuickMessageInput");quickInput.Text="expand unsent 中文 /";int before=Count(p);p.ShowChat();Pump();var chat=Chat();var input=All<MarkdownEditor>(chat).Single(t=>t.Name=="MessageInput");Check(input.Text=="expand unsent 中文 /"&&Count(p)==before,"expanding quick chat lost the draft or saved an empty row");input.Text="full window draft";p.ShowQuickChat();Pump();Check(quickInput.Text=="full window draft","quick and full views do not share the same conversation draft");}finally{foreach(var w in Application.Current.Windows.OfType<QuickChatWindow>().ToArray())w.Close();foreach(var w in Application.Current.Windows.OfType<ChatWindow>().ToArray())w.Close();p.Close();Pump();}}
+        static void QuickExpansion()
+        {
+            var p=Pet();
+            try
+            {
+                p.ShowQuickChat();Pump();
+                var quick=Application.Current.Windows.OfType<QuickChatWindow>().Single();
+                var quickInput=All<MarkdownEditor>(quick).Single(t=>t.Name=="QuickMessageInput");
+                quickInput.Text="expand unsent 中文 /";int before=Count(p);
+                var quickHandle=new System.Windows.Interop.WindowInteropHelper(quick).Handle;
+                var start=DesktopInterop.Bounds(quickHandle);
+                p.ShowChat();
+                if(SystemParameters.ClientAreaAnimation)
+                {
+                    Check(quick.IsVisible,"the real quick chat stays visible while the expansion is being prepared");
+                    Window overlay=null;
+                    for(int i=0;i<18;i++)
+                    {
+                        overlay=Application.Current.Windows.OfType<Window>().SingleOrDefault(w=>w.Name=="QuickChatExpansionOverlay");
+                        if(overlay!=null)break;
+                        Pump();
+                    }
+                    Check(overlay!=null,"expansion begins after the asynchronous workspace opens");
+                    var destination=DesktopInterop.Bounds(new System.Windows.Interop.WindowInteropHelper(Chat()).Handle);
+                    var frame=DesktopInterop.Bounds(new System.Windows.Interop.WindowInteropHelper(overlay).Handle);
+                    Check(frame.Contains(start)&&frame.Contains(destination),
+                        "the fixed transition surface covers the source and destination native bounds");
+                    Check(QuickChatExpansion.Interpolate(start,destination,0)==start&&QuickChatExpansion.Interpolate(start,destination,1)==destination,
+                        "the expansion curve connects the exact source and destination bounds");
+                    for(int i=0;i<10&&quick.IsVisible;i++)Pump();
+                    Check(!quick.IsVisible,"the overlay takes over before the quick chat is hidden");
+                }
+                Pump();
+                var chat=Chat();
+                var input=All<MarkdownEditor>(chat).Single(t=>t.Name=="MessageInput");
+                Check(input.Text=="expand unsent 中文 /"&&Count(p)==before,"expanding quick chat lost the draft or saved an empty row");
+                input.Text="full window draft";p.ShowQuickChat();Pump();
+                Check(quickInput.Text=="full window draft","quick and full views do not share the same conversation draft");
+                for(int i=0;i<10&&Application.Current.Windows.OfType<Window>().Any(w=>w.Name=="QuickChatExpansionOverlay");i++)Pump();
+                Check(!Application.Current.Windows.OfType<Window>().Any(w=>w.Name=="QuickChatExpansionOverlay"),"the expansion releases its visual overlay");
+                p.ShowChat();Pump();
+                var chatHandle=new System.Windows.Interop.WindowInteropHelper(chat).Handle;
+                int cloakFlags;
+                if(DwmGetWindowAttribute(chatHandle,14,out cloakFlags,sizeof(int))==0)
+                    Check((cloakFlags&1)==0,"an already visible full chat remains on screen during expansion");
+                for(int i=0;i<10&&Application.Current.Windows.OfType<Window>().Any(w=>w.Name=="QuickChatExpansionOverlay");i++)Pump();
+                var resizeLimits=new int[10];
+                SendMessage(chatHandle,0x0024,IntPtr.Zero,resizeLimits);
+                var dpi=VisualTreeHelper.GetDpi(chat);
+                Check(resizeLimits[6]>=(int)Math.Ceiling(chat.MinWidth*dpi.DpiScaleX)&&
+                    resizeLimits[7]>=(int)Math.Ceiling(chat.MinHeight*dpi.DpiScaleY),
+                    "native resize tracking enforces the full chat minimum size at the current DPI");
+                quick.Close();
+                chat.Width=780;chat.Height=620;Pump();
+                double width=chat.ActualWidth,height=chat.ActualHeight;
+                chat.WindowState=WindowState.Maximized;Pump();
+                All<Button>(chat).Single(b=>b.Name=="AppClose").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                if(SystemParameters.ClientAreaAnimation)Check(chat.IsVisible,"the close button gives the fade time to play");
+                for(int i=0;i<10&&chat.IsVisible;i++)Pump();
+                Check(!chat.IsVisible,"the fade completes the close");
+                var saved=p.Store.Load();
+                Check(saved.ChatWindowMaximized&&Math.Abs(saved.ChatWindowWidth-width)<2&&Math.Abs(saved.ChatWindowHeight-height)<2,
+                    "closing maximized remembers both the state and normal size");
+                p.ShowChat();Pump();
+                var reopened=Chat();
+                Check(reopened.WindowState==WindowState.Maximized,"the reopened full chat restores maximized state");
+                reopened.Close();Pump();
+                p.Settings.ChatWindowWidth=400;
+                p.Settings.ChatWindowHeight=320;
+                p.Settings.ChatWindowMaximized=false;
+                p.ShowChat();Pump();
+                var clamped=Chat();
+                Check(clamped.ActualWidth>=clamped.MinWidth-1&&clamped.ActualHeight>=clamped.MinHeight-1,
+                    "restoring an old undersized window honors the minimum");
+            }
+            finally
+            {
+                foreach(var w in Application.Current.Windows.OfType<QuickChatWindow>().ToArray())w.Close();
+                foreach(var w in Application.Current.Windows.OfType<ChatWindow>().ToArray())w.Close();
+                p.Close();Pump();
+            }
+        }
         static void FailedSubmission(){var p=Pet();try{p.NewActiveConversation();Pump();int before=Count(p);p.Settings.Text.BaseUrl="invalid-url";var chat=Chat();var input=All<MarkdownEditor>(chat).Single(t=>t.Name=="MessageInput");input.Text="retain this draft";All<Button>(chat).Single(b=>b.Name=="SendMessage").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(Count(p)==before&&input.Text=="retain this draft","failed submission saved an empty conversation or lost the draft");}finally{foreach(var chat in Application.Current.Windows.OfType<ChatWindow>().ToArray())chat.Close();p.Close();Pump();}}
         static void ProjectChoice(){var p=Pet();try{var project=ProjectCatalogStore.CreateProject(p.Projects,"chosen",root);int count=project.Conversations.Count;p.NewProjectConversation(project);Pump();Check(project.Conversations.Count==count,"choosing a project eagerly saved an empty chat");Send(Chat());Check(project.Conversations.Count==count+1,"first send did not add chat to selected project");var saved=p.ProjectStore.Load();Check(saved.Projects.Single(x=>x.Id==project.Id).Conversations.Count==count+1,"project membership not persisted");}finally{foreach(var w in Application.Current.Windows.OfType<ChatWindow>().ToArray())w.Close();p.Close();Pump();}}
         static void Unassigned(){var p=Pet();try{p.Settings.AgentEnabled=true;var project=ProjectCatalogStore.CreateProject(p.Projects,"target",root);p.NewActiveConversation();Pump();Send(Chat());Check(p.Projects.UnassignedConversations.Count==1,"unassigned chat was not saved independently");var c=p.Projects.UnassignedConversations[0];Check(p.MoveConversation(ProjectCatalogStore.UnassignedProject(p.Projects,p.Settings),project,c),"moving unassigned chat failed");Check(!p.Projects.UnassignedConversations.Any()&&project.Conversations.Any(x=>x.Id==c.Id),"unassigned drag changed or lost chat identity");var workspace=p.Workspaces.OpenWorkspaces.Single(x=>x.Id==c.Id);Check(workspace.Session.History.Messages.Any(x=>x.Content=="draft input"),"move lost conversation history");}finally{foreach(var w in Application.Current.Windows.OfType<ChatWindow>().ToArray())w.Close();p.Close();Pump();}}

@@ -14,6 +14,7 @@ internal sealed class ReleaseNotesWindow : Window
         Title = notes.Title;
         Width = 520;
         Height = 570;
+        Topmost = true;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
         var language = TextResources.CurrentLanguage;
@@ -72,6 +73,14 @@ internal sealed class ReleaseNotesWindow : Window
         Grid.SetRow(footer, 2);
         root.Children.Add(footer);
         DialogUi.ApplyTitled(this, root);
+        AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_, e) =>
+        {
+            if(!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || e.GetPosition(this).Y >= 64)return;
+            for(var source=e.Source as Avalonia.Visual;source!=null;source=Avalonia.VisualTree.VisualExtensions.GetVisualParent(source))
+                if(source is Button)return;
+            e.Handled=true;
+            BeginMoveDrag(e);
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         Opened += (_, _) => close.Focus();
     }
 }

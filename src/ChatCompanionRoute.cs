@@ -24,6 +24,7 @@ namespace Dafeiyu
         {
             if(!shellReady||closed)return;
             if(companionPage==null){companionPage=new CompanionHomePage(pet);appPages.Children.Add(companionPage);}
+            if(shellPage!="companion")companionPage.PrepareEntrance();
             companionFeatureAnchor=anchor;companionPage.RequestNavigationAnchor(anchor);
             SetShellPage("companion");RecordPage("companion");pet.RecordVisit();
             RefreshCompanionPage();

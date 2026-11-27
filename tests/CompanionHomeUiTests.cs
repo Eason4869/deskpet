@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -165,6 +165,52 @@ namespace Dafeiyu.Tests
             }
             chat.Close();await pet.Relationships.FlushAsync();Console.WriteLine("FirstHomeVisitUi: "+checks+" passed");
         }
+        static async Task HomeMotion(bool preview)
+        {
+            string output=Path.GetFullPath("work/home-entrance/preview");Directory.CreateDirectory(output);
+            var settings=new PetSettings{UiLanguage="zh_CN",ThemeMode="light",AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",QuietMode=true,ShowPredictedMessages=false};
+            foreach(var key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
+            string root=Path.Combine(output,"fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
+            await Task.Run(()=>RelationshipHomeFixtures.Seed156(pet.RelationshipService,pet.RelationshipCompanionId));
+            pet.SetPaused(true);pet.ShowChat();
+            var chat=app.Windows.OfType<ChatWindow>().Single();chat.Title="DeskPet Home Motion Preview";
+            chat.WindowState=WindowState.Normal;chat.Width=1248;chat.Height=900;chat.Left=30;chat.Top=30;
+            chat.ShowCompanionPage();await pet.Relationships.FlushAsync();
+            var page=All<CompanionHomePage>(chat).Single();await page.RefreshAsync();await Task.Delay(1700);
+            var sequence=new RelationshipHomeMotion();double card=-1,ring=-1;
+            sequence.Add(0,.35,p=>card=p);sequence.Add(.44,1,p=>ring=p);
+            Check(sequence.Advance(.35)&&card==1&&ring==0,"ring waits until relationship card settles");
+            sequence.Advance(.94);Check(Math.Abs(ring-.5)<.00001,"ring follows elapsed time after dropped frames");
+            Check(Math.Abs(RelationshipHomeMotion.RingDuration(.85)-1)<.00001,"306 degree arc loads in one second");
+            sequence.Finish();Check(card==1&&ring==1&&!sequence.Advance(10),"interruption settles all tracks and releases callbacks");
+            int callbacks=0;sequence.Add(0,.35,p=>callbacks++);sequence.Advance(1);int completed=callbacks;sequence.Advance(2);Check(completed==callbacks,"completed tracks are not updated again");sequence.Finish();
+            // Probe real controls without depending on wall-clock screenshot timing.
+            var probe=new CompanionHomeEntrance(page);var block=new Border{Width=100,Height=100};probe.Float(block,0);
+            Check(block.Opacity==0,"native card is hidden before its scheduled entrance");probe.Dispose();Check(block.Opacity==1&&block.RenderTransform==Transform.Identity,"cancellation restores card visibility and original transform");
+            if(preview){File.WriteAllText(Path.Combine(output,"ready.txt"),"ready");while(!File.Exists(Path.Combine(output,"record.txt")))await Task.Delay(50);}
+            foreach(string theme in new[]{"light","dark"})
+            {
+                ThemeManager.Apply(theme);await page.RefreshAsync();await Task.Delay(250);
+                page.PrepareEntrance();await page.RefreshAsync();
+                var profile=All<Border>(page).Single(x=>x.Name=="CompanionProfileCard");
+                if(SystemParameters.ClientAreaAnimation)Check(profile.Opacity==0,"real page prepares cards without a visible first-frame flash "+theme);
+                await Task.Delay(160);if(!preview)Capture(chat,Path.Combine(output,theme+"-160ms.png"));
+                await Task.Delay(350);if(!preview)Capture(chat,Path.Combine(output,theme+"-510ms.png"));
+                await Task.Delay(1300);Check(profile.Opacity==1,"real page cards settle fully visible "+theme);
+                Capture(chat,Path.Combine(output,theme+"-settled.png"));await Task.Delay(800);
+            }
+            // Leaving during a prepared sequence must never leave reused controls hidden.
+            page.PrepareEntrance();await page.RefreshAsync();page.Visibility=Visibility.Collapsed;
+            Check(All<Border>(page).Single(x=>x.Name=="CompanionProfileCard").Opacity==1,"leaving the page settles pending hidden cards");page.Visibility=Visibility.Visible;
+            Console.WriteLine("HomeMotion: "+checks+" passed");
+            if(preview)
+            {
+                chat.PreviewKeyDown+=async delegate(object sender,KeyEventArgs e){if(e.Key==Key.F5){page.PrepareEntrance();await page.RefreshAsync();e.Handled=true;}};
+                File.WriteAllText(Path.Combine(output,"done.txt"),"done");
+                while(chat.IsVisible)await Task.Delay(200);
+            }
+        }
         static async Task Run(string locale,bool hostedOnly=false)
         {
             HeartIcons();
@@ -322,6 +368,6 @@ namespace Dafeiyu.Tests
             }
             Console.WriteLine("CompanionHomeUiTests: "+checks+" passed");
         }
-        [STAThread]public static int Main(string[] args){if(args.Contains("--compile-only"))return 0;string profile=args.SingleOrDefault(x=>x.StartsWith("--profile-art=")||x.StartsWith("--profile-fresh="));string stage=args.SingleOrDefault(x=>x.StartsWith("--stage-track-layout=")),hosted=args.SingleOrDefault(x=>x.StartsWith("--hosted-ready="));string locale=profile!=null?profile.Split('=')[1]:hosted!=null?hosted.Split('=')[1]:stage!=null?stage.Split('=')[1]:args.Length==1&&!args[0].StartsWith("--")?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(profile!=null)await ProfileArtwork(locale,profile.StartsWith("--profile-fresh="));else if(args.Contains("--heart-icons"))HeartIcons();else if(hosted!=null)await Run(locale,true);else if(stage!=null)await StageTrackLayout(locale);else if(args.Contains("--first-visit"))await FirstVisit();else await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}
+        [STAThread]public static int Main(string[] args){if(args.Contains("--compile-only"))return 0;string profile=args.SingleOrDefault(x=>x.StartsWith("--profile-art=")||x.StartsWith("--profile-fresh="));string stage=args.SingleOrDefault(x=>x.StartsWith("--stage-track-layout=")),hosted=args.SingleOrDefault(x=>x.StartsWith("--hosted-ready="));string locale=args.Any(x=>x.StartsWith("--home-motion"))?"zh_CN":profile!=null?profile.Split('=')[1]:hosted!=null?hosted.Split('=')[1]:stage!=null?stage.Split('=')[1]:args.Length==1&&!args[0].StartsWith("--")?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--home-motion")||args.Contains("--home-motion-preview"))await HomeMotion(args.Contains("--home-motion-preview"));else if(profile!=null)await ProfileArtwork(locale,profile.StartsWith("--profile-fresh="));else if(args.Contains("--heart-icons"))HeartIcons();else if(hosted!=null)await Run(locale,true);else if(stage!=null)await StageTrackLayout(locale);else if(args.Contains("--first-visit"))await FirstVisit();else await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}
     }
 }
