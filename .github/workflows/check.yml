@@ -332,25 +332,6 @@ jobs:
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--work-binding-ui='+$locale)
             if ($LASTEXITCODE) { throw ('Avalonia work binding UI failed: '+$locale) }
           }
-      - name: Verify actual thin Avalonia companion resources and restoration
-        shell: powershell
-        run: |
-          python -X utf8 tools/prepare_bundled_ebao.py
-          if ($LASTEXITCODE) { throw 'Pinned Ebao preparation failed' }
-          dotnet restore desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --locked-mode --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -m:1
-          if ($LASTEXITCODE) { throw 'Thin desktop restore failed' }
-          dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-restore -c Release --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -p:BuildInParallel=false -m:1 -nr:false
-          if ($LASTEXITCODE) { throw 'Thin desktop build failed' }
-          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --bundled-e
-          if ($LASTEXITCODE) { throw 'Bundled Ebao acceptance failed' }
-          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --operation-sounds
-          if ($LASTEXITCODE) { throw 'Operation sound contracts failed' }
-          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --operation-sounds-ui
-          if ($LASTEXITCODE) { throw 'Operation sound UI acceptance failed' }
-          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --installation-status
-          if ($LASTEXITCODE) { throw 'Installation status acceptance failed' }
-          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-thin-ui-only
-          if ($LASTEXITCODE) { throw 'Thin desktop acceptance failed' }
       - name: Preserve localization acceptance evidence
         if: always()
         uses: actions/upload-artifact@v6
@@ -404,6 +385,40 @@ jobs:
             work/image-ui-evidence/generation-layout-failure.txt
             work/image-ui-evidence/gallery-toolbar-failure.png
             work/image-ui-evidence/gallery-toolbar-failure.txt
+  thin-avalonia:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: desktop/global.json
+      - name: Install companion preparation dependency
+        shell: powershell
+        run: |
+          python -m pip install Pillow
+          if ($LASTEXITCODE) { throw 'Pillow installation failed' }
+      - name: Verify actual thin Avalonia companion resources and restoration
+        shell: powershell
+        run: |
+          python -X utf8 tools/prepare_bundled_ebao.py
+          if ($LASTEXITCODE) { throw 'Pinned Ebao preparation failed' }
+          dotnet restore desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --locked-mode --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -m:1
+          if ($LASTEXITCODE) { throw 'Thin desktop restore failed' }
+          dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-restore -c Release --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -p:BuildInParallel=false -m:1 -nr:false
+          if ($LASTEXITCODE) { throw 'Thin desktop build failed' }
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --bundled-e
+          if ($LASTEXITCODE) { throw 'Bundled Ebao acceptance failed' }
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --operation-sounds
+          if ($LASTEXITCODE) { throw 'Operation sound contracts failed' }
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --operation-sounds-ui
+          if ($LASTEXITCODE) { throw 'Operation sound UI acceptance failed' }
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --installation-status
+          if ($LASTEXITCODE) { throw 'Installation status acceptance failed' }
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-thin-ui-only
+          if ($LASTEXITCODE) { throw 'Thin desktop acceptance failed' }
   installer:
     runs-on: windows-latest
     timeout-minutes: 30
