@@ -4,6 +4,7 @@
 
 ## 1.0.8
 
+- Update notes open on top of other windows and can be moved by dragging the header.
 - Companion Home cards rise into view in sequence, taking about 0.35 seconds each. Once the relationship card settles, its ring draws clockwise to the current progress at 306° per second.
 - Relationship stages appear from left to right, followed by staggered entrances for points earned today, active days together, and days since meeting. Journey entries grow downward in time with the keepsake cards on the left.
 - Journey entries run from oldest to newest. Windows and macOS share the animation timing and show the final state immediately when reduced motion is enabled.

@@ -13,6 +13,7 @@ namespace Dafeiyu
             Title = notes.Title;
             Width = 520;
             Height = 570;
+            Topmost = true;
 
             var language = TextResources.CurrentLanguage;
             var root = new Grid();
@@ -80,6 +81,18 @@ namespace Dafeiyu
             root.Children.Add(footer);
 
             DialogUi.ApplyTitled(this, root);
+            ((FrameworkElement)Content).PreviewMouseLeftButtonDown += delegate(object sender, System.Windows.Input.MouseButtonEventArgs e)
+            {
+                if(e.GetPosition(this).Y >= 64)return;
+                var source=e.OriginalSource as DependencyObject;
+                while(source!=null && source!=this)
+                {
+                    if(source is System.Windows.Controls.Primitives.ButtonBase)return;
+                    source=System.Windows.Media.VisualTreeHelper.GetParent(source);
+                }
+                e.Handled=true;
+                try { DragMove(); } catch(InvalidOperationException) { }
+            };
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             Loaded += delegate { close.Focus(); };
         }
